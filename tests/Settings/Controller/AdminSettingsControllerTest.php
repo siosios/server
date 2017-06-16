@@ -80,7 +80,7 @@ class AdminSettingsControllerTest extends TestCase {
 		// so unity…
 		$user = \OC::$server->getUserManager()->createUser('lolo', 'olo');
 		\OC_User::setUserId($user->getUID());
-		\OC::$server->getGroupManager()->get('admin')->addUser($user);
+		\OC::$server->getGroupManager()->createGroup('admin')->get('admin')->addUser($user);
 
 		$expected = new TemplateResponse('settings', 'settings/frame', ['forms' => ['personal' => [], 'admin' => []], 'content' => '']);
 		$this->assertEquals($expected, $this->adminSettingsController->index('test'));
