@@ -828,33 +828,21 @@ class ShareByMailProviderTest extends TestCase {
 			->method('setReplyTo')
 			->with(['owner@example.com' => 'Mrs. Owner User']);
 		$this->defaults
-			->expects($this->once())
+			->expects($this->exactly(2))
 			->method('getSlogan')
 			->willReturn('Testing like 1990');
 		$template
 			->expects($this->once())
 			->method('addFooter')
 			->with('UnitTestCloud - Testing like 1990');
-		$message
+		$template
 			->expects($this->once())
 			->method('setSubject')
-			->willReturn('Mrs. Owner User shared »file.txt« with you');
-		$template
-			->expects($this->once())
-			->method('renderText')
-			->willReturn('Text Render');
+			->with('Mrs. Owner User shared »file.txt« with you');
 		$message
 			->expects($this->once())
-			->method('setPlainBody')
-			->with('Text Render');
-		$template
-			->expects($this->once())
-			->method('renderHtml')
-			->willReturn('HTML Render');
-		$message
-			->expects($this->once())
-			->method('setHtmlBody')
-			->with('HTML Render');
+			->method('useTemplate')
+			->with($template);
 		$this->mailer
 			->expects($this->once())
 			->method('send')
@@ -936,26 +924,14 @@ class ShareByMailProviderTest extends TestCase {
 			->expects($this->once())
 			->method('addFooter')
 			->with('');
-		$message
+		$template
 			->expects($this->once())
 			->method('setSubject')
-			->willReturn('Mr. Initiator User shared »file.txt« with you');
-		$template
-			->expects($this->once())
-			->method('renderText')
-			->willReturn('Text Render');
+			->with('Mr. Initiator User shared »file.txt« with you');
 		$message
 			->expects($this->once())
-			->method('setPlainBody')
-			->with('Text Render');
-		$template
-			->expects($this->once())
-			->method('renderHtml')
-			->willReturn('HTML Render');
-		$message
-			->expects($this->once())
-			->method('setHtmlBody')
-			->with('HTML Render');
+			->method('useTemplate')
+			->with($template);
 		$this->mailer
 			->expects($this->once())
 			->method('send')

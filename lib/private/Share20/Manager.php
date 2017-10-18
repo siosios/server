@@ -702,7 +702,6 @@ class Manager implements IManager {
 											\DateTime $expiration = null) {
 		$initiatorUser = $this->userManager->get($initiator);
 		$initiatorDisplayName = ($initiatorUser instanceof IUser) ? $initiatorUser->getDisplayName() : $initiator;
-		$subject = $l->t('%s shared »%s« with you', array($initiatorDisplayName, $filename));
 
 		$message = $this->mailer->createMessage();
 
@@ -714,6 +713,7 @@ class Manager implements IManager {
 			'shareWith' => $shareWith,
 		]);
 
+		$emailTemplate->setSubject($l->t('%s shared »%s« with you', array($initiatorDisplayName, $filename)));
 		$emailTemplate->addHeader();
 		$emailTemplate->addHeading($l->t('%s shared »%s« with you', [$initiatorDisplayName, $filename]), false);
 		$text = $l->t('%s shared »%s« with you.', [$initiatorDisplayName, $filename]);
@@ -745,14 +745,12 @@ class Manager implements IManager {
 		$initiatorEmail = $initiatorUser->getEMailAddress();
 		if($initiatorEmail !== null) {
 			$message->setReplyTo([$initiatorEmail => $initiatorDisplayName]);
-			$emailTemplate->addFooter($instanceName . ' - ' . $this->defaults->getSlogan());
+			$emailTemplate->addFooter($instanceName . ($this->defaults->getSlogan() !== '' ? ' - ' . $this->defaults->getSlogan() : ''));
 		} else {
 			$emailTemplate->addFooter();
 		}
 
-		$message->setSubject($subject);
-		$message->setPlainBody($emailTemplate->renderText());
-		$message->setHtmlBody($emailTemplate->renderHtml());
+		$message->useTemplate($emailTemplate);
 		$this->mailer->send($message);
 	}
 
@@ -1051,6 +1049,11 @@ class Manager implements IManager {
 				if (count($shares2) === $limit) {
 					break;
 				}
+			}
+
+			// If we did not fetch more shares than the limit then there are no more shares
+			if (count($shares) < $limit) {
+				break;
 			}
 
 			if (count($shares2) === $limit) {

@@ -543,39 +543,20 @@ class OC {
 			$requestUri = $request->getScriptName();
 			$processingScript = explode('/', $requestUri);
 			$processingScript = $processingScript[count($processingScript)-1];
-			// FIXME: In a SAML scenario we don't get any strict or lax cookie
-			// send for the ACS endpoint. Since we have some legacy code in Nextcloud
-			// (direct PHP files) the enforcement of lax cookies is performed here
-			// instead of the middleware.
-			//
-			// This means we cannot exclude some routes from the cookie validation,
-			// which normally is not a problem but is a little bit cumbersome for
-			// this use-case.
-			// Once the old legacy PHP endpoints have been removed we can move
-			// the verification into a middleware and also adds some exemptions.
-			//
-			// Questions about this code? Ask Lukas ;-)
-			$currentUrl = substr(explode('?',$request->getRequestUri(), 2)[0], strlen(\OC::$WEBROOT));
-			if($currentUrl === '/index.php/apps/user_saml/saml/acs' || $currentUrl === '/apps/user_saml/saml/acs') {
+
+			// index.php routes are handled in the middleware
+			if($processingScript === 'index.php') {
 				return;
 			}
-			// For the "index.php" endpoint only a lax cookie is required.
-			if($processingScript === 'index.php') {
-				if(!$request->passesLaxCookieCheck()) {
-					self::sendSameSiteCookies();
-					header('Location: '.$_SERVER['REQUEST_URI']);
+
+			// All other endpoints require the lax and the strict cookie
+			if(!$request->passesStrictCookieCheck()) {
+				self::sendSameSiteCookies();
+				// Debug mode gets access to the resources without strict cookie
+				// due to the fact that the SabreDAV browser also lives there.
+				if(!\OC::$server->getConfig()->getSystemValue('debug', false)) {
+					http_response_code(\OCP\AppFramework\Http::STATUS_SERVICE_UNAVAILABLE);
 					exit();
-				}
-			} else {
-				// All other endpoints require the lax and the strict cookie
-				if(!$request->passesStrictCookieCheck()) {
-					self::sendSameSiteCookies();
-					// Debug mode gets access to the resources without strict cookie
-					// due to the fact that the SabreDAV browser also lives there.
-					if(!\OC::$server->getConfig()->getSystemValue('debug', false)) {
-						http_response_code(\OCP\AppFramework\Http::STATUS_SERVICE_UNAVAILABLE);
-						exit();
-					}
 				}
 			}
 		} elseif(!isset($_COOKIE['nc_sameSiteCookielax']) || !isset($_COOKIE['nc_sameSiteCookiestrict'])) {

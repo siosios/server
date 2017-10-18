@@ -139,7 +139,7 @@ abstract class ResourceLocator {
 			$tmpRoot = dirname($tmpRoot);
 		}
 
-		if (!$webRoot) {
+		if ($webRoot === null) {
 			$realpath = realpath($root);
 
 			if ($realpath && ($realpath !== $root)) {
@@ -171,7 +171,7 @@ abstract class ResourceLocator {
 		if (!$webRoot) {
 			$webRoot = $this->findWebRoot($root);
 
-			if (!$webRoot) {
+			if ($webRoot === null) {
 				$webRoot = '';
 				$this->logger->error('ResourceLocator can not find a web root (root: {root}, file: {file}, webRoot: {webRoot}, throw: {throw})', [
 					'app' => 'lib',

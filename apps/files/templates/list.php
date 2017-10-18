@@ -4,7 +4,9 @@
 				<div id="uploadprogressbar">
 					<em class="label outer" style="display:none"><span class="desktop"><?php p($l->t('Uploading @'));?></span><span class="mobile"><?php p($l->t('…'));?></span></em>
 				</div>
-				<input type="button" class="stop icon-close" style="display:none" value="" />
+				<button class="stop icon-close" style="display:none">
+					<span class="hidden-visually"><?php p($l->t('Cancel upload')) ?></span>
+				</button>
 			</div>
 		</div>
 		<div id="file_action_panel"></div>
@@ -47,9 +49,9 @@
 					</label>
 					<a class="name sort columntitle" data-sort="name"><span><?php p($l->t( 'Name' )); ?></span><span class="sort-indicator"></span></a>
 					<span id="selectedActionsList" class="selectedActions">
-						<a href="" class="move">
+						<a href="" class="copy-move">
 							<span class="icon icon-external"></span>
-							<span><?php p($l->t('Move'))?></span>
+							<span><?php p($l->t('Move or copy'))?></span>
 						</a>
 						<a href="" class="download">
 							<span class="icon icon-download"></span>
