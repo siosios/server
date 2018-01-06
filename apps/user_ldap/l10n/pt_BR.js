@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "O DN do usuário cliente com qual a ligação deverá ser feita, ex. uid=agent,dc=example,dc=com. Para acesso anônimo, deixe DN e senha vazios.",
     "Password" : "Senha",
     "For anonymous access, leave DN and Password empty." : "Para acesso anônimo, deixe DN e senha vazios.",
+    "Save Credentials" : "Salvar Senhas",
     "One Base DN per line" : "Uma Mase DN por linha",
     "You can specify Base DN for users and groups in the Advanced tab" : "Você pode especificar a Base DN para usuários e grupos na aba Avançada",
     "Detect Base DN" : "Detectar a Base DN",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Senha errada. Redefini-la?",
     "Wrong password." : "Senha errada.",
     "Cancel" : "Cancelar",
-    "LDAP" : "LDAP",
     "Server" : "Servidor",
     "Users" : "Usuários",
     "Login Attributes" : "Atributos de Acesso",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Verificar as configurações e grupos de conta",
     "Add a new and blank configuration" : "Adiciona uma configuração nova em branco",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "Você pode omitir o protocolo, exceto quando o SSL é requerido. Então inicie com ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Aviso:</b> Os aplicativos user_ldap e user_webdavauth são incompatíveis e pode haver um comportamento inesperado. Por favor, peça ao administrador do sistema para desabilitar um deles.",
     "in bytes" : "em bytes"
 },

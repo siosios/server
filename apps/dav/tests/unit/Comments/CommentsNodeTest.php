@@ -4,6 +4,7 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -26,8 +27,14 @@
 namespace OCA\DAV\Tests\unit\Comments;
 
 use OCA\DAV\Comments\CommentNode;
+use OCP\Comments\IComment;
 use OCP\Comments\ICommentsManager;
 use OCP\Comments\MessageTooLongException;
+use OCP\ILogger;
+use OCP\IUser;
+use OCP\IUserManager;
+use OCP\IUserSession;
+use Sabre\DAV\PropPatch;
 
 class CommentsNodeTest extends \Test\TestCase {
 
@@ -43,19 +50,19 @@ class CommentsNodeTest extends \Test\TestCase {
 	public function setUp() {
 		parent::setUp();
 
-		$this->commentsManager = $this->getMockBuilder('\OCP\Comments\ICommentsManager')
+		$this->commentsManager = $this->getMockBuilder(ICommentsManager::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$this->comment = $this->getMockBuilder('\OCP\Comments\IComment')
+		$this->comment = $this->getMockBuilder(IComment::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$this->userManager = $this->getMockBuilder('\OCP\IUserManager')
+		$this->userManager = $this->getMockBuilder(IUserManager::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$this->userSession = $this->getMockBuilder('\OCP\IUserSession')
+		$this->userSession = $this->getMockBuilder(IUserSession::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$this->logger = $this->getMockBuilder('\OCP\ILogger')
+		$this->logger = $this->getMockBuilder(ILogger::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -69,7 +76,7 @@ class CommentsNodeTest extends \Test\TestCase {
 	}
 
 	public function testDelete() {
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -104,7 +111,7 @@ class CommentsNodeTest extends \Test\TestCase {
 	 * @expectedException \Sabre\DAV\Exception\Forbidden
 	 */
 	public function testDeleteForbidden() {
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -156,7 +163,7 @@ class CommentsNodeTest extends \Test\TestCase {
 	public function testUpdateComment() {
 		$msg = 'Hello Earth';
 
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -188,13 +195,13 @@ class CommentsNodeTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @expectedException Exception
+	 * @expectedException \Exception
 	 * @expectedExceptionMessage buh!
 	 */
 	public function testUpdateCommentLogException() {
 		$msg = null;
 
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -233,7 +240,7 @@ class CommentsNodeTest extends \Test\TestCase {
 	 * @expectedExceptionMessage Message exceeds allowed character limit of
 	 */
 	public function testUpdateCommentMessageTooLongException() {
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -273,7 +280,7 @@ class CommentsNodeTest extends \Test\TestCase {
 	public function testUpdateForbiddenByUser() {
 		$msg = 'HaXX0r';
 
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -308,7 +315,7 @@ class CommentsNodeTest extends \Test\TestCase {
 	public function testUpdateForbiddenByType() {
 		$msg = 'HaXX0r';
 
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -356,7 +363,7 @@ class CommentsNodeTest extends \Test\TestCase {
 	}
 
 	public function testPropPatch() {
-		$propPatch = $this->getMockBuilder('Sabre\DAV\PropPatch')
+		$propPatch = $this->getMockBuilder(PropPatch::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -461,7 +468,7 @@ class CommentsNodeTest extends \Test\TestCase {
 			->method('getObjectId')
 			->will($this->returnValue($expected[$ns . 'objectId']));
 
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$user->expects($this->once())
@@ -515,7 +522,7 @@ class CommentsNodeTest extends \Test\TestCase {
 		$this->userSession->expects($this->once())
 			->method('getUser')
 			->will($this->returnValue(
-				$this->getMockBuilder('\OCP\IUser')
+				$this->getMockBuilder(IUser::class)
 					->disableOriginalConstructor()
 					->getMock()
 			));

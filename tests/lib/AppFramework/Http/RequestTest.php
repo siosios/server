@@ -40,7 +40,7 @@ class RequestTest extends \Test\TestCase {
 		stream_wrapper_register('fakeinput', 'Test\AppFramework\Http\RequestStream');
 
 		$this->secureRandom = $this->getMockBuilder('\OCP\Security\ISecureRandom')->getMock();
-		$this->config = $this->getMockBuilder('\OCP\IConfig')->getMock();
+		$this->config = $this->getMockBuilder(IConfig::class)->getMock();
 		$this->csrfTokenManager = $this->getMockBuilder('\OC\Security\CSRF\CsrfTokenManager')
 			->disableOriginalConstructor()->getMock();
 	}
@@ -858,6 +858,20 @@ class RequestTest extends \Test\TestCase {
 					Request::USER_AGENT_FREEBOX
 				],
 				false,
+			],
+			[
+				'Mozilla/5.0 (Android) ownCloud-android/2.0.0',
+				[
+					Request::USER_AGENT_CLIENT_ANDROID
+				],
+				true,
+			],
+			[
+				'Mozilla/5.0 (Android) Nextcloud-android/2.0.0',
+				[
+					Request::USER_AGENT_CLIENT_ANDROID
+				],
+				true,
 			],
 		];
 	}

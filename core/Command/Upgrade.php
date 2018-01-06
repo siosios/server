@@ -5,9 +5,12 @@
  * @author Andreas Fischer <bantu@owncloud.com>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Jürgen Haas <juergen@paragon-es.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Owen Winkler <a_github@midnightcircus.com>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Sander Ruitenbeek <sander@grids.be>
  * @author Steffen Lindner <mail@steffen-lindner.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Pulzer <t.pulzer@kniel.de>
@@ -32,6 +35,7 @@
 namespace OC\Core\Command;
 
 use OC\Console\TimestampFormatter;
+use OC\Installer;
 use OC\Updater;
 use OCP\IConfig;
 use OCP\ILogger;
@@ -60,11 +64,13 @@ class Upgrade extends Command {
 	/**
 	 * @param IConfig $config
 	 * @param ILogger $logger
+	 * @param Installer $installer
 	 */
-	public function __construct(IConfig $config, ILogger $logger) {
+	public function __construct(IConfig $config, ILogger $logger, Installer $installer) {
 		parent::__construct();
 		$this->config = $config;
 		$this->logger = $logger;
+		$this->installer = $installer;
 	}
 
 	protected function configure() {
@@ -98,7 +104,8 @@ class Upgrade extends Command {
 			$updater = new Updater(
 					$this->config,
 					\OC::$server->getIntegrityCodeChecker(),
-					$this->logger
+					$this->logger,
+					$this->installer
 			);
 
 			if ($input->getOption('no-app-disable')) {

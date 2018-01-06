@@ -4,22 +4,16 @@
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Bart Visscher <bartv@thisnet.nl>
  * @author Brice Maron <brice@bmaron.net>
- * @author Christian Weiske <cweiske@cweiske.de>
- * @author Christopher Schäpers <kondou@ts.unde.re>
+ * @author Christoph Wurst <christoph@owncloud.com>
  * @author Frank Karlitschek <frank@karlitschek.de>
- * @author Georg Ehrke <georg@owncloud.com>
- * @author Jakob Sack <mail@jakobsack.de>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Kamil Domanski <kdomanski@kdemail.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author michag86 <micha_g@arcor.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author root <root@oc.(none)>
+ * @author root "root@oc.(none)"
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
  *
@@ -73,6 +67,10 @@ class Installer {
 	private $logger;
 	/** @var IConfig */
 	private $config;
+	/** @var array - for caching the result of app fetcher */
+	private $apps = null;
+	/** @var bool|null - for caching the result of the ready status */
+	private $isInstanceReadyForUpdates = null;
 
 	/**
 	 * @param AppFetcher $appFetcher
@@ -193,7 +191,7 @@ class Installer {
 	 * @return bool
 	 */
 	public function updateAppstoreApp($appId) {
-		if(self::isUpdateAvailable($appId, $this->appFetcher)) {
+		if($this->isUpdateAvailable($appId)) {
 			try {
 				$this->downloadApp($appId);
 			} catch (\Exception $e) {
@@ -381,28 +379,31 @@ class Installer {
 	 * Check if an update for the app is available
 	 *
 	 * @param string $appId
-	 * @param AppFetcher $appFetcher
 	 * @return string|false false or the version number of the update
 	 */
-	public static function isUpdateAvailable($appId,
-									  AppFetcher $appFetcher) {
-		static $isInstanceReadyForUpdates = null;
-
-		if ($isInstanceReadyForUpdates === null) {
+	public function isUpdateAvailable($appId) {
+		if ($this->isInstanceReadyForUpdates === null) {
 			$installPath = OC_App::getInstallPath();
 			if ($installPath === false || $installPath === null) {
-				$isInstanceReadyForUpdates = false;
+				$this->isInstanceReadyForUpdates = false;
 			} else {
-				$isInstanceReadyForUpdates = true;
+				$this->isInstanceReadyForUpdates = true;
 			}
 		}
 
-		if ($isInstanceReadyForUpdates === false) {
+		if ($this->isInstanceReadyForUpdates === false) {
 			return false;
 		}
 
-		$apps = $appFetcher->get();
-		foreach($apps as $app) {
+		if ($this->isInstalledFromGit($appId) === true) {
+			return false;
+		}
+
+		if ($this->apps === null) {
+			$this->apps = $this->appFetcher->get();
+		}
+
+		foreach($this->apps as $app) {
 			if($app['id'] === $appId) {
 				$currentVersion = OC_App::getAppVersion($appId);
 				$newestVersion = $app['releases'][0]['version'];
@@ -415,6 +416,22 @@ class Installer {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Check if app has been installed from git
+	 * @param string $name name of the application to remove
+	 * @return boolean
+	 *
+	 * The function will check if the path contains a .git folder
+	 */
+	private function isInstalledFromGit($appId) {
+		$app = \OC_App::findAppInDirectories($appId);
+		if($app === false) {
+			return false;
+		}
+		$basedir = $app['path'].'/'.$appId;
+		return file_exists($basedir.'/.git/');
 	}
 
 	/**
@@ -548,7 +565,7 @@ class Installer {
 			} catch (TableExistsException $e) {
 				throw new HintException(
 					'Failed to enable app ' . $app,
-					'Please ask for help via one of our <a href="https://nextcloud.com/support/" target="_blank" rel="noreferrer">support channels</a>.',
+					'Please ask for help via one of our <a href="https://nextcloud.com/support/" target="_blank" rel="noreferrer noopener">support channels</a>.',
 					0, $e
 				);
 			}
@@ -592,23 +609,6 @@ class Installer {
 		}
 
 		return $info['id'];
-	}
-
-	/**
-	 * check the code of an app with some static code checks
-	 * @param string $folder the folder of the app to check
-	 * @return boolean true for app is o.k. and false for app is not o.k.
-	 */
-	public static function checkCode($folder) {
-		// is the code checker enabled?
-		if(!\OC::$server->getConfig()->getSystemValue('appcodechecker', false)) {
-			return true;
-		}
-
-		$codeChecker = new CodeChecker(new PrivateCheck(new EmptyCheck()));
-		$errors = $codeChecker->analyseFolder(basename($folder), $folder);
-
-		return empty($errors);
 	}
 
 	/**

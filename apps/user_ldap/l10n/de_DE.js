@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "Der DN des Benutzers, mit dem der LDAP-Bind durchgeführt werden soll, z.B. uid=agent,dc=example,dc=com. Für einen anonymen Zugriff lassen Sie DN und Passwort leer.",
     "Password" : "Passwort",
     "For anonymous access, leave DN and Password empty." : "Lassen Sie die Felder DN und Passwort für einen anonymen Zugang leer.",
+    "Save Credentials" : "Zugangsdaten speichern",
     "One Base DN per line" : "Einen Basis-DN pro Zeile",
     "You can specify Base DN for users and groups in the Advanced tab" : " Sie können die Basis-DN für Benutzer und Gruppen im Reiter „Fortgeschritten“ angeben",
     "Detect Base DN" : "Base-DN ermitteln",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Falsches Passwort. Soll es zurückgesetzt werden?",
     "Wrong password." : "Falsches Passwort.",
     "Cancel" : "Abbrechen",
-    "LDAP" : "LDAP",
     "Server" : "Server",
     "Users" : "Benutzer",
     "Login Attributes" : "Anmeldeattribute",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Einstellungen überprüfen und Gruppen zählen",
     "Add a new and blank configuration" : "Eine neue und leere Konfiguration hinzufügen",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "Sie können das Protokoll auslassen, außer wenn Sie SSL benötigen. Beginnen Sie dann mit ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Warnung:</b> Die Anwendungen user_ldap und user_webdavauth sind inkompatibel. Es kann deshalb zu unerwartetem Systemverhalten kommen. Bitte kontaktieren Sie Ihren Systemadministator und bitten Sie um die Deaktivierung einer der beiden Anwendungen.",
     "in bytes" : "in Bytes"
 },

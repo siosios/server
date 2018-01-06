@@ -37,6 +37,7 @@ use OC\Security\CSP\ContentSecurityPolicyManager;
 use OC\Security\CSP\ContentSecurityPolicyNonceManager;
 use OC\Security\CSRF\CsrfToken;
 use OC\Security\CSRF\CsrfTokenManager;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\EmptyContentSecurityPolicy;
 use OCP\AppFramework\Http\RedirectResponse;
@@ -49,6 +50,8 @@ use OCP\INavigationManager;
 use OCP\IRequest;
 use OCP\ISession;
 use OCP\IURLGenerator;
+use OCP\IUser;
+use OCP\IUserSession;
 use OCP\Security\ISecureRandom;
 
 class SecurityMiddlewareTest extends \Test\TestCase {
@@ -61,8 +64,6 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	private $secException;
 	/** @var SecurityException */
 	private $secAjaxException;
-	/** @var ISession|\PHPUnit_Framework_MockObject_MockObject */
-	private $session;
 	/** @var IRequest|\PHPUnit_Framework_MockObject_MockObject */
 	private $request;
 	/** @var ControllerMethodReflector */
@@ -79,6 +80,10 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	private $csrfTokenManager;
 	/** @var ContentSecurityPolicyNonceManager|\PHPUnit_Framework_MockObject_MockObject */
 	private $cspNonceManager;
+	/** @var IAppManager|\PHPUnit_Framework_MockObject_MockObject */
+	private $appManager;
+	/** @var IUserSession|\PHPUnit_Framework_MockObject_MockObject */
+	private $userSession;
 
 	protected function setUp() {
 		parent::setUp();
@@ -88,11 +93,14 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 		$this->logger = $this->createMock(ILogger::class);
 		$this->navigationManager = $this->createMock(INavigationManager::class);
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
-		$this->session = $this->createMock(ISession::class);
 		$this->request = $this->createMock(IRequest::class);
 		$this->contentSecurityPolicyManager = $this->createMock(ContentSecurityPolicyManager::class);
 		$this->csrfTokenManager = $this->createMock(CsrfTokenManager::class);
 		$this->cspNonceManager = $this->createMock(ContentSecurityPolicyNonceManager::class);
+		$this->appManager = $this->createMock(IAppManager::class);
+		$this->appManager->expects($this->any())
+			->method('isEnabledForUser')
+			->willReturn(true);
 		$this->middleware = $this->getMiddleware(true, true);
 		$this->secException = new SecurityException('hey', false);
 		$this->secAjaxException = new SecurityException('hey', true);
@@ -110,13 +118,13 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 			$this->navigationManager,
 			$this->urlGenerator,
 			$this->logger,
-			$this->session,
 			'files',
 			$isLoggedIn,
 			$isAdminUser,
 			$this->contentSecurityPolicyManager,
 			$this->csrfTokenManager,
-			$this->cspNonceManager
+			$this->cspNonceManager,
+			$this->appManager
 		);
 	}
 

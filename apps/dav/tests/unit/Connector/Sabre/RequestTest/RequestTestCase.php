@@ -4,6 +4,7 @@
  *
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
@@ -29,6 +30,7 @@ namespace OCA\DAV\Tests\unit\Connector\Sabre\RequestTest;
 use OCA\DAV\Connector\Sabre\Server;
 use OCA\DAV\Connector\Sabre\ServerFactory;
 use OC\Files\View;
+use OCP\IRequest;
 use Sabre\HTTP\Request;
 use Test\TestCase;
 use Test\Traits\MountProviderTrait;
@@ -62,7 +64,7 @@ abstract class RequestTestCase extends TestCase {
 			\OC::$server->getUserSession(),
 			\OC::$server->getMountManager(),
 			\OC::$server->getTagManager(),
-			$this->getMockBuilder('\OCP\IRequest')
+			$this->getMockBuilder(IRequest::class)
 				->disableOriginalConstructor()
 				->getMock(),
 			\OC::$server->getPreviewManager()

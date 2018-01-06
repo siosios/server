@@ -97,6 +97,7 @@
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "DN'et for klientbrugeren, for hvilken forbindelsen skal foretages, eks. uid=agent,dc=eksempel,dc=com. For anonym adgang lades DN og Password stå tomme.",
     "Password" : "Kodeord",
     "For anonymous access, leave DN and Password empty." : "For anonym adgang, skal du lade DN og Adgangskode tomme.",
+    "Save Credentials" : "Gem brugeroplysninger",
     "One Base DN per line" : "Ét Base DN per linje",
     "You can specify Base DN for users and groups in the Advanced tab" : "Du kan specificere base DN for brugere og grupper i fanen Advanceret",
     "Detect Base DN" : "Registrér Base DN",
@@ -119,7 +120,6 @@
     "Wrong password. Reset it?" : "Forkert password.\nSkal det nulstilles?",
     "Wrong password." : "Forkert password.",
     "Cancel" : "Annullér",
-    "LDAP" : "LDAP",
     "Server" : "Server",
     "Users" : "Brugere",
     "Login Attributes" : "Login-attributter",
@@ -189,6 +189,7 @@
     "Verify settings and count groups" : "Verificér indstillinger og optællingsgrupper",
     "Add a new and blank configuration" : "Tilføj en ny og tom konfiguration",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "Du kan udelade protokollen, medmindre du skal bruge SSL. Start i så fald med ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Advarsel:</b> Apps'ene user_ldap og user_webdavauth er ikke kompatible. Du kan opleve uventet adfærd. Spørg venligst din systemadministrator om at slå én af dem fra.",
     "in bytes" : "i bytes"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"

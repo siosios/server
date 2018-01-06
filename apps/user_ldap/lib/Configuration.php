@@ -2,8 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Alexander Bergolth <leo@strike.wu.ac.at>
  * @author Alex Weirig <alex.weirig@technolink.lu>
+ * @author Alexander Bergolth <leo@strike.wu.ac.at>
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
@@ -12,6 +12,8 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roger Szabo <roger.szabo@web.de>
+ * @author Victor Dubiniuk <dubiniuk@owncloud.com>
+ * @author Xuanwo <xuanwo@yunify.com>
  *
  * @license AGPL-3.0
  *
@@ -35,9 +37,13 @@ namespace OCA\User_LDAP;
  * @property int ldapPagingSize holds an integer
  */
 class Configuration {
-
 	protected $configPrefix = null;
 	protected $configRead = false;
+	/**
+	 * @var string[] pre-filled with one reference key so that at least one entry is written on save request and
+	 *               the config ID is registered
+	 */
+	protected $unsavedChanges = ['ldapConfigurationActive' => 'ldapConfigurationActive'];
 
 	//settings
 	protected $config = array(
@@ -185,7 +191,9 @@ class Configuration {
 			$this->$setMethod($key, $val);
 			if(is_array($applied)) {
 				$applied[] = $inputKey;
+				// storing key as index avoids duplication, and as value for simplicity
 			}
+			$this->unsavedChanges[$key] = $key;
 		}
 		return null;
 	}
@@ -238,11 +246,12 @@ class Configuration {
 	}
 
 	/**
-	 * saves the current Configuration in the database
+	 * saves the current config changes in the database
 	 */
 	public function saveConfiguration() {
 		$cta = array_flip($this->getConfigTranslationArray());
-		foreach($this->config as $key => $value) {
+		foreach($this->unsavedChanges as $key) {
+			$value = $this->config[$key];
 			switch ($key) {
 				case 'ldapAgentPassword':
 					$value = base64_encode($value);
@@ -273,6 +282,8 @@ class Configuration {
 			}
 			$this->saveValue($cta[$key], $value);
 		}
+		$this->saveValue('_lastChange', time());
+		$this->unsavedChanges = [];
 	}
 
 	/**

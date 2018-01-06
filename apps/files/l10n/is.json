@@ -17,6 +17,8 @@
     "Uploading …" : "Sendi inn …",
     "…" : "…",
     "{loadedSize} of {totalSize} ({bitrate})" : "{loadedSize} af {totalSize} ({bitrate})",
+    "Target folder does not exist any more" : "Markmappan er ekki lengur til",
+    "Error when assembling chunks, status code {status}" : "Villa við að setja búta saman, stöðukóði {status}",
     "Actions" : "Aðgerðir",
     "Download" : "Niðurhal",
     "Rename" : "Endurnefna",
@@ -75,6 +77,9 @@
     "Favorite" : "Eftirlæti",
     "New folder" : "Ný mappa",
     "Upload file" : "Senda inn skrá",
+    "Not favorited" : "Ekki í eftirlætum",
+    "Remove from favorites" : "Fjarlægja úr eftirlætum",
+    "Add to favorites" : "Bæta í eftirlæti",
     "An error occurred while trying to update the tags" : "Villa kom upp við að reyna að uppfæra merkin",
     "Added to favorites" : "Bætt í eftirlæti",
     "Removed from favorites" : "Fjarlægt úr eftirlætum",
@@ -120,8 +125,8 @@
     "Settings" : "Stillingar",
     "Show hidden files" : "Sýna faldar skrár",
     "WebDAV" : "WebDAV",
-    "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">access your Files via WebDAV</a>" : "Notaðu þetta vistfang til að <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">nálgast skrárnar þínar með WebDAV</a>",
-    "Uploading @" : "Sendi inn @",
+    "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer noopener\">access your Files via WebDAV</a>" : "Notaðu þetta vistfang til að <a href=\"%s\" target=\"_blank\" rel=\"noreferrer noopener\">nálgast skrárnar þínar með WebDAV</a>",
+    "Cancel upload" : "Hætta við innsendingu",
     "No files in here" : "Engar skrár hér",
     "Upload some content or sync with your devices!" : "Sendu inn eitthvað efni eða samstilltu við tækin þín!",
     "No entries found in this folder" : "Engar skrár fundust í þessari möppu",
@@ -154,6 +159,7 @@
     "Upload" : "Senda inn",
     "A new file or folder has been <strong>deleted</strong>" : "Nýrri skrá eða möppu hefur verið  <strong>eytt</strong>",
     "A new file or folder has been <strong>restored</strong>" : "Ný skrá eða mappa hefur verið <strong>endurheimt</strong>",
+    "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">access your Files via WebDAV</a>" : "Notaðu þetta vistfang til að <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">nálgast skrárnar þínar með WebDAV</a>",
     "No favorites" : "Engin eftirlæti"
 },"pluralForm" :"nplurals=2; plural=(n % 10 != 1 || n % 100 == 11);"
 }

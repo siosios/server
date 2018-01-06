@@ -21,17 +21,23 @@
 <table id="filestable">
 	<thead>
 		<tr>
+			<th id="headerSelection" class="hidden column-selection">
+				<input type="checkbox" id="select_all_trash" class="select-all checkbox"/>
+				<label for="select_all_trash">
+					<span class="hidden-visually"><?php p($l->t('Select all'))?></span>
+				</label>
+			</th>
 			<th id='headerName' class="hidden column-name">
 				<div id="headerName-container">
-					<input type="checkbox" id="select_all_trash" class="select-all checkbox"/>
-					<label for="select_all_trash">
-						<span class="hidden-visually"><?php p($l->t('Select all'))?></span>
-					</label>
 					<a class="name sort columntitle" data-sort="name"><span><?php p($l->t( 'Name' )); ?></span><span class="sort-indicator"></span></a>
 					<span id="selectedActionsList" class='selectedActions'>
 						<a href="" class="undelete">
 							<span class="icon icon-history"></span>
 							<span><?php p($l->t('Restore'))?></span>
+						</a>
+						<a href="" class="delete-selected">
+							<span class="icon icon-delete"></span>
+							<span><?php p($l->t('Delete'))?></span>
 						</a>
 					</span>
 				</div>

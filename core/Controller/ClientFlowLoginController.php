@@ -2,6 +2,11 @@
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -223,7 +228,7 @@ class ClientFlowLoginController extends Controller {
 				'clientIdentifier' => $clientIdentifier,
 				'oauthState' => $this->session->get('oauth.state'),
 			],
-			'empty'
+			'guest'
 		);
 	}
 
@@ -302,8 +307,20 @@ class ClientFlowLoginController extends Controller {
 			);
 			$this->session->remove('oauth.state');
 		} else {
-			$redirectUri = 'nc://login/server:' . $this->request->getServerHost() . '&user:' . urlencode($loginName) . '&password:' . urlencode($token);
+			$serverPostfix = '';
+
+			if (strpos($this->request->getRequestUri(), '/index.php') !== false) {
+				$serverPostfix = substr($this->request->getRequestUri(), 0, strpos($this->request->getRequestUri(), '/index.php'));
+			} else if (strpos($this->request->getRequestUri(), '/login/flow') !== false) {
+				$serverPostfix = substr($this->request->getRequestUri(), 0, strpos($this->request->getRequestUri(), '/login/flow'));
+			}
+
+			$serverPath = $this->request->getServerProtocol() . "://" . $this->request->getServerHost() . $serverPostfix;
+			$redirectUri = 'nc://login/server:' . $serverPath . '&user:' . urlencode($loginName) . '&password:' . urlencode($token);
 		}
+
+		// Clear the token from the login here
+		$this->tokenProvider->invalidateToken($sessionId);
 
 		return new Http\RedirectResponse($redirectUri);
 	}

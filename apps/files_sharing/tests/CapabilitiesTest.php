@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -24,6 +26,7 @@
 namespace OCA\Files_Sharing\Tests;
 
 use OCA\Files_Sharing\Capabilities;
+use OCP\IConfig;
 
 
 /**
@@ -54,7 +57,7 @@ class CapabilitiesTest extends \Test\TestCase {
 	 * @return string[]
 	 */
 	private function getResults(array $map) {
-		$config = $this->getMockBuilder('\OCP\IConfig')->disableOriginalConstructor()->getMock();
+		$config = $this->getMockBuilder(IConfig::class)->disableOriginalConstructor()->getMock();
 		$config->method('getAppValue')->will($this->returnValueMap($map));
 		$cap = new Capabilities($config);
 		$result = $this->getFilesSharingPart($cap->getCapabilities());

@@ -14,7 +14,6 @@
 }
 
 .shareTabView .shareWithRemoteInfo,
-.shareTabView .clipboardButton,
 .shareTabView .linkPass .icon-loading-small {
 	position: absolute;
 	right: -7px;
@@ -38,18 +37,6 @@
 	position: relative;
 	top: initial;
 	right: initial;
-	padding: 18px 0 18px 36px;
-}
-
-/* fix clickable area because in the share tab popover the label is inside the actual menu item*/
-#shareWithList .popovermenu .shareOption {
-	padding-right: 0 !important;
-}
-/* fix clickable area because in the share tab popover the label is inside the actual menu item*/
-.shareTabView .popovermenu label {
-	width: 100%;
-	display: inline-block;
-	padding: 0 10px 0 0 !important;
 }
 
 .shareTabView label {
@@ -90,27 +77,14 @@
 	align-items: center;
 }
 
-#shareWithList .unshare img, #shareWithList .showCruds img {
+#shareWithList .unshare img {
 	vertical-align: text-bottom; /* properly align icons */
 }
 
-#shareWithList .sharingOptionsGroup .icon-more {
+#shareWithList .sharingOptionsGroup > a .icon {
 	padding: 7px;
 	vertical-align: middle;
 	opacity: .5;
-}
-
-#shareWithList .shareOption.menuitem > label:before {
-	/* Checkboxes positionning */
-    margin: 0 12px !important;
-}
-
-#shareWithList .unshare {
-	padding: 1px 6px;
-	vertical-align: text-bottom;
-}
-#shareWithList .unshare .icon {
-	vertical-align: text-top;
 }
 
 #shareWithList .sharingOptionsGroup .popovermenu:after {
@@ -138,7 +112,6 @@
 .shareTabView .icon-loading-small {
 	display: inline-block;
 	z-index: 1;
-	margin-right: 4px;
 	vertical-align: text-top;
 }
 

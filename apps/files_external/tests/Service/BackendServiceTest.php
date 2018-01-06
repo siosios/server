@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -21,6 +23,8 @@
  */
 namespace OCA\Files_External\Tests\Service;
 
+use OCA\Files_External\Lib\Auth\AuthMechanism;
+use OCA\Files_External\Lib\Backend\Backend;
 use OCA\Files_External\Lib\Config\IAuthMechanismProvider;
 use OCA\Files_External\Lib\Config\IBackendProvider;
 use \OCA\Files_External\Service\BackendService;
@@ -46,7 +50,7 @@ class BackendServiceTest extends \Test\TestCase {
 	 * @return \OCA\Files_External\Lib\Backend\Backend
 	 */
 	protected function getBackendMock($class) {
-		$backend = $this->getMockBuilder('\OCA\Files_External\Lib\Backend\Backend')
+		$backend = $this->getMockBuilder(Backend::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$backend->method('getIdentifier')->will($this->returnValue('identifier:'.$class));
@@ -60,7 +64,7 @@ class BackendServiceTest extends \Test\TestCase {
 	 * @return \OCA\Files_External\Lib\Auth\AuthMechanism
 	 */
 	protected function getAuthMechanismMock($class) {
-		$backend = $this->getMockBuilder('\OCA\Files_External\Lib\Auth\AuthMechanism')
+		$backend = $this->getMockBuilder(AuthMechanism::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$backend->method('getIdentifier')->will($this->returnValue('identifier:'.$class));
@@ -73,7 +77,7 @@ class BackendServiceTest extends \Test\TestCase {
 
 		$backend = $this->getBackendMock('\Foo\Bar');
 
-		$backendAlias = $this->getMockBuilder('\OCA\Files_External\Lib\Backend\Backend')
+		$backendAlias = $this->getMockBuilder(Backend::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$backendAlias->method('getIdentifierAliases')
@@ -175,7 +179,7 @@ class BackendServiceTest extends \Test\TestCase {
 			->method('removeVisibility')
 			->with(BackendService::VISIBILITY_PERSONAL);
 
-		$backendAlias = $this->getMockBuilder('\OCA\Files_External\Lib\Backend\Backend')
+		$backendAlias = $this->getMockBuilder(Backend::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$backendAlias->method('getIdentifierAliases')

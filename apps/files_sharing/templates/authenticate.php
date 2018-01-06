@@ -1,6 +1,7 @@
 <?php
 	/** @var $_ array */
 	/** @var $l \OCP\IL10N */
+	style('core', 'guest');
 	style('files_sharing', 'authenticate');
 	script('files_sharing', 'authenticate'); 
 ?>
@@ -17,7 +18,7 @@
 			<input type="hidden" name="requesttoken" value="<?php p($_['requesttoken']) ?>" />
 			<input type="password" name="password" id="password"
 				placeholder="<?php p($l->t('Password')); ?>" value=""
-				autocomplete="off" autocapitalize="off" autocorrect="off"
+				autocomplete="new-password" autocapitalize="off" autocorrect="off"
 				autofocus />
 			<input type="submit" id="password-submit" 
 				class="svg icon-confirm input-button-inline" value="" disabled="disabled" />

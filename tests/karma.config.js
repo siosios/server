@@ -88,6 +88,8 @@ module.exports = function(config) {
 				srcFiles: [
 					// need to enforce loading order...
 					'apps/comments/js/app.js',
+					'apps/comments/js/vendor/Caret.js/dist/jquery.caret.min.js',
+					'apps/comments/js/vendor/At.js/dist/js/jquery.atwho.min.js',
 					'apps/comments/js/commentmodel.js',
 					'apps/comments/js/commentcollection.js',
 					'apps/comments/js/commentsummarymodel.js',
@@ -235,7 +237,7 @@ module.exports = function(config) {
 		basePath: '..',
 
 		// frameworks to use
-		frameworks: ['jasmine', 'jasmine-sinon'],
+		frameworks: ['jasmine', 'jasmine-sinon', 'viewport'],
 
 		// list of files / patterns to load in the browser
 		files: files,

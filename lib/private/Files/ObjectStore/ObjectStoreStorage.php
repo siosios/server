@@ -351,25 +351,24 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 			$stat['mtime'] = $mtime;
 			$this->getCache()->update($stat['fileid'], $stat);
 		} else {
-			$mimeType = \OC::$server->getMimeTypeDetector()->detectPath($path);
-			// create new file
-			$stat = array(
-				'etag' => $this->getETag($path),
-				'mimetype' => $mimeType,
-				'size' => 0,
-				'mtime' => $mtime,
-				'storage_mtime' => $mtime,
-				'permissions' => \OCP\Constants::PERMISSION_ALL - \OCP\Constants::PERMISSION_CREATE,
-			);
-			$fileId = $this->getCache()->put($path, $stat);
 			try {
-				//read an empty file from memory
-				$this->objectStore->writeObject($this->getURN($fileId), fopen('php://memory', 'r'));
+				//create a empty file, need to have at least on char to make it
+				// work with all object storage implementations
+				$this->file_put_contents($path, ' ');
+				$mimeType = \OC::$server->getMimeTypeDetector()->detectPath($path);
+				$stat = array(
+					'etag' => $this->getETag($path),
+					'mimetype' => $mimeType,
+					'size' => 0,
+					'mtime' => $mtime,
+					'storage_mtime' => $mtime,
+					'permissions' => \OCP\Constants::PERMISSION_ALL - \OCP\Constants::PERMISSION_CREATE,
+				);
+				$this->getCache()->put($path, $stat);
 			} catch (\Exception $ex) {
-				$this->getCache()->remove($path);
 				$this->logger->logException($ex, [
 					'app' => 'objectstore',
-					'message' => 'Could not create object ' . $this->getURN($fileId) . ' for ' . $path,
+					'message' => 'Could not create object for ' . $path,
 				]);
 				return false;
 			}
@@ -390,7 +389,15 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 		$stat['size'] = filesize($tmpFile);
 		$stat['mtime'] = $mTime;
 		$stat['storage_mtime'] = $mTime;
-		$stat['mimetype'] = \OC::$server->getMimeTypeDetector()->detect($tmpFile);
+
+		// run path based detection first, to use file extension because $tmpFile is only a random string
+		$mimetypeDetector = \OC::$server->getMimeTypeDetector();
+		$mimetype = $mimetypeDetector->detectPath($path);
+		if ($mimetype === 'application/octet-stream') {
+			$mimetype = $mimetypeDetector->detect($tmpFile);
+		}
+
+		$stat['mimetype'] = $mimetype;
 		$stat['etag'] = $this->getETag($path);
 
 		$fileId = $this->getCache()->put($path, $stat);

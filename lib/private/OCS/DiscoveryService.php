@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2017 Bjoern Schiessle <bjoern@schiessle.org>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -44,7 +46,7 @@ class DiscoveryService implements IDiscoveryService {
 	public function __construct(ICacheFactory $cacheFactory,
 								IClientService $clientService
 	) {
-		$this->cache = $cacheFactory->create('ocs-discovery');
+		$this->cache = $cacheFactory->createDistributed('ocs-discovery');
 		$this->client = $clientService->newClient();
 	}
 
@@ -79,11 +81,10 @@ class DiscoveryService implements IDiscoveryService {
 			}
 		} catch (\Exception $e) {
 			// if we couldn't discover the service or any end-points we return a empty array
-			return [];
 		}
 
 		// Write into cache
-		$this->cache->set($remote . '#' . $service, json_encode($discoveredServices));
+		$this->cache->set($remote . '#' . $service, json_encode($discoveredServices), 60*60*24);
 		return $discoveredServices;
 	}
 

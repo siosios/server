@@ -16,7 +16,6 @@ OC.L10N.register(
     "Not enough free space, you are uploading {size1} but only {size2} is left" : "Недостатньо вільного місця, ви вивантажуєте {size1}, а залишилося лише {size2}",
     "Target folder \"{dir}\" does not exist any more" : "Теки призначення \"{dir}\" більше не існує.",
     "Not enough free space" : "Недостатньо вільного місця",
-    "Uploading …" : "Вивантаження...",
     "…" : "...",
     "{loadedSize} of {totalSize} ({bitrate})" : "{loadedSize} з {totalSize} ({bitrate})",
     "Actions" : "Дії",
@@ -72,6 +71,8 @@ OC.L10N.register(
     "Favorite" : "Улюблений",
     "New folder" : "Нова тека",
     "Upload file" : "Вивантажити файл",
+    "Remove from favorites" : "Видалено з улюбленого",
+    "Add to favorites" : "Додати до улюбленого",
     "An error occurred while trying to update the tags" : "Виникла помилка при спробі оновити мітки",
     "Added to favorites" : "Додано до улюбленого",
     "Removed from favorites" : "Видалено з улюбленого",
@@ -117,8 +118,6 @@ OC.L10N.register(
     "Settings" : "Налаштування",
     "Show hidden files" : "Показати приховані файли",
     "WebDAV" : "WebDAV",
-    "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">access your Files via WebDAV</a>" : "Використайте цю адресу для <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">доступу через WebDAV</a>",
-    "Uploading @" : "Вивантаження @",
     "No files in here" : "Тут немає файлів",
     "Upload some content or sync with your devices!" : "Вивантажте щось або синхронізуйте з пристроями!",
     "No entries found in this folder" : "В цій теці нічого немає",
@@ -147,6 +146,7 @@ OC.L10N.register(
     "Upload" : "Вивантажити",
     "A new file or folder has been <strong>deleted</strong>" : "Новий файл або теку було <strong>видалено</strong>",
     "A new file or folder has been <strong>restored</strong>" : "Новий файл або теку було <strong>відновлено</strong>",
+    "Use this address to <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">access your Files via WebDAV</a>" : "Використайте цю адресу для <a href=\"%s\" target=\"_blank\" rel=\"noreferrer\">доступу через WebDAV</a>",
     "No favorites" : "Немає улюблених"
 },
 "nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);");

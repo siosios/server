@@ -7,18 +7,21 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Damjan Georgievski <gdamjan@gmail.com>
  * @author davidgumberg <davidnoizgumberg@gmail.com>
  * @author Florin Peter <github@florin-peter.de>
- * @author Georg Ehrke <georg@owncloud.com>
- * @author Hugo Gonzalez Labrador <hglavra@gmail.com>
  * @author Individual IT Services <info@individual-it.net>
  * @author Jakob Sack <mail@jakobsack.de>
- * @author Joachim Bauch <bauch@struktur.de>
+ * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joachim Sokolowski <github@sokolowski.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Ko- <k.stoffelen@cs.ru.nl>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -28,9 +31,9 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sebastian Wessalowski <sebastian@wessalowski.org>
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Thomas Pulzer <t.pulzer@kniel.de>
  * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Vincent Petry <pvince81@owncloud.com>
  * @author Volkan Gezer <volkangezer@gmail.com>
@@ -409,6 +412,10 @@ class OC {
 	}
 
 	public static function initSession() {
+		if(self::$server->getRequest()->getServerProtocol() === 'https') {
+			ini_set('session.cookie_secure', true);
+		}
+
 		// prevents javascript from accessing php session cookies
 		ini_set('session.cookie_httponly', true);
 
@@ -660,9 +667,6 @@ class OC {
 		self::checkInstalled();
 
 		OC_Response::addSecurityHeaders();
-		if(self::$server->getRequest()->getServerProtocol() === 'https') {
-			ini_set('session.cookie_secure', true);
-		}
 
 		self::performSameSiteCookieProtection();
 
@@ -727,10 +731,9 @@ class OC {
 			OC_User::setIncognitoMode(true);
 		}
 
-		self::registerCacheHooks();
+		self::registerCleanupHooks();
 		self::registerFilesystemHooks();
 		self::registerShareHooks();
-		self::registerLogRotate();
 		self::registerEncryptionWrapper();
 		self::registerEncryptionHooks();
 		self::registerAccountHooks();
@@ -800,15 +803,23 @@ class OC {
 	}
 
 	/**
-	 * register hooks for the cache
+	 * register hooks for the cleanup of cache and bruteforce protection
 	 */
-	public static function registerCacheHooks() {
+	public static function registerCleanupHooks() {
 		//don't try to do this before we are properly setup
 		if (\OC::$server->getSystemConfig()->getValue('installed', false) && !self::checkUpgrade(false)) {
 
 			// NOTE: This will be replaced to use OCP
 			$userSession = self::$server->getUserSession();
-			$userSession->listen('\OC\User', 'postLogin', function () {
+			$userSession->listen('\OC\User', 'postLogin', function () use ($userSession) {
+				if (!defined('PHPUNIT_RUN')) {
+					// reset brute force delay for this IP address and username
+					$uid = \OC::$server->getUserSession()->getUser()->getUID();
+					$request = \OC::$server->getRequest();
+					$throttler = \OC::$server->getBruteForceThrottler();
+					$throttler->resetDelay($request->getRemoteAddress(), 'login', ['user' => $uid]);
+				}
+
 				try {
 					$cache = new \OC\Cache\File();
 					$cache->gc();
@@ -863,18 +874,6 @@ class OC {
 	}
 
 	/**
-	 * register hooks for the cache
-	 */
-	public static function registerLogRotate() {
-		$systemConfig = \OC::$server->getSystemConfig();
-		if ($systemConfig->getValue('installed', false) && $systemConfig->getValue('log_rotate_size', false) && !self::checkUpgrade(false)) {
-			//don't try to do this before we are properly setup
-			//use custom logfile path if defined, otherwise use default of nextcloud.log in data directory
-			\OC::$server->getJobList()->add('OC\Log\Rotate');
-		}
-	}
-
-	/**
 	 * register hooks for the filesystem
 	 */
 	public static function registerFilesystemHooks() {
@@ -925,9 +924,15 @@ class OC {
 		// Check if Nextcloud is installed or in maintenance (update) mode
 		if (!$systemConfig->getValue('installed', false)) {
 			\OC::$server->getSession()->clear();
-			$setupHelper = new OC\Setup(\OC::$server->getSystemConfig(), \OC::$server->getIniWrapper(),
-				\OC::$server->getL10N('lib'), \OC::$server->query(\OCP\Defaults::class), \OC::$server->getLogger(),
-				\OC::$server->getSecureRandom());
+			$setupHelper = new OC\Setup(
+				\OC::$server->getSystemConfig(),
+				\OC::$server->getIniWrapper(),
+				\OC::$server->getL10N('lib'),
+				\OC::$server->query(\OCP\Defaults::class),
+				\OC::$server->getLogger(),
+				\OC::$server->getSecureRandom(),
+				\OC::$server->query(\OC\Installer::class)
+			);
 			$controller = new OC\Core\Controller\SetupController($setupHelper);
 			$controller->run($_POST);
 			exit();

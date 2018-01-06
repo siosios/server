@@ -4,7 +4,9 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
@@ -54,12 +56,9 @@ class Hooks {
 	 * listen to write event.
 	 */
 	public static function write_hook( $params ) {
-
-		if (\OCP\App::isEnabled('files_versions')) {
-			$path = $params[\OC\Files\Filesystem::signal_param_path];
-			if($path !== '') {
-				Storage::store($path);
-			}
+		$path = $params[\OC\Files\Filesystem::signal_param_path];
+		if($path !== '') {
+			Storage::store($path);
 		}
 	}
 
@@ -72,12 +71,9 @@ class Hooks {
 	 * cleanup the versions directory if the actual file gets deleted
 	 */
 	public static function remove_hook($params) {
-
-		if (\OCP\App::isEnabled('files_versions')) {
-			$path = $params[\OC\Files\Filesystem::signal_param_path];
-			if($path !== '') {
-				Storage::delete($path);
-			}
+		$path = $params[\OC\Files\Filesystem::signal_param_path];
+		if($path !== '') {
+			Storage::delete($path);
 		}
 	}
 
@@ -100,13 +96,10 @@ class Hooks {
 	 * of the stored versions along the actual file
 	 */
 	public static function rename_hook($params) {
-
-		if (\OCP\App::isEnabled('files_versions')) {
-			$oldpath = $params['oldpath'];
-			$newpath = $params['newpath'];
-			if($oldpath !== '' && $newpath !== '') {
-				Storage::renameOrCopy($oldpath, $newpath, 'rename');
-			}
+		$oldpath = $params['oldpath'];
+		$newpath = $params['newpath'];
+		if($oldpath !== '' && $newpath !== '') {
+			Storage::renameOrCopy($oldpath, $newpath, 'rename');
 		}
 	}
 
@@ -118,13 +111,10 @@ class Hooks {
 	 * the stored versions to the new location
 	 */
 	public static function copy_hook($params) {
-
-		if (\OCP\App::isEnabled('files_versions')) {
-			$oldpath = $params['oldpath'];
-			$newpath = $params['newpath'];
-			if($oldpath !== '' && $newpath !== '') {
-				Storage::renameOrCopy($oldpath, $newpath, 'copy');
-			}
+		$oldpath = $params['oldpath'];
+		$newpath = $params['newpath'];
+		if($oldpath !== '' && $newpath !== '') {
+			Storage::renameOrCopy($oldpath, $newpath, 'copy');
 		}
 	}
 
@@ -137,25 +127,21 @@ class Hooks {
 	 *
 	 */
 	public static function pre_renameOrCopy_hook($params) {
-		if (\OCP\App::isEnabled('files_versions')) {
+		// if we rename a movable mount point, then the versions don't have
+		// to be renamed
+		$absOldPath = \OC\Files\Filesystem::normalizePath('/' . \OCP\User::getUser() . '/files' . $params['oldpath']);
+		$manager = \OC\Files\Filesystem::getMountManager();
+		$mount = $manager->find($absOldPath);
+		$internalPath = $mount->getInternalPath($absOldPath);
+		if ($internalPath === '' and $mount instanceof \OC\Files\Mount\MoveableMount) {
+			return;
+		}
 
-			// if we rename a movable mount point, then the versions don't have
-			// to be renamed
-			$absOldPath = \OC\Files\Filesystem::normalizePath('/' . \OCP\User::getUser() . '/files' . $params['oldpath']);
-			$manager = \OC\Files\Filesystem::getMountManager();
-			$mount = $manager->find($absOldPath);
-			$internalPath = $mount->getInternalPath($absOldPath);
-			if ($internalPath === '' and $mount instanceof \OC\Files\Mount\MoveableMount) {
-				return;
-			}
-
-			$view = new \OC\Files\View(\OCP\User::getUser() . '/files');
-			if ($view->file_exists($params['newpath'])) {
-				Storage::store($params['newpath']);
-			} else {
-				Storage::setSourcePathAndUser($params['oldpath']);
-			}
-
+		$view = new \OC\Files\View(\OCP\User::getUser() . '/files');
+		if ($view->file_exists($params['newpath'])) {
+			Storage::store($params['newpath']);
+		} else {
+			Storage::setSourcePathAndUser($params['oldpath']);
 		}
 	}
 

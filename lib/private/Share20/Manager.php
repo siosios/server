@@ -5,8 +5,18 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
+ * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Maxence Lange <maxence@artificial-owl.com>
+ * @author Maxence Lange <maxence@nextcloud.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Pauli Järvinen <pauli.jarvinen@gmail.com>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Stephan Müller <mail@stephanmueller.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -659,26 +669,31 @@ class Manager implements IManager {
 		$this->eventDispatcher->dispatch('OCP\Share::postShare', $event);
 
 		if ($share->getShareType() === \OCP\Share::SHARE_TYPE_USER) {
-			$user = $this->userManager->get($share->getSharedWith());
-			if ($user !== null) {
-				$emailAddress = $user->getEMailAddress();
-				if ($emailAddress !== null && $emailAddress !== '') {
-					$userLang = $this->config->getUserValue($share->getSharedWith(), 'core', 'lang', null);
-					$l = $this->l10nFactory->get('lib', $userLang);
-					$this->sendMailNotification(
-						$l,
-						$share->getNode()->getName(),
-						$this->urlGenerator->linkToRouteAbsolute('files.viewcontroller.showFile', [ 'fileid' => $share->getNode()->getId() ]),
-						$share->getSharedBy(),
-						$emailAddress,
-						$share->getExpirationDate()
-					);
-					$this->logger->debug('Send share notification to ' . $emailAddress . ' for share with ID ' . $share->getId(), ['app' => 'share']);
+			$mailSend = $share->getMailSend();
+			if($mailSend === true) {
+				$user = $this->userManager->get($share->getSharedWith());
+				if ($user !== null) {
+					$emailAddress = $user->getEMailAddress();
+					if ($emailAddress !== null && $emailAddress !== '') {
+						$userLang = $this->config->getUserValue($share->getSharedWith(), 'core', 'lang', null);
+						$l = $this->l10nFactory->get('lib', $userLang);
+						$this->sendMailNotification(
+							$l,
+							$share->getNode()->getName(),
+							$this->urlGenerator->linkToRouteAbsolute('files.viewcontroller.showFile', ['fileid' => $share->getNode()->getId()]),
+							$share->getSharedBy(),
+							$emailAddress,
+							$share->getExpirationDate()
+						);
+						$this->logger->debug('Send share notification to ' . $emailAddress . ' for share with ID ' . $share->getId(), ['app' => 'share']);
+					} else {
+						$this->logger->debug('Share notification not send to ' . $share->getSharedWith() . ' because email address is not set.', ['app' => 'share']);
+					}
 				} else {
-					$this->logger->debug('Share notification not send to ' . $share->getSharedWith() . ' because email address is not set.', ['app' => 'share']);
+					$this->logger->debug('Share notification not send to ' . $share->getSharedWith() . ' because user could not be found.', ['app' => 'share']);
 				}
 			} else {
-				$this->logger->debug('Share notification not send to ' . $share->getSharedWith() . ' because user could not be found.', ['app' => 'share']);
+				$this->logger->debug('Share notification not send because mailsend is false.', ['app' => 'share']);
 			}
 		}
 
@@ -1322,7 +1337,7 @@ class Manager implements IManager {
 	 *
 	 * @param \OCP\Files\Node $path
 	 * @param bool $recursive Should we check all parent folders as well
-	 * @param bool $currentAccess Should the user have currently access to the file
+	 * @param bool $currentAccess Ensure the recipient has access to the file (e.g. did not unshare it)
 	 * @return array
 	 */
 	public function getAccessList(\OCP\Files\Node $path, $recursive = true, $currentAccess = false) {
@@ -1380,7 +1395,13 @@ class Manager implements IManager {
 			foreach ($tmp as $k => $v) {
 				if (isset($al[$k])) {
 					if (is_array($al[$k])) {
-						$al[$k] = array_merge($al[$k], $v);
+						if ($currentAccess) {
+							$al[$k] += $v;
+						} else {
+							$al[$k] = array_merge($al[$k], $v);
+							$al[$k] = array_unique($al[$k]);
+							$al[$k] = array_values($al[$k]);
+						}
 					} else {
 						$al[$k] = $al[$k] || $v;
 					}
@@ -1395,7 +1416,7 @@ class Manager implements IManager {
 
 	/**
 	 * Create a new share
-	 * @return \OCP\Share\IShare;
+	 * @return \OCP\Share\IShare
 	 */
 	public function newShare() {
 		return new \OC\Share20\Share($this->rootFolder, $this->userManager);

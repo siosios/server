@@ -4,6 +4,9 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Jesús Macias <jmacias@solidgear.es>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Juan Pablo Villafañez <jvillafanez@solidgear.es>
+ * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -49,6 +52,7 @@ use OCP\Files\Notify\IChange;
 use OCP\Files\Notify\IRenameChange;
 use OCP\Files\Storage\INotifyStorage;
 use OCP\Files\StorageNotAvailableException;
+use OCP\Util;
 
 class SMB extends Common implements INotifyStorage {
 	/**
@@ -196,18 +200,21 @@ class SMB extends Common implements INotifyStorage {
 			$this->remove($target);
 			$result = $this->share->rename($absoluteSource, $absoluteTarget);
 		} catch (\Exception $e) {
+			\OC::$server->getLogger()->logException($e, ['level' => Util::WARN]);
 			return false;
 		}
 		unset($this->statCache[$absoluteSource], $this->statCache[$absoluteTarget]);
 		return $result;
 	}
 
-	/**
-	 * @param string $path
-	 * @return array
-	 */
 	public function stat($path) {
-		$result = $this->formatInfo($this->getFileInfo($path));
+		try {
+			$result = $this->formatInfo($this->getFileInfo($path));
+		} catch (ForbiddenException $e) {
+			return false;
+		} catch (NotFoundException $e) {
+			return false;
+		}
 		if ($this->remoteIsShare() && $this->isRootDir($path)) {
 			$result['mtime'] = $this->shareMTime();
 		}

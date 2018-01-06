@@ -9,11 +9,9 @@
  * @author Michael U <mdusher@users.noreply.github.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Chan <plus.vincchan@gmail.com>
- * @author Volkan Gezer <volkangezer@gmail.com>
  *
  * @license AGPL-3.0
  *
@@ -152,16 +150,6 @@ class Manager extends PublicEmitter implements IUserManager {
 	protected function getUserObject($uid, $backend, $cacheUser = true) {
 		if (isset($this->cachedUsers[$uid])) {
 			return $this->cachedUsers[$uid];
-		}
-
-		if (method_exists($backend, 'loginName2UserName')) {
-			$loginName = $backend->loginName2UserName($uid);
-			if ($loginName !== false) {
-				$uid = $loginName;
-			}
-			if (isset($this->cachedUsers[$uid])) {
-				return $this->cachedUsers[$uid];
-			}
 		}
 
 		$user = new User($uid, $backend, $this, $this->config);

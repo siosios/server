@@ -2,22 +2,25 @@
 /**
  * @copyright Copyright (c) 2016 Julius Härtl <jus@bitgrid.net>
  *
+ * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
+ * @author Julius Haertl <jus@bitgrid.net>
  * @author Julius Härtl <jus@bitgrid.net>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
  *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU Affero General Public License as
- *  published by the Free Software Foundation, either version 3 of the
- *  License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Affero General Public License for more details.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
  *
- *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 namespace OCA\Theming\Tests;
@@ -51,7 +54,7 @@ class IconBuilderTest extends TestCase {
 	protected function setUp() {
 		parent::setUp();
 
-		$this->config = $this->getMockBuilder('\OCP\IConfig')->getMock();
+		$this->config = $this->getMockBuilder(IConfig::class)->getMock();
 		$this->appData = $this->createMock(IAppData::class);
 		$this->themingDefaults = $this->getMockBuilder('OCA\Theming\ThemingDefaults')
 			->disableOriginalConstructor()->getMock();
@@ -67,6 +70,9 @@ class IconBuilderTest extends TestCase {
 		$checkImagick = new \Imagick();
 		if (count($checkImagick->queryFormats('SVG')) < 1) {
 			$this->markTestSkipped('No SVG provider present.');
+		}
+		if (count($checkImagick->queryFormats('PNG')) < 1) {
+			$this->markTestSkipped('No PNG provider present.');
 		}
 	}
 
@@ -144,16 +150,22 @@ class IconBuilderTest extends TestCase {
 	public function testGetFavicon($app, $color, $file) {
 		$this->checkImagick();
 		$this->themingDefaults->expects($this->once())
+			->method('shouldReplaceIcons')
+			->willReturn(true);
+		$this->themingDefaults->expects($this->once())
 			->method('getColorPrimary')
 			->willReturn($color);
 
 		$expectedIcon = new \Imagick(realpath(dirname(__FILE__)). "/data/" . $file);
+		$actualIcon = $this->iconBuilder->getFavicon($app);
+
 		$icon = new \Imagick();
-		$icon->readImageBlob($this->iconBuilder->getFavicon($app));
+		$icon->setFormat('ico');
+		$icon->readImageBlob($actualIcon);
 
 		$this->assertEquals(true, $icon->valid());
-		$this->assertEquals(32, $icon->getImageWidth());
-		$this->assertEquals(32, $icon->getImageHeight());
+		$this->assertEquals(128, $icon->getImageWidth());
+		$this->assertEquals(128, $icon->getImageHeight());
 		$icon->destroy();
 		$expectedIcon->destroy();
 		// FIXME: We may need some comparison of the generated and the test images
@@ -164,8 +176,12 @@ class IconBuilderTest extends TestCase {
 	 * @expectedException \PHPUnit_Framework_Error_Warning
 	 */
 	public function testGetFaviconNotFound() {
+		$this->checkImagick();
 		$util = $this->getMockBuilder(Util::class)->disableOriginalConstructor()->getMock();
 		$iconBuilder = new IconBuilder($this->themingDefaults, $util);
+		$this->themingDefaults->expects($this->once())
+			->method('shouldReplaceIcons')
+			->willReturn(true);
 		$util->expects($this->once())
 			->method('getAppIcon')
 			->willReturn('notexistingfile');
@@ -176,6 +192,7 @@ class IconBuilderTest extends TestCase {
 	 * @expectedException \PHPUnit_Framework_Error_Warning
 	 */
 	public function testGetTouchIconNotFound() {
+		$this->checkImagick();
 		$util = $this->getMockBuilder(Util::class)->disableOriginalConstructor()->getMock();
 		$iconBuilder = new IconBuilder($this->themingDefaults, $util);
 		$util->expects($this->once())
@@ -188,6 +205,7 @@ class IconBuilderTest extends TestCase {
 	 * @expectedException \PHPUnit_Framework_Error_Warning
 	 */
 	public function testColorSvgNotFound() {
+		$this->checkImagick();
 		$util = $this->getMockBuilder(Util::class)->disableOriginalConstructor()->getMock();
 		$iconBuilder = new IconBuilder($this->themingDefaults, $util);
 		$util->expects($this->once())

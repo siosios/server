@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -24,6 +25,8 @@
 
 namespace OCA\DAV\Tests\unit\Connector\Sabre\RequestTest;
 
+use OCP\IConfig;
+
 /**
  * Class PartFileInRootUploadTest
  *
@@ -34,7 +37,7 @@ namespace OCA\DAV\Tests\unit\Connector\Sabre\RequestTest;
 class PartFileInRootUploadTest extends UploadTest {
 	protected function setUp() {
 		$config = \OC::$server->getConfig();
-		$mockConfig = $this->getMockBuilder('\OCP\IConfig')
+		$mockConfig = $this->getMockBuilder(IConfig::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$mockConfig->expects($this->any())

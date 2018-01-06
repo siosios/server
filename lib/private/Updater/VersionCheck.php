@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -99,12 +101,10 @@ class VersionCheck {
 			} else {
 				libxml_clear_errors();
 			}
-		} else {
-			$data = [];
 		}
 
 		// Cache the result
-		$this->config->setAppValue('core', 'lastupdateResult', json_encode($data));
+		$this->config->setAppValue('core', 'lastupdateResult', json_encode($tmp));
 		return $tmp;
 	}
 

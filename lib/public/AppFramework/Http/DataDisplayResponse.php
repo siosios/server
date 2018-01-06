@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -35,7 +36,7 @@ class DataDisplayResponse extends Response {
 
 	/**
 	 * response data
-	 * @var string;
+	 * @var string
 	 */
 	protected $data;
 

@@ -592,7 +592,7 @@ var UserList = {
 		if (quota === 'other') {
 			return;
 		}
-		if ((quota !== 'default' && quota !== "none") && (!OC.Util.computerFileSize(quota))) {
+		if (quota !== 'default' && quota !== "none" && OC.Util.computerFileSize(quota) === null) {
 			// the select component has added the bogus value, delete it again
 			$select.find('option[selected]').remove();
 			OC.Notification.showTemporary(t('core', 'Invalid quota value "{val}"', {val: quota}));
@@ -970,8 +970,9 @@ $(document).ready(function () {
 		$tr.addClass('active');
 	});
 
-	$(document.body).click(function () {
+	$(document).on('mouseup', function () {
 		$('#userlist tr.active').removeClass('active');
+		$('#userlist .popovermenu.open').removeClass('open');
 	});
 
 	$userListBody.on('click', '.action-togglestate', function (event) {

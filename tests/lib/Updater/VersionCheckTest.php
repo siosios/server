@@ -23,6 +23,7 @@
 namespace Test\Updater;
 
 use OC\Updater\VersionCheck;
+use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\Util;
 
@@ -34,10 +35,10 @@ class VersionCheckTest extends \Test\TestCase {
 
 	public function setUp() {
 		parent::setUp();
-		$this->config = $this->getMockBuilder('\OCP\IConfig')
+		$this->config = $this->getMockBuilder(IConfig::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$clientService = $this->getMockBuilder('\OCP\Http\Client\IClientService')
+		$clientService = $this->getMockBuilder(IClientService::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -160,7 +161,7 @@ class VersionCheckTest extends \Test\TestCase {
 		$this->config
 			->expects($this->at(6))
 			->method('setAppValue')
-			->with('core', 'lastupdateResult', 'false');
+			->with('core', 'lastupdateResult', '[]');
 
 		$updateXml = 'Invalid XML Response!';
 		$this->updater
@@ -256,6 +257,57 @@ class VersionCheckTest extends \Test\TestCase {
 			->with('core', 'lastupdateResult', json_encode($expectedResult));
 
 		$updateXml = '';
+		$this->updater
+			->expects($this->once())
+			->method('getUrlContent')
+			->with($this->buildUpdateUrl('https://updates.nextcloud.com/updater_server/'))
+			->will($this->returnValue($updateXml));
+
+		$this->assertSame($expectedResult, $this->updater->check());
+	}
+
+	public function testCheckWithMissingAttributeXmlResponse() {
+		$expectedResult = [
+			'version' => '',
+			'versionstring' => '',
+			'url' => '',
+			'web' => '',
+			'autoupdater' => '',
+		];
+
+		$this->config
+			->expects($this->at(0))
+			->method('getAppValue')
+			->with('core', 'lastupdatedat')
+			->will($this->returnValue(0));
+		$this->config
+			->expects($this->at(1))
+			->method('getSystemValue')
+			->with('updater.server.url', 'https://updates.nextcloud.com/updater_server/')
+			->willReturnArgument(1);
+		$this->config
+			->expects($this->at(2))
+			->method('setAppValue')
+			->with('core', 'lastupdatedat', $this->isType('integer'));
+		$this->config
+			->expects($this->at(4))
+			->method('getAppValue')
+			->with('core', 'installedat')
+			->will($this->returnValue('installedat'));
+		$this->config
+			->expects($this->at(5))
+			->method('getAppValue')
+			->with('core', 'lastupdatedat')
+			->will($this->returnValue('lastupdatedat'));
+
+		// missing autoupdater element should still not fail
+		$updateXml = '<?xml version="1.0"?>
+<owncloud>
+  <version></version>
+  <versionstring></versionstring>
+  <url></url>
+  <web></web>
+</owncloud>';
 		$this->updater
 			->expects($this->once())
 			->method('getUrlContent')

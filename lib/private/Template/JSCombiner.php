@@ -2,6 +2,8 @@
 /**
  * @copyright 2017, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -116,6 +118,10 @@ class JSCombiner {
 			}
 
 			$deps = json_decode($deps, true);
+
+			if ($deps === NULL) {
+				return false;
+			}
 
 			foreach ($deps as $file=>$mtime) {
 				if (!file_exists($file) || filemtime($file) > $mtime) {

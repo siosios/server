@@ -4,20 +4,19 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
- * @author Björn Schießle <bjoern@schiessle.org>
  * @author Clark Tomlinson <fallen013@gmail.com>
  * @author Daniel Molkentin <daniel@molkentin.de>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Stephan Peijnik <speijnik@anexia-it.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Thomas Pulzer <t.pulzer@kniel.de>
  *
  * @license AGPL-3.0
  *
@@ -41,6 +40,7 @@ OC_Util::checkSubAdminUser();
 
 $userManager = \OC::$server->getUserManager();
 $groupManager = \OC::$server->getGroupManager();
+$appManager = \OC::$server->getAppManager();
 
 // Set the sort option: SORT_USERCOUNT or SORT_GROUPNAME
 $sortGroupsBy = \OC\Group\MetaData::SORT_USERCOUNT;
@@ -51,7 +51,7 @@ if ($config->getSystemValue('sort_groups_by_name', false)) {
 	$sortGroupsBy = \OC\Group\MetaData::SORT_GROUPNAME;
 } else {
 	$isLDAPUsed = false;
-	if (\OC_App::isEnabled('user_ldap')) {
+	if ($appManager->isEnabledForUser('user_ldap')) {
 		$isLDAPUsed =
 			$groupManager->isBackendUsed('\OCA\User_LDAP\Group_LDAP')
 			|| $groupManager->isBackendUsed('\OCA\User_LDAP\Group_Proxy');
@@ -76,7 +76,7 @@ $groupsInfo = new \OC\Group\MetaData(
 $groupsInfo->setSorting($sortGroupsBy);
 list($adminGroup, $groups) = $groupsInfo->get();
 
-$recoveryAdminEnabled = OC_App::isEnabled('encryption') &&
+$recoveryAdminEnabled = $appManager->isEnabledForUser('encryption') &&
 					    $config->getAppValue( 'encryption', 'recoveryAdminEnabled', '0');
 
 if($isAdmin) {

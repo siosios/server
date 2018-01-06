@@ -20,7 +20,11 @@
 
 .actions.creatable {
 	position: relative;
-	z-index: -30;
+	display: flex;
+	flex: 1 1;
+	.button:not(:last-child) {
+		margin-right: 3px;
+	}
 }
 
 #trash {
@@ -34,8 +38,6 @@
 .newFileMenu .error, #fileList .error {
 	color: $color-error;
 	border-color: $color-error;
-	-webkit-box-shadow: 0 0 6px #f8b9b7;
-	-moz-box-shadow: 0 0 6px #f8b9b7;
 	box-shadow: 0 0 6px #f8b9b7;
 }
 
@@ -43,18 +45,6 @@
 #filestable {
 	position: relative;
 	width: 100%;
-}
-
-#filestable.has-controls {
-	top: 44px;
-}
-
-/* make sure there's enough room for the file actions */
-#body-user #filestable {
-	min-width: 688px; /* 768 (mobile break) - 80 (nav width) */
-}
-#body-user #controls {
-	min-width: 688px; /* 768 (mobile break) - 80 (nav width) */
 }
 
 #filestable tbody tr {
@@ -76,12 +66,16 @@
 	background-color: rgb(179, 230, 255)!important;
 }
 
-.app-files #app-content.dir-drop, .file-drag #filestable tbody tr, .file-drag #filestable tbody tr:hover{
-	background-color: rgba(0, 0, 0, 0)!important;
+.app-files #app-content.dir-drop {
+	background-color: $color-main-background !important;
+}
+
+.file-drag #filestable tbody tr, .file-drag #filestable tbody tr:hover{
+	background-color: transparent !important;
 }
 
 .app-files #app-content.dir-drop #filestable tbody tr.dropping-to-dir{
-	background-color: rgb(179, 230, 255)!important;
+	background-color: rgb(179, 230, 255) !important;
 }
 
 /* icons for sidebar */
@@ -232,9 +226,6 @@ table th#headerName {
 	position: relative;
 	height: 50px;
 }
-.has-favorites #headerName-container {
-	padding-left: 50px;
-}
 
 table th#headerSize, table td.filesize {
 	text-align: right;
@@ -251,12 +242,12 @@ table th.column-last, table td.column-last {
 
 /* Multiselect bar */
 #filestable.multiselect {
-	top: 95px;
+	top: 51px;
 }
 table.multiselect thead {
 	position: fixed;
 	top: 89px;
-	z-index: 10;
+	z-index: 55;
 	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 	left: 250px; /* sidebar */
@@ -296,7 +287,12 @@ table td.filename a.name {
 	line-height: 50px;
 	padding: 0;
 }
-table td.filename label.icon-loading-small {
+table td.filename .thumbnail-wrapper {
+	position: absolute;
+	width: 50px;
+	height: 50px;
+}
+table td.filename .thumbnail-wrapper.icon-loading-small {
 	&:after {
 		z-index: 10;
 	}
@@ -308,10 +304,10 @@ table td.filename .thumbnail {
 	display: inline-block;
 	width: 32px;
 	height: 32px;
+	background-size: 32px;
 	margin-left: 9px;
 	margin-top: 9px;
 	cursor: pointer;
-	float: left;
 	position: absolute;
 	z-index: 4;
 }
@@ -321,12 +317,9 @@ table td.filename input.filename {
 	margin-left: 48px;
 	cursor: text;
 }
-.has-favorites table td.filename input.filename {
-	margin-left: 52px;
-}
 
 table td.filename a, table td.login, table td.logout, table td.download, table td.upload, table td.create, table td.delete { padding:3px 8px 8px 3px; }
-table td.filename .nametext, .uploadtext, .modified, .column-last>span:first-child { float:left; padding:15px 0; }
+table td.filename .nametext, .modified, .column-last>span:first-child { float:left; padding:15px 0; }
 
 .modified, .column-last>span:first-child {
 	position: relative;
@@ -338,21 +331,22 @@ table td.filename .nametext, .uploadtext, .modified, .column-last>span:first-chi
 /* TODO fix usability bug (accidental file/folder selection) */
 table td.filename .nametext {
 	position: absolute;
-	left: 55px;
 	padding: 0;
+	padding-left: 55px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	width: 70%;
 	max-width: 800px;
 	height: 100%;
+	z-index: 10;
+}
+table td.filename .uploadtext {
+	position: absolute;
+	left: 55px;
 }
 /* ellipsis on file names */
 table td.filename .nametext .innernametext {
 	max-width: calc(100% - 100px) !important;
-}
-.has-favorites #fileList td.filename a.name {
-	left: 50px;
-	margin-right: 50px;
 }
 
 .hide-hidden-files #fileList tr.hidden-file,
@@ -439,49 +433,27 @@ table td.filename .uploadtext {
 	opacity: .5;
 }
 
-/* File checkboxes */
-#fileList tr td.filename>.selectCheckBox + label:before {
-	opacity: 0;
-	position: absolute;
-	bottom: 4px;
-	right: 0;
-	z-index: 10;
+table td.selection {
+	padding: 0;
 }
 
-/* Show checkbox when hovering, checked, or selected */
-#fileList tr:hover td.filename>.selectCheckBox + label:before,
-#fileList tr:focus td.filename>.selectCheckBox + label:before,
-#fileList tr td.filename>.selectCheckBox:checked + label:before,
-#fileList tr.selected td.filename>.selectCheckBox + label:before {
+/* File checkboxes */
+#fileList tr td.selection>.selectCheckBox + label:before {
+	opacity: 0.3;
+}
+
+/* Show checkbox with full opacity when hovering, checked, or selected */
+#fileList tr:hover td.selection>.selectCheckBox + label:before,
+#fileList tr:focus td.selection>.selectCheckBox + label:before,
+#fileList tr td.selection>.selectCheckBox:checked + label:before,
+#fileList tr.selected td.selection>.selectCheckBox + label:before {
 	opacity: 1;
 }
 
 /* Use label to have bigger clickable size for checkbox */
-#fileList tr td.filename>.selectCheckBox + label,
+#fileList tr td.selection>.selectCheckBox + label,
 .select-all + label {
-	background-position: 30px 30px;
-	height: 50px;
-	position: absolute;
-	width: 50px;
-	z-index: 5;
-}
-#fileList tr td.filename>.selectCheckBox {
-	/* sometimes checkbox height is bigger (KDE/Qt), so setting to absolute
-	 * to prevent it to increase the height */
-	position: absolute;
-	z-index: 10;
-}
-.select-all + label {
-	top: 0;
-}
-.select-all + label:before {
-	position: absolute;
-	top: 18px;
-	left: 18px;
-	z-index: 10;
-}
-.has-favorites .select-all {
-	left: 68px;
+	padding: 16px;
 }
 
 #fileList tr td.filename {
@@ -502,10 +474,11 @@ table td.filename .uploadtext {
 	display: inline-block;
 	float: left;
 }
-#fileList tr td.filename .action-favorite {
+#fileList tr td.filename .favorite-mark {
+	position: absolute;
 	display: block;
-	float: left;
-	width: 30px;
+	top: -6px;
+	right: -6px;
 	line-height: 100%;
 	text-align: center;
 }
@@ -516,6 +489,7 @@ table td.filename .uploadtext {
 .fileactions {
 	position: absolute;
 	right: 0;
+	z-index: 50;
 }
 
 .busy .fileactions, .busy .action {
@@ -568,43 +542,54 @@ a.action > img {
 	vertical-align: text-bottom;
 	margin-bottom: -1px;
 }
-
-#fileList a.action {
-	display: inline;
-	padding: 17px 8px;
-	line-height: 50px;
-	opacity: 0;
-}
-#fileList a.action.action-share {
-	padding: 17px 14px;
+/* hide the delete icon in name column normal resolutions */
+table th#headerName .selectedActions .delete-selected {
+	display: none;
 }
 
-#fileList a.action.action-menu {
-	padding-top: 17px;
-	padding-bottom: 17px;
-	padding-left: 14px;
-	padding-right: 14px;
-}
-
-#fileList a.action,
-#fileList a.action.no-permission:hover,
-#fileList a.action.no-permission:focus,
-/* also enforce the low opacity for disabled links that are hovered/focused */
-#fileList a.action.disabled:hover,
-#fileList a.action.disabled:focus,
-#fileList a.action.disabled img {
-	opacity: .3;
-}
-
-#fileList a.action.disabled.action-download,
-#fileList a.action.disabled.action-download:hover,
-#fileList a.action.disabled.action-download:focus,
-#fileList a.action:hover,
-#fileList a.action:focus,
-#fileList .fileActionsMenu a.action,
-/* show share action of shared items darker to distinguish from non-shared */
-#fileList a.action.action-share.shared-style {
-	opacity: .7;
+#fileList td a {
+	a.action {
+		display: inline;
+		padding: 17px 8px;
+		line-height: 50px;
+		opacity: .3;
+		&.action-share {
+			padding: 17px 14px;
+			.avatar {
+				display: inline-block;
+				vertical-align: middle;
+			}
+		}
+		&.action-menu {
+			padding-top: 17px;
+			padding-bottom: 17px;
+			padding-left: 14px;
+			padding-right: 14px;
+		}
+		&.no-permission {
+			&:hover, &:focus {
+				opacity: .3;
+			}
+		}
+		&.disabled {
+			&:hover, &:focus,
+			img {
+				opacity: .3;
+			}
+			&.action-download {
+				opacity: .7;
+				&:hover, &:focus {
+					opacity: .7;
+				}
+			}
+		}
+		&:hover, &:focus {
+			opacity: .7;
+		}
+	}
+	.fileActionsMenu a.action, a.action.action-share.shared-style {
+		opacity: .7;
+	}
 }
 
 // Ellipsize long sharer names
@@ -613,11 +598,15 @@ a.action > img {
 	max-width: 70px;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	vertical-align: bottom;
-	padding-left: 6px;
+	vertical-align: middle;
+	margin-left: 6px;
 }
 
-#fileList .action.action-favorite.permanent {
+#fileList .remoteAddress .userDomain {
+	margin-left: 0 !important;
+}
+
+#fileList .favorite-mark.permanent {
 	opacity: 1;
 }
 
@@ -661,12 +650,10 @@ table tr.summary td {
 .summary .info {
 	margin-left: 40px;
 }
-.has-favorites .summary .info {
-	margin-left: 90px;
-}
 
 table.dragshadow {
 	width:auto;
+	z-index: 100;
 }
 table.dragshadow td.filename {
 	padding-left:60px;
@@ -716,10 +703,22 @@ table.dragshadow td.size {
 
 #filestable .filename .action .icon,
 #filestable .selectedActions a .icon,
+#filestable .filename .favorite-mark .icon,
 #controls .actions .button .icon {
 	display: inline-block;
 	vertical-align: middle;
 	background-size: 16px 16px;
+}
+
+#filestable .filename .favorite-mark {
+	// Override default icons to always hide the star icon and always show the
+	// starred icon even when hovered or focused.
+	& .icon-star {
+		background-image: none;
+	}
+	& .icon-starred {
+		background-image: url('../../../core/img/actions/starred.svg?v=1');
+	}
 }
 
 #filestable .filename .action .icon.hidden,
@@ -742,9 +741,9 @@ table.dragshadow td.size {
 	margin-bottom: 2px;
 }
 
-.canDrop,
+.breadcrumb .canDrop > a,
 #filestable tbody tr.canDrop {
-  background-color: rgba(255, 255, 140, 1);
+	background-color: rgb(179, 230, 255);
 }
 
 
@@ -757,7 +756,7 @@ table.dragshadow td.size {
 
 	.quota-container {
 		height: 5px;
-		border-radius: 3px;
+		border-radius: $border-radius;
 
 		div {
 			height: 100%;

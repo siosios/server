@@ -4,6 +4,7 @@
  *
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  *
  * @license AGPL-3.0
@@ -26,6 +27,7 @@ namespace OCA\Encryption;
 
 
 use OC\Files\View;
+use OCP\App\IAppManager;
 use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\ILogger;
@@ -43,6 +45,8 @@ class Migration {
 	private $logger;
 	/** @var string*/
 	protected $installedVersion;
+	/** @var IAppManager */
+	protected $appManager;
 
 	/**
 	 * @param IConfig $config
@@ -50,7 +54,7 @@ class Migration {
 	 * @param IDBConnection $connection
 	 * @param ILogger $logger
 	 */
-	public function __construct(IConfig $config, View $view, IDBConnection $connection, ILogger $logger) {
+	public function __construct(IConfig $config, View $view, IDBConnection $connection, ILogger $logger, IAppManager $appManager) {
 		$this->view = $view;
 		$this->view->disableCacheUpdate();
 		$this->connection = $connection;
@@ -58,6 +62,7 @@ class Migration {
 		$this->config = $config;
 		$this->logger = $logger;
 		$this->installedVersion = $this->config->getAppValue('files_encryption', 'installed_version', '-1');
+		$this->appManager = $appManager;
 	}
 
 	public function finalCleanUp() {
@@ -137,7 +142,7 @@ class Migration {
 			$path = '/files_encryption/keys';
 			$this->renameFileKeys($user, $path);
 			$trashPath = '/files_trashbin/keys';
-			if (\OC_App::isEnabled('files_trashbin') && $this->view->is_dir($user . '/' . $trashPath)) {
+			if ($this->appManager->isEnabledForUser('files_trashbin') && $this->view->is_dir($user . '/' . $trashPath)) {
 				$this->renameFileKeys($user, $trashPath, true);
 				$this->view->deleteAll($trashPath);
 			}

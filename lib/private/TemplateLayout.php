@@ -7,16 +7,19 @@
  * @author Clark Tomlinson <fallen013@gmail.com>
  * @author Hendrik Leppelsack <hendrik@leppelsack.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Julius Haertl <jus@bitgrid.net>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Nils <git@to.nilsschnabel.de>
  * @author Remco Brenninkmeijer <requist1@starmail.nl>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -87,7 +90,7 @@ class TemplateLayout extends \OC_Template {
 					break;
 				}
 			}
-			
+
 			foreach($settingsNavigation as $entry) {
 				if ($entry['active']) {
 					$this->assign( 'application', $entry['name'] );
@@ -102,7 +105,16 @@ class TemplateLayout extends \OC_Template {
 				$this->assign('userAvatarSet', false);
 			} else {
 				$this->assign('userAvatarSet', \OC::$server->getAvatarManager()->getAvatar(\OC_User::getUser())->exists());
-				$this->assign('userAvatarVersion', \OC::$server->getConfig()->getUserValue(\OC_User::getUser(), 'avatar', 'version', 0));
+				$this->assign('userAvatarVersion', $this->config->getUserValue(\OC_User::getUser(), 'avatar', 'version', 0));
+			}
+
+			// check if app menu icons should be inverted
+			try {
+				/** @var \OCA\Theming\Util $util */
+				$util = \OC::$server->query(\OCA\Theming\Util::class);
+				$this->assign('themingInvertMenu', $util->invertTextColor(\OC::$server->getThemingDefaults()->getColorPrimary()));
+			} catch (\OCP\AppFramework\QueryException $e) {
+				$this->assign('themingInvertMenu', false);
 			}
 
 		} else if ($renderAs == 'error') {
@@ -122,7 +134,7 @@ class TemplateLayout extends \OC_Template {
 			if (empty(self::$versionHash)) {
 				$v = \OC_App::getAppVersions();
 				$v['core'] = implode('.', \OCP\Util::getVersion());
-				self::$versionHash = md5(implode(',', $v));
+				self::$versionHash = substr(md5(implode(',', $v)), 0, 8);
 			}
 		} else {
 			self::$versionHash = md5('not installed');
@@ -134,12 +146,12 @@ class TemplateLayout extends \OC_Template {
 		if ($this->config->getSystemValue('installed', false) && $renderAs != 'error') {
 			if (\OC::$server->getContentSecurityPolicyNonceManager()->browserSupportsCspV3()) {
 				$jsConfigHelper = new JSConfigHelper(
-					\OC::$server->getL10N('core'),
+					\OC::$server->getL10N('lib'),
 					\OC::$server->query(Defaults::class),
 					\OC::$server->getAppManager(),
 					\OC::$server->getSession(),
 					\OC::$server->getUserSession()->getUser(),
-					\OC::$server->getConfig(),
+					$this->config,
 					\OC::$server->getGroupManager(),
 					\OC::$server->getIniWrapper(),
 					\OC::$server->getURLGenerator()
@@ -185,20 +197,49 @@ class TemplateLayout extends \OC_Template {
 			if (substr($file, -strlen('print.css')) === 'print.css') {
 				$this->append( 'printcssfiles', $web.'/'.$file . $this->getVersionHashSuffix() );
 			} else {
-				$this->append( 'cssfiles', $web.'/'.$file . $this->getVersionHashSuffix()  );
+				$this->append( 'cssfiles', $web.'/'.$file . $this->getVersionHashSuffix($web, $file)  );
 			}
 		}
 	}
 
-	protected function getVersionHashSuffix() {
-		if(\OC::$server->getConfig()->getSystemValue('debug', false)) {
+	/**
+	 * @param string $path
+ 	 * @param string $file
+	 * @return string
+	 */
+	protected function getVersionHashSuffix($path = false, $file = false) {
+		if ($this->config->getSystemValue('debug', false)) {
 			// allows chrome workspace mapping in debug mode
 			return "";
 		}
-		if ($this->config->getSystemValue('installed', false) && \OC::$server->getAppManager()->isInstalled('theming')) {
-			return '?v=' . self::$versionHash . '-' . $this->config->getAppValue('theming', 'cachebuster', '0');
+		$themingSuffix = '';
+		$v = [];
+
+		if ($this->config->getSystemValue('installed', false)) {
+			if (\OC::$server->getAppManager()->isInstalled('theming')) {
+				$themingSuffix = '-' . $this->config->getAppValue('theming', 'cachebuster', '0');
+			}
+			$v = \OC_App::getAppVersions();
 		}
-		return '?v=' . self::$versionHash;
+
+		// Try the webroot path for a match
+		if ($path !== false && $path !== '') {
+			$appName = $this->getAppNamefromPath($path);
+			if(array_key_exists($appName, $v)) {
+				$appVersion = $v[$appName];
+				return '?v=' . substr(md5($appVersion), 0, 8) . $themingSuffix;
+			}
+		}
+		// fallback to the file path instead
+		if ($file !== false && $file !== '') {
+			$appName = $this->getAppNamefromPath($file);
+			if(array_key_exists($appName, $v)) {
+				$appVersion = $v[$appName];
+				return '?v=' . substr(md5($appVersion), 0, 8) . $themingSuffix;
+			}
+		}
+
+		return '?v=' . self::$versionHash . $themingSuffix;
 	}
 
 	/**
@@ -227,6 +268,23 @@ class TemplateLayout extends \OC_Template {
 	}
 
 	/**
+	 * @param string $path
+	 * @return string|boolean
+	 */
+	public function getAppNamefromPath($path) {
+		if ($path !== '' && is_string($path)) {
+			$pathParts = explode('/', $path);
+			if ($pathParts[0] === 'css') {
+				// This is a scss request
+				return $pathParts[1];
+			}
+			return end($pathParts);
+		}
+		return false;
+
+	}
+
+	/**
 	 * @param array $scripts
 	 * @return array
 	 */
@@ -242,7 +300,7 @@ class TemplateLayout extends \OC_Template {
 			new JSCombiner(
 				\OC::$server->getAppDataDir('js'),
 				\OC::$server->getURLGenerator(),
-				\OC::$server->getMemCacheFactory()->create('JS'),
+				\OC::$server->getMemCacheFactory()->createDistributed('JS'),
 				\OC::$server->getSystemConfig(),
 				\OC::$server->getLogger()
 			)

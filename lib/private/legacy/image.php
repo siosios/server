@@ -3,22 +3,25 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Andreas Fischer <bantu@owncloud.com>
- * @author Bartek Przybylski <bart.p.pl@gmail.com>
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Bartek Przybylski <bart.p.pl@gmail.com>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Byron Marohn <combustible@live.com>
  * @author Christopher Schäpers <kondou@ts.unde.re>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author j-ed <juergen@eisfair.org>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Johannes Willnecker <johannes@willnecker.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Olivier Paroz <github@oparoz.com>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
+ * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -58,22 +61,6 @@ class OC_Image implements \OCP\IImage {
 	private $config;
 	/** @var array */
 	private $exif;
-
-	/**
-	 * Get mime type for an image file.
-	 *
-	 * @param string|null $filePath The path to a local image file.
-	 * @return string The mime type if the it could be determined, otherwise an empty string.
-	 */
-	static public function getMimeTypeForFile($filePath) {
-		// exif_imagetype throws "read error!" if file is less than 12 byte
-		if ($filePath !== null && filesize($filePath) > 11) {
-			$imageType = exif_imagetype($filePath);
-		} else {
-			$imageType = false;
-		}
-		return $imageType ? image_type_to_mime_type($imageType) : '';
-	}
 
 	/**
 	 * Constructor.
@@ -431,7 +418,7 @@ class OC_Image implements \OCP\IImage {
 	 * (I'm open for suggestions on better method name ;)
 	 * Fixes orientation based on EXIF data.
 	 *
-	 * @return bool.
+	 * @return bool
 	 */
 	public function fixOrientation() {
 		$o = $this->getOrientation();

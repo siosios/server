@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -38,8 +39,8 @@ class SectionTest extends TestCase {
 
 	public function setUp() {
 		parent::setUp();
-		$this->urlGenerator = $this->getMockBuilder('\OCP\IURLGenerator')->disableOriginalConstructor()->getMock();
-		$this->l = $this->getMockBuilder('\OCP\IL10N')->disableOriginalConstructor()->getMock();
+		$this->urlGenerator = $this->getMockBuilder(IURLGenerator::class)->disableOriginalConstructor()->getMock();
+		$this->l = $this->getMockBuilder(IL10N::class)->disableOriginalConstructor()->getMock();
 
 		$this->section = new Section(
 			$this->urlGenerator,

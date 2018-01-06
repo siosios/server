@@ -4,10 +4,13 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roger Szabo <roger.szabo@web.de>
+ * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Victor Dubiniuk <dubiniuk@owncloud.com>
+ * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -187,13 +190,6 @@ class User {
 		}
 		unset($attr);
 
-		//Email
-		$attr = strtolower($this->connection->ldapEmailAttribute);
-		if(isset($ldapEntry[$attr])) {
-			$this->updateEmail($ldapEntry[$attr][0]);
-		}
-		unset($attr);
-
 		//displayName
 		$displayName = $displayName2 = '';
 		$attr = strtolower($this->connection->ldapUserDisplayName);
@@ -211,6 +207,15 @@ class User {
 				$displayName,
 				$displayName2
 			);
+		}
+		unset($attr);
+
+		//Email
+		//email must be stored after displayname, because it would cause a user
+		//change event that will trigger fetching the display name again
+		$attr = strtolower($this->connection->ldapEmailAttribute);
+		if(isset($ldapEntry[$attr])) {
+			$this->updateEmail($ldapEntry[$attr][0]);
 		}
 		unset($attr);
 
@@ -382,8 +387,7 @@ class User {
 		$lastChecked = $this->config->getUserValue($this->uid, 'user_ldap',
 			self::USER_PREFKEY_LASTREFRESH, 0);
 
-		//TODO make interval configurable
-		if((time() - intval($lastChecked)) < 86400 ) {
+		if((time() - intval($lastChecked)) < intval($this->config->getAppValue('user_ldap', 'updateAttributesInterval', 86400)) ) {
 			return false;
 		}
 		return  true;
@@ -529,7 +533,6 @@ class User {
 				$targetUser->setQuota($quota);
 			} else {
 				$this->log->log('not suitable default quota found for user ' . $this->uid . ': [' . $defaultQuota . ']', \OCP\Util::WARN);
-				$targetUser->setQuota('default');
 			}
 		} else {
 			$this->log->log('trying to set a quota for user ' . $this->uid . ' but the user is missing', \OCP\Util::ERROR);

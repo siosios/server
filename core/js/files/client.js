@@ -37,6 +37,7 @@
 		}
 
 		url += options.host + this._root;
+		this._host = options.host;
 		this._defaultHeaders = options.defaultHeaders || {
 				'X-Requested-With': 'XMLHttpRequest',
 				'requesttoken': OC.requestToken
@@ -73,6 +74,7 @@
 	Client.PROPERTY_PERMISSIONS	= '{' + Client.NS_OWNCLOUD + '}permissions';
 	Client.PROPERTY_SIZE	= '{' + Client.NS_OWNCLOUD + '}size';
 	Client.PROPERTY_GETCONTENTLENGTH	= '{' + Client.NS_DAV + '}getcontentlength';
+	Client.PROPERTY_ISENCRYPTED	= '{' + Client.NS_DAV + '}is-encrypted';
 
 	Client.PROTOCOL_HTTP	= 'http';
 	Client.PROTOCOL_HTTPS	= 'https';
@@ -119,6 +121,10 @@
 		 * Mount type
 		 */
 		[Client.NS_NEXTCLOUD, 'mount-type'],
+		/**
+		 * Encryption state
+		 */
+		[Client.NS_NEXTCLOUD, 'is-encrypted'],
 	];
 
 	/**
@@ -304,6 +310,13 @@
 				data.hasPreview = true;
 			}
 
+			var isEncryptedProp = props['{' + Client.NS_NEXTCLOUD + '}is-encrypted'];
+			if (!_.isUndefined(isEncryptedProp)) {
+				data.isEncrypted = isEncryptedProp === '1';
+			} else {
+				data.isEncrypted = false;
+			}
+
 			var contentType = props[Client.PROPERTY_GETCONTENTTYPE];
 			if (!_.isUndefined(contentType)) {
 				data.mimetype = contentType;
@@ -319,7 +332,7 @@
 				}
 			}
 
-			data.permissions = OC.PERMISSION_READ;
+			data.permissions = OC.PERMISSION_NONE;
 			var permissionProp = props[Client.PROPERTY_PERMISSIONS];
 			if (!_.isUndefined(permissionProp)) {
 				var permString = permissionProp || '';
@@ -331,6 +344,9 @@
 						case 'C':
 						case 'K':
 							data.permissions |= OC.PERMISSION_CREATE;
+							break;
+						case 'G':
+							data.permissions |= OC.PERMISSION_READ;
 							break;
 						case 'W':
 						case 'N':
@@ -394,6 +410,26 @@
 		},
 
 		/**
+		 * Parse the Sabre exception out of the given response, if any
+		 *
+		 * @param {Object} response object
+		 * @return {Object} array of parsed message and exception (only the first one)
+		 */
+		_getSabreException: function(response) {
+			var result = {};
+			var xml = response.xhr.responseXML;
+			var messages = xml.getElementsByTagNameNS('http://sabredav.org/ns', 'message');
+			var exceptions = xml.getElementsByTagNameNS('http://sabredav.org/ns', 'exception');
+			if (messages.length) {
+				result.message = messages[0].textContent;
+			}
+			if (exceptions.length) {
+				result.exception = exceptions[0].textContent;
+			}
+			return result;
+		},
+
+		/**
 		 * Returns the default PROPFIND properties to use during a call.
 		 *
 		 * @return {Array.<Object>} array of properties
@@ -446,7 +482,8 @@
 					}
 					deferred.resolve(result.status, results);
 				} else {
-					deferred.reject(result.status);
+					result = _.extend(result, self._getSabreException(result));
+					deferred.reject(result.status, result);
 				}
 			});
 			return promise;
@@ -520,7 +557,8 @@
 					var results = self._parseResult(result.body);
 					deferred.resolve(result.status, results);
 				} else {
-					deferred.reject(result.status);
+					result = _.extend(result, self._getSabreException(result));
+					deferred.reject(result.status, result);
 				}
 			});
 			return promise;
@@ -559,7 +597,8 @@
 					if (self._isSuccessStatus(result.status)) {
 						deferred.resolve(result.status, self._parseResult([result.body])[0]);
 					} else {
-						deferred.reject(result.status);
+						result = _.extend(result, self._getSabreException(result));
+						deferred.reject(result.status, result);
 					}
 				}
 			);
@@ -589,7 +628,8 @@
 					if (self._isSuccessStatus(result.status)) {
 						deferred.resolve(result.status, result.body);
 					} else {
-						deferred.reject(result.status);
+						result = _.extend(result, self._getSabreException(result));
+						deferred.reject(result.status, result);
 					}
 				}
 			);
@@ -638,7 +678,8 @@
 					if (self._isSuccessStatus(result.status)) {
 						deferred.resolve(result.status);
 					} else {
-						deferred.reject(result.status);
+						result = _.extend(result, self._getSabreException(result));
+						deferred.reject(result.status, result);
 					}
 				}
 			);
@@ -662,7 +703,8 @@
 					if (self._isSuccessStatus(result.status)) {
 						deferred.resolve(result.status);
 					} else {
-						deferred.reject(result.status);
+						result = _.extend(result, self._getSabreException(result));
+						deferred.reject(result.status, result);
 					}
 				}
 			);
@@ -698,10 +740,11 @@
 		 * @param {String} destinationPath destination path
 		 * @param {boolean} [allowOverwrite=false] true to allow overwriting,
 		 * false otherwise
+		 * @param {Object} [headers=null] additional headers
 		 *
 		 * @return {Promise} promise
 		 */
-		move: function(path, destinationPath, allowOverwrite) {
+		move: function(path, destinationPath, allowOverwrite, headers) {
 			if (!path) {
 				throw 'Missing argument "path"';
 			}
@@ -712,9 +755,9 @@
 			var self = this;
 			var deferred = $.Deferred();
 			var promise = deferred.promise();
-			var headers = {
+			headers = _.extend({}, headers, {
 				'Destination' : this._buildUrl(destinationPath)
-			};
+			});
 
 			if (!allowOverwrite) {
 				headers.Overwrite = 'F';
@@ -725,11 +768,12 @@
 				this._buildUrl(path),
 				headers
 			).then(
-				function(response) {
-					if (self._isSuccessStatus(response.status)) {
-						deferred.resolve(response.status);
+				function(result) {
+					if (self._isSuccessStatus(result.status)) {
+						deferred.resolve(result.status);
 					} else {
-						deferred.reject(response.status);
+						result = _.extend(result, self._getSabreException(result));
+						deferred.reject(result.status, result);
 					}
 				}
 			);
@@ -828,6 +872,16 @@
 		 */
 		getBaseUrl: function() {
 			return this._client.baseUrl;
+		},
+
+		/**
+		 * Returns the host
+		 *
+		 * @since 13.0.0
+		 * @return {String} base URL
+		 */
+		getHost: function() {
+			return this._host;
 		}
 	};
 

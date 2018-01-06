@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Calendar" : "Kalendár",
     "Todos" : "Úlohy",
+    "Personal" : "Osobné",
     "{actor} created calendar {calendar}" : "[actor] vytvoril kalendár [calendar]",
     "You created calendar {calendar}" : "Vytvorili ste kalendár [calendar]",
     "{actor} deleted calendar {calendar}" : "[actor] zmazal kalendár [calendar]",
@@ -40,10 +41,22 @@ OC.L10N.register(
     "A calendar <strong>event</strong> was modified" : "<strong>Udalosť</strong> v kalendári bola upravená",
     "A calendar <strong>todo</strong> was modified" : "<>",
     "Contact birthdays" : "Narodeniny kontaktu",
-    "Personal" : "Osobné",
+    "Invitation canceled" : "Pozvánka bola zrušená",
+    "Hello %s," : "Ahoj %s,",
+    "The meeting »%s« with %s was canceled." : "Stretnutie »%s« s %s bolo zrušené.",
+    "Invitation updated" : "Pozvánka bola aktualizovaná",
+    "The meeting »%s« with %s was updated." : "Stretnutie »%s« s %s bolo aktualizované.",
+    "%s invited you to »%s«" : "%s vám poslal pozvánku na »%s«",
+    "When:" : "Kedy:",
+    "Where:" : "Kde:",
+    "Description:" : "Popis:",
+    "Link:" : "Odkaz:",
     "Contacts" : "Kontakty",
     "Technical details" : "Technické podrobnosti",
     "Remote Address: %s" : "Vzdialená adresa: %s",
-    "Request ID: %s" : "ID požiadavky: %s"
+    "Request ID: %s" : "ID požiadavky: %s",
+    "CalDAV server" : "Server CalDAV",
+    "Send invitations to attendees" : "Odoslanie pozvánok účastníkom",
+    "Please make sure to properly set up the email settings above." : "Uistite sa, že máte správne nastavené vyššie uvedené nastavenia e-mailu."
 },
 "nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;");

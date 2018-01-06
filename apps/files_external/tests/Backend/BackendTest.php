@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  *
  * @license AGPL-3.0
@@ -23,11 +24,12 @@
 namespace OCA\Files_External\Tests\Backend;
 
 use \OCA\Files_External\Lib\Backend\Backend;
+use OCA\Files_External\Lib\StorageConfig;
 
 class BackendTest extends \Test\TestCase {
 
 	public function testJsonSerialization() {
-		$backend = $this->getMockBuilder('\OCA\Files_External\Lib\Backend\Backend')
+		$backend = $this->getMockBuilder(Backend::class)
 			->setMethods(['jsonSerializeDefinition'])
 			->getMock();
 		$backend->expects($this->once())
@@ -59,14 +61,14 @@ class BackendTest extends \Test\TestCase {
 	 * @dataProvider validateStorageProvider
 	 */
 	public function testValidateStorage($expectedSuccess, $definitionSuccess) {
-		$backend = $this->getMockBuilder('\OCA\Files_External\Lib\Backend\Backend')
+		$backend = $this->getMockBuilder(Backend::class)
 			->setMethods(['validateStorageDefinition'])
 			->getMock();
 		$backend->expects($this->atMost(1))
 			->method('validateStorageDefinition')
 			->willReturn($definitionSuccess);
 
-		$storageConfig = $this->getMockBuilder('\OCA\Files_External\Lib\StorageConfig')
+		$storageConfig = $this->getMockBuilder(StorageConfig::class)
 			->disableOriginalConstructor()
 			->getMock();
 

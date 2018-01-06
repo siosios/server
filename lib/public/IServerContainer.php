@@ -6,6 +6,7 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@owncloud.com>
  * @author Christopher Schäpers <kondou@ts.unde.re>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
@@ -55,6 +56,15 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * @since 6.0.0
  */
 interface IServerContainer extends IContainer {
+
+	/**
+	 * The calendar manager will act as a broker between consumers for calendar information and
+	 * providers which actual deliver the calendar information.
+	 *
+	 * @return \OCP\Calendar\IManager
+	 * @since 13.0.0
+	 */
+	public function getCalendarManager();
 
 	/**
 	 * The contacts manager will act as a broker between consumers for contacts information and
@@ -531,4 +541,16 @@ interface IServerContainer extends IContainer {
 	 * @since 12.0.0
 	 */
 	public function getCloudIdManager();
+
+	/**
+	 * @return \OCP\Remote\Api\IApiFactory
+	 * @since 13.0.0
+	 */
+	public function getRemoteApiFactory();
+
+	/**
+	 * @return \OCP\Remote\IInstanceFactory
+	 * @since 13.0.0
+	 */
+	public function getRemoteInstanceFactory();
 }

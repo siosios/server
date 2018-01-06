@@ -2,7 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Nmz <nemesiz@nmz.lt>
@@ -46,6 +46,11 @@ class TXT extends Provider {
 	 */
 	public function getThumbnail($path, $maxX, $maxY, $scalingup, $fileview) {
 		$content = $fileview->fopen($path, 'r');
+
+		if ($content === false) {
+			return false;
+		}
+
 		$content = stream_get_contents($content,3000);
 
 		//don't create previews of empty text files

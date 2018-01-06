@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty.",
     "Password" : "Password",
     "For anonymous access, leave DN and Password empty." : "For anonymous access, leave DN and Password empty.",
+    "Save Credentials" : "Save Credentials",
     "One Base DN per line" : "One Base DN per line",
     "You can specify Base DN for users and groups in the Advanced tab" : "You can specify Base DN for users and groups in the Advanced tab",
     "Detect Base DN" : "Detect Base DN",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Wrong password. Reset it?",
     "Wrong password." : "Wrong password.",
     "Cancel" : "Cancel",
-    "LDAP" : "LDAP",
     "Server" : "Server",
     "Users" : "Users",
     "Login Attributes" : "Login Attributes",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Verify settings and count groups",
     "Add a new and blank configuration" : "Add a new and blank configuration",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "You can omit the protocol, except you require SSL. Then start with ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them.",
     "in bytes" : "in bytes"
 },

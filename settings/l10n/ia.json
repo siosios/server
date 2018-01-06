@@ -48,10 +48,7 @@
     "Enable" : "Activar",
     "Enabling app …" : "Activante application...",
     "Error while enabling app" : "Error durante activation del application...",
-    "Updating...." : "Actualisante...",
-    "Error while updating app" : "Error durante actualisation del application",
     "Updated" : "Actualisate",
-    "App update" : "Application actualisate",
     "Approved" : "Approbate",
     "Experimental" : "Experimental",
     "No apps found for {query}" : "Nulle application trovate pro {query}",
@@ -208,7 +205,6 @@
     "E-Mail" : "E-posta",
     "Create" : "Crear",
     "Admin Recovery Password" : "Recuperation de Contrasigno del Administrator",
-    "Group name" : "Nomine del gruppo",
     "Everyone" : "Totos",
     "Admins" : "Administratores",
     "Default quota" : "Quota predefinite",
@@ -224,9 +220,12 @@
     "Invalid request" : "Requesta non valide",
     "Sending..." : "Inviante...",
     "_You have %n app update pending_::_You have %n app updates pending_" : ["Tu ha %n application preste a actualisar se","Tu ha %n applicationes preste a actualisar se"],
+    "Updating...." : "Actualisante...",
+    "Error while updating app" : "Error durante actualisation del application",
     "Uninstalling ...." : "De-installante...",
     "Error while uninstalling app" : "Error durante de-installation del application",
     "Uninstall" : "De-installar",
+    "App update" : "Application actualisate",
     "__language_name__" : "Interlingua de IALA",
     "Personal info" : "Information personal",
     "Sessions" : "Sessiones",
@@ -244,6 +243,7 @@
     "Name" : "Nomine",
     "Follow us on Google Plus!" : "Seque nos in Google Plus!",
     "Subscribe to our twitter channel!" : "Subscribe a nostre canal Twitter!",
-    "Subscribe to our news feed!" : "Subscribe a nostre syndication de novas!"
+    "Subscribe to our news feed!" : "Subscribe a nostre syndication de novas!",
+    "Group name" : "Nomine del gruppo"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

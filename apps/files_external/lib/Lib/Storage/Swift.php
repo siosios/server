@@ -2,12 +2,16 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Benjamin Liles <benliles@arch.tamu.edu>
  * @author Christian Berendt <berendt@b1-systems.de>
+ * @author Christopher Bartz <bartz@dkrz.de>
  * @author Daniel Tosello <tosello.daniel@gmail.com>
  * @author Felix Moeller <mail@felixmoeller.de>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Martin Mattel <martin.mattel@diemattels.at>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Philipp Kapfer <philipp.kapfer@gmx.at>
@@ -39,6 +43,7 @@ use Guzzle\Http\Url;
 use Guzzle\Http\Exception\ClientErrorResponseException;
 use Icewind\Streams\CallbackWrapper;
 use Icewind\Streams\IteratorDirectory;
+use Icewind\Streams\RetryWrapper;
 use OpenCloud;
 use OpenCloud\Common\Exceptions;
 use OpenCloud\OpenStack;
@@ -385,7 +390,7 @@ class Swift extends \OC\Files\Storage\Common {
 					stream_context_set_option($stream, 'swift','content', $streamInterface);
 					if(!strrpos($streamInterface
 						->getMetaData('wrapper_data')[0], '404 Not Found')) {
-						return $stream;
+						return RetryWrapper::wrap($stream);
 					}
 					return false;
 				} catch (\Guzzle\Http\Exception\BadResponseException $e) {

@@ -2,7 +2,6 @@ OC.L10N.register(
     "comments",
     {
     "Comments" : "Hozzászólások",
-    "Unknown user" : "Ismeretlen felhasználó",
     "New comment …" : "Új hozzászólás...",
     "Delete comment" : "Hozzászólás törlése",
     "Post" : "Küldés",
@@ -26,9 +25,12 @@ OC.L10N.register(
     "%1$s commented on %2$s" : "%1$s hozzászólt ehhez: %2$s",
     "{author} commented on {file}" : "{author} hozzászólt ehhez: {file}",
     "<strong>Comments</strong> for files" : "<strong>Hozzászólások</strong> fájlokhoz",
-    "A (now) deleted user mentioned you in a comment on “%s”" : "Egy (most) törölt felhasználó megemlített egy hozzászólásban itt: “%s”",
-    "A (now) deleted user mentioned you in a comment on “{file}”" : "Egy (most) törölt felhasználó megemlített egy hozzászólásban itt: “{file}”",
+    "You were mentioned on “%s”, in a comment by a user that has since been deleted" : "Megemlítettek ezen: “%s”, egy már törölt felhasználó hozzászólásában",
+    "You were mentioned on “{file}”, in a comment by a user that has since been deleted" : "Megemlítettek ezen: “{file}”, egy már törölt felhasználó hozzászólásában",
     "%1$s mentioned you in a comment on “%2$s”" : "%1$s megemlített egy hozzászólásban itt: “%2$s”",
-    "{user} mentioned you in a comment on “{file}”" : "{user} megemlített egy hozzászólásban itt: “{file}”"
+    "{user} mentioned you in a comment on “{file}”" : "{user} megemlített egy hozzászólásban itt: “{file}”",
+    "Unknown user" : "Ismeretlen felhasználó",
+    "A (now) deleted user mentioned you in a comment on “%s”" : "Egy (most) törölt felhasználó megemlített egy hozzászólásban itt: “%s”",
+    "A (now) deleted user mentioned you in a comment on “{file}”" : "Egy (most) törölt felhasználó megemlített egy hozzászólásban itt: “{file}”"
 },
 "nplurals=2; plural=(n != 1);");

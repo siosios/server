@@ -157,7 +157,11 @@ $CONFIG = array(
  * language codes such as ``en`` for English, ``de`` for German, and ``fr`` for
  * French. It overrides automatic language detection on public pages like login
  * or shared items. User's language preferences configured under "personal ->
- * language" override this setting after they have logged in.
+ * language" override this setting after they have logged in. Nextcloud has two
+ * distinguished language codes for German, 'de' and 'de_DE'. 'de' is used for
+ * informal German and 'de_DE' for formal German. By setting this value to 'de_DE'
+ * you can enforce the formal version of German unless the user has chosen
+ * something different explicitly.
  *
  * Defaults to ``en``
  */
@@ -242,6 +246,9 @@ $CONFIG = array(
  * The directory where the skeleton files are located. These files will be
  * copied to the data directory of new users. Leave empty to not copy any
  * skeleton files.
+ * ``{lang}`` can be used as a placeholder for the language of the user.
+ * If the directory does not exist, it falls back to non dialect (from ``de_DE``
+ * to ``de``). If that does not exist either, it falls back to ``default``
  *
  * Defaults to ``core/skeleton`` in the Nextcloud directory.
  */
@@ -646,6 +653,18 @@ $CONFIG = array(
 'check_for_working_htaccess' => true,
 
 /**
+ * In rare setups (e.g. on Openshift or docker on windows) the permissions check
+ * might block the installation while the underlying system offers no means to
+ * "correct" the permissions. In this case, set the value to false.
+ *
+ * In regular cases, if issues with permissions are encountered they should be
+ * adjusted accordingly. Changing the flag is discouraged.
+ *
+ * Defaults to ``true``
+ */
+'check_data_directory_permissions' => true,
+
+/**
  * In certain environments it is desired to have a read-only configuration file.
  * When this switch is set to ``true`` Nextcloud will not verify whether the
  * configuration is writable. However, it will not be possible to configure
@@ -805,7 +824,6 @@ $CONFIG = array(
  * @see appcodechecker
  */
 
-
 /**
  * Previews
  *
@@ -852,7 +870,7 @@ $CONFIG = array(
 'preview_max_scale_factor' => 10,
 
 /**
- * max file size for generating image previews with imagegd (default behaviour)
+ * max file size for generating image previews with imagegd (default behavior)
  * If the image is bigger, it'll try other preview generators, but will most
  * likely show the default mimetype icon. Set to -1 for no limit.
  *
@@ -862,6 +880,7 @@ $CONFIG = array(
 
 /**
  * custom path for LibreOffice/OpenOffice binary
+ *
  *
  * Defaults to ``''`` (empty string)
  */
@@ -1082,8 +1101,8 @@ $CONFIG = array(
  *
  * WARNING: FAILOVER_DISTRIBUTE is a not recommended setting and we strongly
  * suggest to not use it if you use Redis for file locking. Due to the way Redis
- * is synchronised it could happen, that the read for an existing lock is
- * scheduled to a slave that is not fully synchronised with the connected master
+ * is synchronized it could happen, that the read for an existing lock is
+ * scheduled to a slave that is not fully synchronized with the connected master
  * which then causes a FileLocked exception.
  *
  * See https://redis.io/topics/cluster-spec for details about the Redis cluster
@@ -1231,7 +1250,6 @@ $CONFIG = array(
  * Default is no limit (value set to 0)
  */
 'sharing.minSearchStringLength' => 0,
-
 
 /**
  * All other configuration options

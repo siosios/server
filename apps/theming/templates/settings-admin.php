@@ -62,7 +62,7 @@ style('theming', 'settings-admin');
 	<div>
 		<label>
 			<span><?php p($l->t('Color')) ?></span>
-			<input id="theming-color" type="text" class="jscolor" maxlength="6" value="<?php p($_['color']) ?>" />
+			<input id="theming-color" type="text" class="jscolor" data-jscolor="{hash:true}" maxlength="7" value="<?php p($_['color']) ?>" />
 			<div data-setting="color" data-toggle="tooltip" data-original-title="<?php p($l->t('Reset to default')); ?>" class="theme-undo icon icon-history"></div>
 		</label>
 	</div>
@@ -87,6 +87,17 @@ style('theming', 'settings-admin');
 	</div>
 	<div id="theming-preview">
 		<img src="<?php p($_['logo']); ?>" id="theming-preview-logo" />
+	</div>
+	<div class="theming-hints">
+		<?php if (!$_['canThemeIcons']) { ?>
+			<p class="info">
+				<a href="<?php p($_['iconDocs']); ?>">
+					<em>
+						<?php p($l->t('Install the Imagemagick PHP extension with support for SVG images to automatically generate favicons based on the uploaded logo and color.')); ?> ↗
+					</em>
+				</a>
+			</p>
+		<?php } ?>
 	</div>
 	<?php } ?>
 </div>

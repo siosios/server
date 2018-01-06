@@ -13,11 +13,10 @@
 # @copyright 2012-2015 Thomas Müller thomas.mueller@tmit.eu
 #
 
-#$EXECUTOR_NUMBER is set by Jenkins and allows us to run autotest in parallel
-DATABASENAME=oc_autotest$EXECUTOR_NUMBER
-DATABASEUSER=oc_autotest$EXECUTOR_NUMBER
+DATABASENAME=oc_autotest
+DATABASEUSER=oc_autotest
 DATABASEHOST=localhost
-ADMINLOGIN=admin$EXECUTOR_NUMBER
+ADMINLOGIN=admin
 BASEDIR=$PWD
 
 PRIMARY_STORAGE_CONFIGS="local swift"
@@ -309,11 +308,11 @@ function execute_tests {
 			echo "Postgres is up."
 		else
 			if [ ! -z "$DRONE" ] ; then
-				DATABASEHOST=postgres
+				DATABASEHOST="postgres-$POSTGRES"
 			fi
 			echo "Waiting for Postgres to be available ..."
 			if ! apps/files_external/tests/env/wait-for-connection $DATABASEHOST 5432 60; then
-				echo "[ERROR] Waited 60 seconds, no response" >&2
+				echo "[ERROR] Waited 60 seconds for $DATABASEHOST, no response" >&2
 				exit 1
 			fi
 			echo "Give it 10 additional seconds ..."

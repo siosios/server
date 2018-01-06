@@ -4,7 +4,7 @@
 
 /* Default and reset */
 html, body, div, span, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, code, del, dfn, em, img, q, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, dialog, figure, footer, header, hgroup, nav, section { margin:0; padding:0; border:0; outline:0; font-weight:inherit; font-size:100%; font-family:inherit; vertical-align:baseline; cursor:default; }
-html, body { height:100%; }
+html { height:100%; }
 article, aside, dialog, figure, footer, header, hgroup, nav, section { display:block; }
 body { line-height:1.5; }
 table { border-collapse:separate; border-spacing:0; white-space:nowrap; }
@@ -28,7 +28,8 @@ body {
 	background-repeat: no-repeat;
 	background-size: cover;
 	background-attachment: fixed; /* fix background gradient */
-	height: 100%; /* fix sticky footer */
+	min-height: 100%; /* fix sticky footer */
+	height: auto;
 }
 
 /* Various fonts settings */
@@ -60,9 +61,13 @@ h3 {
 }
 
 /* Global content */
-#header {
-	padding-top: 100px;
+body {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }
+
 #header .logo {
 	background-image: url('../img/logo.svg?v=1');
 	background-repeat: no-repeat;
@@ -80,12 +85,8 @@ h3 {
 	max-height: 200px;
 }
 .wrapper {
-	min-height: 100%;
-	margin: 0 auto -70px;
 	width: 300px;
-}
-.v-align {
-	width: inherit;
+	margin-top: 10vh;
 }
 
 /* Default FORM */
@@ -130,29 +131,39 @@ form #datadirField legend {
 }
 
 /* Buttons and input */
-#submit-wrapper {
+#submit-wrapper,
+#reset-password-wrapper {
 	position: relative; /* Make the wrapper the containing block of its
 						   absolutely positioned descendant icons */
 }
-#submit-wrapper .icon-confirm-white {
+
+#submit-wrapper .submit-icon {
 	position: absolute;
 	top: 23px;
 	right: 23px;
-}
-#submit-wrapper .icon-loading-small {
-	position: absolute;
-	top: 22px;
-	right: 24px;
-}
-
-#submit-wrapper #submit-icon {
 	pointer-events: none; /* The submit icon is positioned on the submit button.
 							 From the user point of view the icon is part of the
 							 button, so the clicks on the icon have to be
 							 applied to the button instead. */
 }
 
-input, textarea, select, button {
+#reset-password-submit {
+	padding: 10px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#reset-password-wrapper .submit-icon {
+	display: none;
+}
+
+#submit-wrapper .icon-loading-small {
+	position: absolute;
+	top: 22px;
+	right: 24px;
+}
+
+input, textarea, select, button, div[contenteditable=true] {
 	font-family: 'Open Sans', Frutiger, Calibri, 'Myriad Pro', Myriad, sans-serif;
 }
 input {
@@ -161,6 +172,7 @@ input {
 	padding: 11px 10px 9px;
 	outline: none;
 	border-radius: 3px;
+	-webkit-appearance: none;
 }
 input[type='submit'],
 input[type='button'],
@@ -384,11 +396,21 @@ form .warning input[type='checkbox']+label {
 #remember_login {
 	margin: 18px 5px 0 16px !important;
 }
-.remember-login-container {
+.remember-login-container,
+.lost-password-container {
 	display: inline-block;
 	margin: 10px 0;
 	text-align: center;
 	width: 100%;
+	text-shadow: 0 0 2px rgba(0, 0, 0, .4); // better readability on bright background
+}
+.lost-password-container #lost-password,
+.lost-password-container #lost-password-back {
+	display: inline-block;
+	padding: 12px;
+	margin-top: -6px;
+	color: #fff;
+	opacity: .7;
 }
 #forgot-password {
 	padding: 11px;
@@ -559,6 +581,7 @@ fieldset.update legend + p {
 p.info {
 	margin: 0 auto;
 	padding-top: 20px;
+	text-shadow: 0 0 2px rgba(0, 0, 0, .4); // better readability on bright background
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
@@ -622,6 +645,8 @@ p.info {
 .float-spinner {
 	margin-top: -32px;
 	padding-top: 32px;
+	height: 32px;
+	display: none;
 }
 [class^='icon-'], [class*=' icon-'] {
 	background-repeat: no-repeat;
@@ -662,16 +687,16 @@ p.info {
 	margin: -9px 0 0 -9px;
 }
 /* Css replaced elements don't have ::after nor ::before */
-img.icon-loading, object.icon-loading, video.icon-loading, button.icon-loading, textarea.icon-loading, input.icon-loading, select.icon-loading {
+img.icon-loading, object.icon-loading, video.icon-loading, button.icon-loading, textarea.icon-loading, input.icon-loading, select.icon-loading, div[contenteditable=true].icon-loading {
 	background-image: url('../img/loading.gif');
 }
-img.icon-loading-dark, object.icon-loading-dark, video.icon-loading-dark, button.icon-loading-dark, textarea.icon-loading-dark, input.icon-loading-dark, select.icon-loading-dark {
+img.icon-loading-dark, object.icon-loading-dark, video.icon-loading-dark, button.icon-loading-dark, textarea.icon-loading-dark, input.icon-loading-dark, select.icon-loading-dark, div[contenteditable=true].icon-loading-dark {
 	background-image: url('../img/loading-dark.gif');
 }
-img.icon-loading-small, object.icon-loading-small, video.icon-loading-small, button.icon-loading-small, textarea.icon-loading-small, input.icon-loading-small, select.icon-loading-small {
+img.icon-loading-small, object.icon-loading-small, video.icon-loading-small, button.icon-loading-small, textarea.icon-loading-small, input.icon-loading-small, select.icon-loading-small, div[contenteditable=true].icon-loading-small {
 	background-image: url('../img/loading-small.gif');
 }
-img.icon-loading-small-dark, object.icon-loading-small-dark, video.icon-loading-small-dark, button.icon-loading-small-dark, textarea.icon-loading-small-dark, input.icon-loading-small-dark, select.icon-loading-small-dark {
+img.icon-loading-small-dark, object.icon-loading-small-dark, video.icon-loading-small-dark, button.icon-loading-small-dark, textarea.icon-loading-small-dark, input.icon-loading-small-dark, select.icon-loading-small-dark, div[contenteditable=true].icon-loading-small-dark {
 	background-image: url('../img/loading-small-dark.gif');
 }
 @-webkit-keyframes rotate {
@@ -696,9 +721,9 @@ img.icon-loading-small-dark, object.icon-loading-small-dark, video.icon-loading-
 }
 
 /* FOOTER */
-footer,
-.push {
+footer {
 	height: 70px;
+	margin-top: auto;
 }
 
 footer .info a {

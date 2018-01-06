@@ -23,6 +23,17 @@ Feature: app-files
     When I open the details view for "welcome.txt"
     Then I see that the details view for "All files" section is open
 
+  Scenario: open the menu in a public shared link
+    Given I act as John
+    And I am logged in
+    And I share the link for "welcome.txt"
+    And I write down the shared link
+    When I act as Jane
+    And I visit the shared link I wrote down
+    And I see that the current page is the shared link I wrote down
+    And I open the Share menu
+    Then I see that the Share menu is shown
+
   Scenario: set a password to a shared link
     Given I am logged in
     And I share the link for "welcome.txt"
@@ -145,6 +156,14 @@ Feature: app-files
     Given I am logged in
     And I create a new folder named "A name alphabetically lower than welcome.txt"
     And I see that "A name alphabetically lower than welcome.txt" precedes "welcome.txt" in the file list
+    # To mark the file as favorite the file actions menu has to be shown but, as
+    # the details view is opened automatically when the folder is created,
+    # clicking on the menu trigger could fail if it is covered by the details
+    # view due to its opening animation. Instead of ensuring that the animations
+    # of the contents and the details view have both finished it is easier to
+    # close the details view and wait until it is closed before continuing.
+    And I close the details view
+    And I see that the details view is closed
     When I mark "welcome.txt" as favorite
     Then I see that "welcome.txt" is marked as favorite
     And I see that "welcome.txt" precedes "A name alphabetically lower than welcome.txt" in the file list
@@ -153,6 +172,14 @@ Feature: app-files
     Given I am logged in
     And I create a new folder named "A name alphabetically lower than welcome.txt"
     And I see that "A name alphabetically lower than welcome.txt" precedes "welcome.txt" in the file list
+    # To mark the file as favorite the file actions menu has to be shown but, as
+    # the details view is opened automatically when the folder is created,
+    # clicking on the menu trigger could fail if it is covered by the details
+    # view due to its opening animation. Instead of ensuring that the animations
+    # of the contents and the details view have both finished it is easier to
+    # close the details view and wait until it is closed before continuing.
+    And I close the details view
+    And I see that the details view is closed
     And I mark "welcome.txt" as favorite
     And I see that "welcome.txt" is marked as favorite
     And I see that "welcome.txt" precedes "A name alphabetically lower than welcome.txt" in the file list

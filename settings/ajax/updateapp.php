@@ -4,9 +4,10 @@
  *
  * @author Christopher Schäpers <kondou@ts.unde.re>
  * @author Frank Karlitschek <frank@karlitschek.de>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -40,13 +41,7 @@ $appId = OC_App::cleanAppId($appId);
 $config = \OC::$server->getConfig();
 $config->setSystemValue('maintenance', true);
 try {
-	$installer = new \OC\Installer(
-		\OC::$server->getAppFetcher(),
-		\OC::$server->getHTTPClientService(),
-		\OC::$server->getTempManager(),
-		\OC::$server->getLogger(),
-		\OC::$server->getConfig()
-	);
+	$installer = \OC::$server->query(\OC\Installer::class);
 	$result = $installer->updateAppstoreApp($appId);
 	$config->setSystemValue('maintenance', false);
 } catch(Exception $ex) {

@@ -6,6 +6,7 @@
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -26,6 +27,7 @@ namespace OCA\DAV\Tests\unit;
 
 use OCA\DAV\Server;
 use OCP\IRequest;
+use OCA\DAV\AppInfo\PluginManager;
 
 /**
  * Class ServerTest
@@ -38,8 +40,7 @@ class ServerTest extends \Test\TestCase {
 
 	public function test() {
 		/** @var IRequest $r */
-		$r = $this->getMockBuilder('\OCP\IRequest')
-			->disableOriginalConstructor()->getMock();
+		$r = $this->createMock(IRequest::class);
 		$s = new Server($r, '/');
 		$this->assertInstanceOf('OCA\DAV\Server', $s);
 	}

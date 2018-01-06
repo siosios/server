@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -30,6 +31,11 @@ namespace OCA\DAV\Tests\unit\Connector\Sabre;
  * later.
  * See the COPYING-README file.
  */
+
+use OCA\DAV\Connector\Sabre\Directory;
+use OCA\DAV\Connector\Sabre\File;
+use OCP\IUser;
+use Sabre\DAV\Tree;
 
 /**
  * Class CustomPropertiesBackend
@@ -63,13 +69,13 @@ class CustomPropertiesBackendTest extends \Test\TestCase {
 	public function setUp() {
 		parent::setUp();
 		$this->server = new \Sabre\DAV\Server();
-		$this->tree = $this->getMockBuilder('\Sabre\DAV\Tree')
+		$this->tree = $this->getMockBuilder(Tree::class)
 			->disableOriginalConstructor()
 			->getMock();
 
 		$userId = $this->getUniqueID('testcustompropertiesuser');
 
-		$this->user = $this->getMockBuilder('\OCP\IUser')
+		$this->user = $this->getMockBuilder(IUser::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$this->user->expects($this->any())
@@ -175,7 +181,7 @@ class CustomPropertiesBackendTest extends \Test\TestCase {
 	 * Test setting/getting properties
 	 */
 	public function testSetGetPropertiesForFile() {
-		$node = $this->createTestNode('\OCA\DAV\Connector\Sabre\File');
+		$node = $this->createTestNode(File::class);
 		$this->tree->expects($this->any())
 			->method('getNodeForPath')
 			->with('/dummypath')
@@ -207,9 +213,9 @@ class CustomPropertiesBackendTest extends \Test\TestCase {
 	 * Test getting properties from directory
 	 */
 	public function testGetPropertiesForDirectory() {
-		$rootNode = $this->createTestNode('\OCA\DAV\Connector\Sabre\Directory');
+		$rootNode = $this->createTestNode(Directory::class);
 
-		$nodeSub = $this->getMockBuilder('\OCA\DAV\Connector\Sabre\File')
+		$nodeSub = $this->getMockBuilder(File::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$nodeSub->expects($this->any())
@@ -291,7 +297,7 @@ class CustomPropertiesBackendTest extends \Test\TestCase {
 	 * Test delete property
 	 */
 	public function testDeleteProperty() {
-		$node = $this->createTestNode('\OCA\DAV\Connector\Sabre\File');
+		$node = $this->createTestNode(File::class);
 		$this->tree->expects($this->any())
 			->method('getNodeForPath')
 			->with('/dummypath')

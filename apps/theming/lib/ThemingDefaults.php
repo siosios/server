@@ -3,6 +3,17 @@
  * @copyright Copyright (c) 2016 Bjoern Schiessle <bjoern@schiessle.org>
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
+ * @author Joachim Bauch <bauch@struktur.de>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Haertl <jus@bitgrid.net>
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -134,7 +145,7 @@ class ThemingDefaults extends \OC_Defaults {
 	public function getShortFooter() {
 		$slogan = $this->getSlogan();
 		$footer = '<a href="'. $this->getBaseUrl() . '" target="_blank"' .
-			' rel="noreferrer">' .$this->getEntity() . '</a>'.
+			' rel="noreferrer noopener">' .$this->getEntity() . '</a>'.
 			($slogan !== '' ? ' – ' . $slogan : '');
 
 		return $footer;
@@ -229,7 +240,7 @@ class ThemingDefaults extends \OC_Defaults {
 	 * @return array scss variables to overwrite
 	 */
 	public function getScssVariables() {
-		$cache = $this->cacheFactory->create('theming');
+		$cache = $this->cacheFactory->createDistributed('theming');
 		if ($value = $cache->get('getScssVariables')) {
 			return $value;
 		}
@@ -245,13 +256,8 @@ class ThemingDefaults extends \OC_Defaults {
 		$variables['image-login-plain'] = 'false';
 
 		if ($this->config->getAppValue('theming', 'color', null) !== null) {
-			if ($this->util->invertTextColor($this->getColorPrimary())) {
-				$colorPrimaryText = '#000000';
-			} else {
-				$colorPrimaryText = '#ffffff';
-			}
 			$variables['color-primary'] = $this->getColorPrimary();
-			$variables['color-primary-text'] = $colorPrimaryText;
+			$variables['color-primary-text'] = $this->getTextColorPrimary();
 			$variables['color-primary-element'] = $this->util->elementColor($this->getColorPrimary());
 		}
 
@@ -301,7 +307,7 @@ class ThemingDefaults extends \OC_Defaults {
 	 * @return bool
 	 */
 	public function shouldReplaceIcons() {
-		$cache = $this->cacheFactory->create('theming');
+		$cache = $this->cacheFactory->createDistributed('theming');
 		if($value = $cache->get('shouldReplaceIcons')) {
 			return (bool)$value;
 		}
@@ -323,7 +329,7 @@ class ThemingDefaults extends \OC_Defaults {
 	private function increaseCacheBuster() {
 		$cacheBusterKey = $this->config->getAppValue('theming', 'cachebuster', '0');
 		$this->config->setAppValue('theming', 'cachebuster', (int)$cacheBusterKey+1);
-		$this->cacheFactory->create('theming')->clear('getScssVariables');
+		$this->cacheFactory->createDistributed('theming')->clear('getScssVariables');
 	}
 
 	/**
@@ -366,5 +372,14 @@ class ThemingDefaults extends \OC_Defaults {
 		}
 
 		return $returnValue;
+	}
+
+	/**
+	 * Color of text in the header and primary buttons
+	 *
+	 * @return string
+	 */
+	public function getTextColorPrimary() {
+		return $this->util->invertTextColor($this->getColorPrimary()) ? '#000000' : '#ffffff';
 	}
 }

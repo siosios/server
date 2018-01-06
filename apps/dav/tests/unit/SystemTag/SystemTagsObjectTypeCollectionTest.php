@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -23,6 +24,13 @@
  */
 
 namespace OCA\DAV\Tests\unit\SystemTag;
+
+use OCP\Files\Folder;
+use OCP\IGroupManager;
+use OCP\IUser;
+use OCP\IUserSession;
+use OCP\SystemTag\ISystemTagManager;
+use OCP\SystemTag\ISystemTagObjectMapper;
 
 class SystemTagsObjectTypeCollectionTest extends \Test\TestCase {
 
@@ -49,29 +57,29 @@ class SystemTagsObjectTypeCollectionTest extends \Test\TestCase {
 	protected function setUp() {
 		parent::setUp();
 
-		$this->tagManager = $this->getMockBuilder('\OCP\SystemTag\ISystemTagManager')
+		$this->tagManager = $this->getMockBuilder(ISystemTagManager::class)
 			->getMock();
-		$this->tagMapper = $this->getMockBuilder('\OCP\SystemTag\ISystemTagObjectMapper')
+		$this->tagMapper = $this->getMockBuilder(ISystemTagObjectMapper::class)
 			->getMock();
 
-		$user = $this->getMockBuilder('\OCP\IUser')
+		$user = $this->getMockBuilder(IUser::class)
 			->getMock();
 		$user->expects($this->any())
 			->method('getUID')
 			->will($this->returnValue('testuser'));
-		$userSession = $this->getMockBuilder('\OCP\IUserSession')
+		$userSession = $this->getMockBuilder(IUserSession::class)
 			->getMock();
 		$userSession->expects($this->any())
 			->method('getUser')
 			->will($this->returnValue($user));
-		$groupManager = $this->getMockBuilder('\OCP\IGroupManager')
+		$groupManager = $this->getMockBuilder(IGroupManager::class)
 			->getMock();
 		$groupManager->expects($this->any())
 			->method('isAdmin')
 			->with('testuser')
 			->will($this->returnValue(true));
 
-		$this->userFolder = $this->getMockBuilder('\OCP\Files\Folder')
+		$this->userFolder = $this->getMockBuilder(Folder::class)
 			->getMock();
 		$userFolder = $this->userFolder;
 

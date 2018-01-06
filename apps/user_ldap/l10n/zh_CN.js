@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "客户端使用的DN必须与绑定的相同，比如uid=agent,dc=example,dc=com\n如需匿名访问，将DN和密码保留为空",
     "Password" : "密码",
     "For anonymous access, leave DN and Password empty." : "启用匿名访问，将DN和密码保留为空",
+    "Save Credentials" : "保存凭据",
     "One Base DN per line" : "每行一个基本判别名",
     "You can specify Base DN for users and groups in the Advanced tab" : "您可以在高级选项卡里为用户和组指定Base DN",
     "Detect Base DN" : "检测基础DN",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "密码错误。是否重置？",
     "Wrong password." : "密码错误。",
     "Cancel" : "取消！",
-    "LDAP" : "LDAP",
     "Server" : "服务器",
     "Users" : "用户",
     "Login Attributes" : "登录属性",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "验证设置和统计组",
     "Add a new and blank configuration" : "添加一个新的空白配置",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "可以忽略协议，但如要使用SSL，则需以ldaps://开头",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>警告：</b> 应用 user_ldap 和 user_webdavauth 之间不兼容。您可能遭遇未预料的行为。请让系统管理员禁用其中一个。",
     "in bytes" : "字节数"
 },

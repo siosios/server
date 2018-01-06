@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "どのクライアントユーザーのDNで接続するか指定します。例えば uid=agent,dc=example,dc=com になります。匿名アクセスの場合、DNとパスワードは空のままにしてください。",
     "Password" : "パスワード",
     "For anonymous access, leave DN and Password empty." : "匿名アクセスの場合は、DNとパスワードを空のままにしてください。",
+    "Save Credentials" : "資格情報を保存",
     "One Base DN per line" : "1行に1つのベースDNを記入",
     "You can specify Base DN for users and groups in the Advanced tab" : "詳細設定でユーザーとグループのベースDNを指定することができます。",
     "Detect Base DN" : "ベース DN を検出",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "パスワードが間違っています。リセットしますか？",
     "Wrong password." : "パスワードが間違っています。",
     "Cancel" : "キャンセル",
-    "LDAP" : "LDAP",
     "Server" : "サーバー",
     "Users" : "ユーザー",
     "Login Attributes" : "ログイン属性",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "設定を検証し、グループを数える",
     "Add a new and blank configuration" : "空欄の新しい設定を追加",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "SSL通信しない場合には、プロトコル名を省略することができます。そうでない場合には、ldaps:// から始めてください。",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>警告:</b> user_ldap と user_webdavauth のアプリには互換性がありません。予期せぬ動作をする可能性があります。システム管理者にどちらかを無効にするよう問い合わせてください。",
     "in bytes" : "バイト"
 },

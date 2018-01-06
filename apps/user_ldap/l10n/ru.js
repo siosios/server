@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "DN пользователя, под которым выполняется подключение, например, uid=agent,dc=example,dc=com. Для анонимного доступа оставьте DN и пароль пустыми.",
     "Password" : "Пароль",
     "For anonymous access, leave DN and Password empty." : "Для анонимного доступа оставьте DN и пароль пустыми.",
+    "Save Credentials" : "Сохранить учётные данные",
     "One Base DN per line" : "По одной базе поиска (Base DN) в строке.",
     "You can specify Base DN for users and groups in the Advanced tab" : "Вы можете задать Base DN для пользователей и групп на вкладке \"Расширенные\"",
     "Detect Base DN" : "Определить базу поиска DN",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Неправильный пароль. Сбросить его?",
     "Wrong password." : "Неправильный пароль.",
     "Cancel" : "Отмена",
-    "LDAP" : "LDAP",
     "Server" : "Сервер",
     "Users" : "Пользователи",
     "Login Attributes" : "Учетные данные",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Проверить настройки и пересчитать группы",
     "Add a new and blank configuration" : "Добавить новую и пустую конфигурацию",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "Можно пренебречь протоколом, за исключением использования SSL. В этом случае укажите ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Предупреждение:</b> Приложения user_ldap и user_webdavauth несовместимы. Вы можете наблюдать некорректное поведение. Пожалуйста, попросите вашего системного администратора отключить одно из них.",
     "in bytes" : "в байтах"
 },

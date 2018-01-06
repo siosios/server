@@ -7,7 +7,9 @@
  * @author Frank Karlitschek <frank@karlitschek.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Kristof Provost <github@sigsegv.be>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author martin.mattel@diemattels.at <martin.mattel@diemattels.at>
  * @author Masaki Kawabata Neto <masaki.kawabata@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  *
@@ -26,6 +28,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  *
  */
+
+require_once __DIR__ . '/lib/versioncheck.php';
 
 try {
 

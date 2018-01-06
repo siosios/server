@@ -4,11 +4,13 @@
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Frank Karlitschek <frank@karlitschek.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Steffen Lindner <mail@steffen-lindner.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
@@ -61,6 +63,9 @@ class Updater extends BasicEmitter {
 	/** @var Checker */
 	private $checker;
 
+	/** @var Installer */
+	private $installer;
+
 	/** @var bool */
 	private $skip3rdPartyAppsDisable;
 
@@ -76,13 +81,16 @@ class Updater extends BasicEmitter {
 	 * @param IConfig $config
 	 * @param Checker $checker
 	 * @param ILogger $log
+	 * @param Installer $installer
 	 */
 	public function __construct(IConfig $config,
 								Checker $checker,
-								ILogger $log = null) {
+								ILogger $log = null,
+								Installer $installer) {
 		$this->log = $log;
 		$this->config = $config;
 		$this->checker = $checker;
+		$this->installer = $installer;
 
 		// If at least PHP 7.0.0 is used we don't need to disable apps as we catch
 		// fatal errors and exceptions and disable the app just instead.
@@ -459,17 +467,10 @@ class Updater extends BasicEmitter {
 	private function upgradeAppStoreApps(array $disabledApps) {
 		foreach($disabledApps as $app) {
 			try {
-				$installer = new Installer(
-					\OC::$server->getAppFetcher(),
-					\OC::$server->getHTTPClientService(),
-					\OC::$server->getTempManager(),
-					$this->log,
-					\OC::$server->getConfig()
-				);
 				$this->emit('\OC\Updater', 'checkAppStoreAppBefore', [$app]);
-				if (Installer::isUpdateAvailable($app, \OC::$server->getAppFetcher())) {
+				if ($this->installer->isUpdateAvailable($app)) {
 					$this->emit('\OC\Updater', 'upgradeAppStoreApp', [$app]);
-					$installer->updateAppstoreApp($app);
+					$this->installer->updateAppstoreApp($app);
 				}
 				$this->emit('\OC\Updater', 'checkAppStoreApp', [$app]);
 			} catch (\Exception $ex) {

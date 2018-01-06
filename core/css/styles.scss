@@ -62,6 +62,11 @@ a {
 	}
 }
 
+a.external {
+	margin: 0 3px;
+	text-decoration: underline;
+}
+
 input {
 	cursor: pointer;
 	* {
@@ -166,7 +171,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
 	background: nc-darken($color-main-background, 14%);
-	border-radius: 3px;
+	border-radius: $border-radius;
 }
 
 /* Searchbox */
@@ -181,7 +186,7 @@ body {
 		background: transparent url('../img/actions/search-white.svg?v=1') no-repeat 6px center;
 		color: $color-primary-text;
 		border: 0;
-		border-radius: 3px;
+		border-radius: $border-radius;
 		margin-top: 3px;
 		width: 0;
 		cursor: pointer;
@@ -223,30 +228,29 @@ body {
 
 #controls {
 	box-sizing: border-box;
-	position: fixed;
-	top: 45px;
-	right: 0;
-	left: 0;
+	position: -webkit-sticky;
+	position: sticky;
 	height: 44px;
-	width: 100%;
 	padding: 0;
 	margin: 0;
 	background-color: rgba($color-main-background, 0.95);
-	z-index: 50;
+	z-index: 55;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
+	display: flex;
+	top: 0;
 }
 
 /* position controls for apps with app-navigation */
 
-#app-navigation + #app-content #controls {
-	left: 250px;
-}
-
 .viewer-mode #app-navigation + #app-content #controls {
 	left: 0;
+}
+
+#app-navigation * {
+	box-sizing: border-box;
 }
 
 #controls {
@@ -644,7 +648,7 @@ label.infield {
 		background-color: rgba($color-main-text, 0.3);
 		color: $color-primary-text;
 		text-align: left;
-		border-radius: 3px;
+		border-radius: $border-radius;
 		cursor: default;
 	}
 	.update {
@@ -671,7 +675,7 @@ label.infield {
 	margin-top: 8px;
 	padding: 5px;
 	background: rgba($color-error, .15);
-	border-radius: 3px;
+	border-radius: $border-radius;
 }
 
 .warning {
@@ -987,7 +991,7 @@ code {
 	margin-top: 10px;
 	padding: 4px 8px;
 	width: auto;
-	border-radius: 3px;
+	border-radius: $border-radius;
 	border: none;
 
 	.ui-state-default,
@@ -1031,15 +1035,6 @@ code {
 			background-color: inherit;
 		}
 		td {
-			> * {
-				border-radius: 50%;
-				text-align: center;
-				font-weight: normal;
-				color: $color-main-text;
-				padding: 6px;
-				line-height: 12px;
-			}
-
 			&.ui-datepicker-today a:not(.ui-state-hover) {
 				background-color: nc-lighten($color-main-text, 86%);
 			}
@@ -1052,7 +1047,7 @@ code {
 				font-weight: bold;
 			}
 
-			&.ui-datepicker-week-end :not(.ui-state-hover),
+			&.ui-datepicker-week-end:not(.ui-state-disabled) :not(.ui-state-hover),
 			.ui-priority-secondary:not(.ui-state-hover) {
 				color: nc-lighten($color-main-text, 33%);
 				opacity: .8;
@@ -1066,14 +1061,111 @@ code {
 	background: $color-main-background;
 }
 
+
+/* ---- jQuery UI timepicker ---- */
+.ui-widget.ui-timepicker {
+	margin-top: 10px !important;
+	width: auto !important;
+	border-radius: $border-radius;
+
+	.ui-widget-content {
+		border: none !important;
+	}
+
+	.ui-state-default,
+	.ui-widget-content .ui-state-default,
+	.ui-widget-header .ui-state-default {
+		border: 1px solid transparent;
+		background: inherit;
+	}
+	.ui-widget-header {
+		padding: 7px;
+		font-size: 13px;
+		border:	none;
+		background-color: $color-main-background;
+		color: $color-main-text;
+
+		.ui-timepicker-title {
+			line-height: 1;
+			font-weight: 300;
+		}
+	}
+	/* AM/PM fix */
+	table.ui-timepicker tr .ui-timepicker-hour-cell:first-child {
+		margin-left: 30px;
+	}
+	.ui-timepicker-table {
+		th {
+			font-weight: normal;
+			color: nc-lighten($color-main-text, 33%);
+			opacity: .8;
+			&.periods {
+				padding: 0;
+				width: 30px;
+				line-height: 30px;
+			}
+		}
+		tr:hover {
+			background-color: inherit;
+		}
+		td {
+			&.ui-timepicker-hour-cell a.ui-state-active,
+			&.ui-timepicker-minute-cell a.ui-state-active,
+			.ui-state-hover,
+			.ui-state-focus {
+				background-color: $color-primary;
+				color: $color-primary-text;
+				font-weight: bold;
+			}
+
+			&.ui-timepicker-minutes:not(.ui-state-hover) {
+				color: nc-lighten($color-main-text, 33%);
+			}
+
+			&.ui-timepicker-hours {
+				border-right: 1px solid $color-border;
+			}
+		}
+	}
+}
+
+/* ---- jQuery UI datepicker & timepicker global rules ---- */
+.ui-widget.ui-datepicker .ui-datepicker-calendar,
+.ui-widget.ui-timepicker table.ui-timepicker {
+	tr {
+		display: flex;
+		flex-wrap: nowrap;
+		justify-content: space-between;
+		td {
+			display: block;
+			flex: 1 1;
+			margin: 0;
+			padding: 2px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			> * {
+				border-radius: 50%;
+				text-align: center;
+				font-weight: normal;
+				color: $color-main-text;
+				display: block;
+				line-height: 18px;
+				width: 18px;
+				height: 18px;
+				padding: 3px;
+				font-size: .9em;
+			}
+		}
+	}
+}
+
 /* ---- DIALOGS ---- */
 
 #oc-dialog-filepicker-content {
 	.dirtree {
 		width: 92%;
-		float: left;
-		margin-left: 15px;
-		overflow: hidden;
+		flex-wrap: wrap;
 		div:first-child a {
 			background-image: url('../img/places/home.svg?v=1');
 			background-repeat: no-repeat;
@@ -1108,7 +1200,7 @@ code {
 		display: none;
 	}
 	.filelist {
-		background-color: white;
+		background-color: $color-main-background;
 		width: 100%;
 	}
 	#filestable.filelist {
@@ -1268,6 +1360,7 @@ span.ui-icon {
 #contactsmenu-search {
 	width: calc(100% - 16px);
 	margin: 8px;
+	height: 34px;
 }
 
 /* ---- TOOLTIPS ---- */
@@ -1315,46 +1408,88 @@ span.ui-icon {
 }
 
 /* ---- BREADCRUMB ---- */
-
+.breadcrumb {
+	display: inline-flex;
+}
 div.crumb {
-	float: left;
-	display: block;
+	display: inline-flex;
 	background-image: url('../img/breadcrumb.svg?v=1');
 	background-repeat: no-repeat;
 	background-position: right center;
 	height: 44px;
 	background-size: auto 24px;
+	flex: 0 0 auto;
+	order: 1;
+	padding-right: 7px;
+	&.crumbmenu {
+		order: 2;
+		position: relative;
+		a {
+			opacity: 0.5
+		}
+		&.canDropChildren,
+		&.canDrop {
+			.popovermenu {
+				display: block;
+			}
+		}
+		// Fix because of the display flex
+		.popovermenu {
+			top: 100%;
+			margin-right: 3px;
+			ul {
+				max-height: 345px;
+				overflow-y: auto;
+				overflow-x: hidden;
+				padding-right: 5px;
+				li.canDrop span:first-child {
+					background-image: url('../img/filetypes/folder-drag-accept.svg?v=1') !important;
+				}
+			}
+			.in-breadcrumb {
+				display: none;
+			}
+		}
+	}
 	&.hidden {
 		display: none;
+		~ .crumb {
+			order: 3;
+		}
 	}
-	a, > span {
+	> a,
+	> span {
 		position: relative;
-		top: 12px;
-		padding: 14px 24px 14px 17px;
-		color: nc-lighten($color-main-text, 33%);
+		padding: 12px;
+		opacity: 0.5;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
+		flex: 0 0 auto;
+		&.icon-home {
+			// Hide home text
+			text-indent: -9999px;
+		}
 	}
-	&.last a {
-		padding-right: 0;
+	> a[class^='icon-'] {
+		padding: 0;
+		width: 44px;
 	}
-	&:first-child a {
-		position: relative;
-		top: 13px;
-		padding-right: 14px;
+	&:not(:first-child) a {
 	}
-	&.last {
+	&:last-child {
 		font-weight: 600;
 		margin-right: 10px;
-	}
-	&.ellipsized {
-		padding: 0 10px 0 5px;
-	}
-	a.ellipsislink {
-		padding: 0 !important;
-		position: relative;
-		top: 8px !important;
+		// Allow multiple span next to the main 'a'
+		a ~ span {
+			padding-left: 0;
+		}
 	}
 	&:hover, &:focus, a:focus, &:active {
-		opacity: .7;
+		> a,
+		> span {
+			opacity: .7;
+		}
 	}
 }
 

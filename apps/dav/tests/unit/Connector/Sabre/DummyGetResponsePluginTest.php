@@ -4,6 +4,7 @@
  *
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -26,6 +27,9 @@
 namespace OCA\DAV\Tests\unit\Connector\Sabre;
 
 use OCA\DAV\Connector\Sabre\DummyGetResponsePlugin;
+use Sabre\DAV\Server;
+use Sabre\HTTP\RequestInterface;
+use Sabre\HTTP\ResponseInterface;
 use Test\TestCase;
 
 /**
@@ -44,8 +48,8 @@ class DummyGetResponsePluginTest extends TestCase {
 	}
 
 	public function testInitialize() {
-		/** @var \Sabre\DAV\Server $server */
-		$server = $this->getMockBuilder('\Sabre\DAV\Server')
+		/** @var Server $server */
+		$server = $this->getMockBuilder(Server::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$server
@@ -59,11 +63,11 @@ class DummyGetResponsePluginTest extends TestCase {
 
 	public function testHttpGet() {
 		/** @var \Sabre\HTTP\RequestInterface $request */
-		$request = $this->getMockBuilder('\Sabre\HTTP\RequestInterface')
+		$request = $this->getMockBuilder(RequestInterface::class)
 			->disableOriginalConstructor()
 			->getMock();
 		/** @var \Sabre\HTTP\ResponseInterface $response */
-		$response = $server = $this->getMockBuilder('\Sabre\HTTP\ResponseInterface')
+		$response = $server = $this->getMockBuilder(ResponseInterface::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$response

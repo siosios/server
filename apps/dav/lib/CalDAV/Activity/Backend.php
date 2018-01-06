@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -90,6 +93,16 @@ class Backend {
 	}
 
 	/**
+	 * Creates activities when a calendar was (un)published
+	 *
+	 * @param array $calendarData
+	 * @param bool $publishStatus
+	 */
+	public function onCalendarPublication(array $calendarData, $publishStatus) {
+		$this->triggerCalendarActivity($publishStatus ? Calendar::SUBJECT_PUBLISH : Calendar::SUBJECT_UNPUBLISH, $calendarData);
+	}
+
+	/**
 	 * Creates activities for all related users when a calendar was touched
 	 *
 	 * @param string $action
@@ -135,8 +148,12 @@ class Backend {
 				->setSubject(
 					$user === $currentUser ? $action . '_self' : $action,
 					[
-						$currentUser,
-						$calendarData['{DAV:}displayname'],
+						'actor' => $currentUser,
+						'calendar' => [
+							'id' => (int) $calendarData['id'],
+							'uri' => $calendarData['uri'],
+							'name' => $calendarData['{DAV:}displayname'],
+						],
 					]
 				);
 			$this->activityManager->publish($event);
@@ -187,8 +204,13 @@ class Backend {
 
 				if ($owner !== $principal[2]) {
 					$parameters = [
-						$principal[2],
-						$calendarData['{DAV:}displayname'],
+						'actor' => $event->getAuthor(),
+						'calendar' => [
+							'id' => (int) $calendarData['id'],
+							'uri' => $calendarData['uri'],
+							'name' => $calendarData['{DAV:}displayname'],
+						],
+						'user' => $principal[2],
 					];
 
 					if ($owner === $event->getAuthor()) {
@@ -201,7 +223,6 @@ class Backend {
 						$this->activityManager->publish($event);
 
 						$subject = Calendar::SUBJECT_UNSHARE_USER . '_by';
-						$parameters[] = $event->getAuthor();
 					}
 
 					$event->setAffectedUser($owner)
@@ -212,8 +233,13 @@ class Backend {
 				$this->triggerActivityGroup($principal[2], $event, $calendarData, Calendar::SUBJECT_UNSHARE_USER);
 
 				$parameters = [
-					$principal[2],
-					$calendarData['{DAV:}displayname'],
+					'actor' => $event->getAuthor(),
+					'calendar' => [
+						'id' => (int) $calendarData['id'],
+						'uri' => $calendarData['uri'],
+						'name' => $calendarData['{DAV:}displayname'],
+					],
+					'group' => $principal[2],
 				];
 
 				if ($owner === $event->getAuthor()) {
@@ -224,7 +250,6 @@ class Backend {
 					$this->activityManager->publish($event);
 
 					$subject = Calendar::SUBJECT_UNSHARE_GROUP . '_by';
-					$parameters[] = $event->getAuthor();
 				}
 
 				$event->setAffectedUser($owner)
@@ -250,8 +275,13 @@ class Backend {
 
 				if ($owner !== $principal[2]) {
 					$parameters = [
-						$principal[2],
-						$calendarData['{DAV:}displayname'],
+						'actor' => $event->getAuthor(),
+						'calendar' => [
+							'id' => (int) $calendarData['id'],
+							'uri' => $calendarData['uri'],
+							'name' => $calendarData['{DAV:}displayname'],
+						],
+						'user' => $principal[2],
 					];
 
 					if ($owner === $event->getAuthor()) {
@@ -262,7 +292,6 @@ class Backend {
 						$this->activityManager->publish($event);
 
 						$subject = Calendar::SUBJECT_SHARE_USER . '_by';
-						$parameters[] = $event->getAuthor();
 					}
 
 					$event->setAffectedUser($owner)
@@ -273,8 +302,13 @@ class Backend {
 				$this->triggerActivityGroup($principal[2], $event, $calendarData, Calendar::SUBJECT_SHARE_USER);
 
 				$parameters = [
-					$principal[2],
-					$calendarData['{DAV:}displayname'],
+					'actor' => $event->getAuthor(),
+					'calendar' => [
+						'id' => (int) $calendarData['id'],
+						'uri' => $calendarData['uri'],
+						'name' => $calendarData['{DAV:}displayname'],
+					],
+					'group' => $principal[2],
 				];
 
 				if ($owner === $event->getAuthor()) {
@@ -285,7 +319,6 @@ class Backend {
 					$this->activityManager->publish($event);
 
 					$subject = Calendar::SUBJECT_SHARE_GROUP . '_by';
-					$parameters[] = $event->getAuthor();
 				}
 
 				$event->setAffectedUser($owner)
@@ -347,8 +380,12 @@ class Backend {
 			->setSubject(
 				$user === $event->getAuthor() && $subjectSelf ? $subjectSelf : $subject,
 				[
-					$event->getAuthor(),
-					$properties['{DAV:}displayname'],
+					'actor' => $event->getAuthor(),
+					'calendar' => [
+						'id' => (int) $properties['id'],
+						'uri' => $properties['uri'],
+						'name' => $properties['{DAV:}displayname'],
+					],
 				]
 			);
 
@@ -401,9 +438,13 @@ class Backend {
 				->setSubject(
 					$user === $currentUser ? $action . '_self' : $action,
 					[
-						$currentUser,
-						$calendarData['{DAV:}displayname'],
-						[
+						'actor' => $event->getAuthor(),
+						'calendar' => [
+							'id' => (int) $calendarData['id'],
+							'uri' => $calendarData['uri'],
+							'name' => $calendarData['{DAV:}displayname'],
+						],
+						'object' => [
 							'id' => $object['id'],
 							'name' => $object['name'],
 						],

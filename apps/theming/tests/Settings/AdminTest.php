@@ -2,7 +2,11 @@
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author iamfool <praveenraonp@gmail.com>
+ * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
+ * @author Julius Haertl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -45,10 +49,10 @@ class AdminTest extends TestCase {
 
 	public function setUp() {
 		parent::setUp();
-		$this->config = $this->getMockBuilder('\OCP\IConfig')->getMock();
-		$this->l10n = $this->getMockBuilder('\OCP\IL10N')->getMock();
+		$this->config = $this->getMockBuilder(IConfig::class)->getMock();
+		$this->l10n = $this->getMockBuilder(IL10N::class)->getMock();
 		$this->themingDefaults = $this->getMockBuilder('\OCA\Theming\ThemingDefaults')->disableOriginalConstructor()->getMock();
-		$this->urlGenerator = $this->getMockBuilder('\OCP\IURLGenerator')->getMock();
+		$this->urlGenerator = $this->getMockBuilder(IURLGenerator::class)->getMock();
 
 		$this->admin = new Admin(
 			$this->config,
@@ -97,6 +101,8 @@ class AdminTest extends TestCase {
 			'logoMime' => null,
 			'background' => null,
 			'backgroundMime' => null,
+			'canThemeIcons' => null,
+			'iconDocs' => null,
 		];
 
 		$expected = new TemplateResponse('theming', 'settings-admin', $params, '');
@@ -147,6 +153,8 @@ class AdminTest extends TestCase {
 			'logoMime' => null,
 			'background' => null,
 			'backgroundMime' => null,
+			'canThemeIcons' => null,
+			'iconDocs' => null,
 		];
 
 		$expected = new TemplateResponse('theming', 'settings-admin', $params, '');

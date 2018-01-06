@@ -3,11 +3,11 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bjoern Schiessle <bjoern@schiessle.org>
- * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -29,6 +29,7 @@
 
 namespace OCA\DAV\Connector\Sabre;
 
+use OC\Files\Storage\FailedStorage;
 use OCA\DAV\Connector\Sabre\Exception\Forbidden;
 use OCA\DAV\Connector\Sabre\Exception\InvalidPath;
 use OCA\DAV\Connector\Sabre\Exception\FileLocked;
@@ -154,6 +155,10 @@ class ObjectTree extends CachingTree {
 			// read from cache
 			try {
 				$info = $this->fileView->getFileInfo($path);
+
+				if ($info instanceof \OCP\Files\FileInfo && $info->getStorage()->instanceOfStorage(FailedStorage::class)) {
+					throw new StorageNotAvailableException();
+				}
 			} catch (StorageNotAvailableException $e) {
 				throw new \Sabre\DAV\Exception\ServiceUnavailable('Storage is temporarily not available');
 			} catch (StorageInvalidException $e) {

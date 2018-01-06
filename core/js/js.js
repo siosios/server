@@ -60,6 +60,7 @@ function fileDownloadPath(dir, file) {
 /** @namespace */
 var OCP = {},
 	OC = {
+	PERMISSION_NONE:0,
 	PERMISSION_CREATE:4,
 	PERMISSION_READ:1,
 	PERMISSION_UPDATE:2,
@@ -1144,7 +1145,7 @@ OC.Notification={
 	 *
 	 * @param {string} html Message to display
 	 * @param {Object} [options] options
-	 * @param {string] [options.type] notification type
+	 * @param {string} [options.type] notification type
 	 * @param {int} [options.timeout=0] timeout value, defaults to 0 (permanent)
 	 * @return {jQuery} jQuery element for notification row
 	 */
@@ -1512,7 +1513,7 @@ function initCore() {
 
 	var resizeMenu = function() {
 		var appList = $('#appmenu li');
-		var headerWidth = $('.header-left').width() - $('#nextcloud').width()
+		var headerWidth = $('.header-left').width() - $('#nextcloud').width();
 		var usePercentualAppMenuLimit = 0.33;
 		var minAppsDesktop = 8;
 		var availableWidth = headerWidth - $(appList).width();
@@ -1611,12 +1612,47 @@ function initCore() {
 			snapper.close();
 		});
 
+		var navigationBarSlideGestureEnabled = false;
+		var navigationBarSlideGestureAllowed = true;
+		var navigationBarSlideGestureEnablePending = false;
+
+		OC.allowNavigationBarSlideGesture = function() {
+			navigationBarSlideGestureAllowed = true;
+
+			if (navigationBarSlideGestureEnablePending) {
+				snapper.enable();
+
+				navigationBarSlideGestureEnabled = true;
+				navigationBarSlideGestureEnablePending = false;
+			}
+		};
+
+		OC.disallowNavigationBarSlideGesture = function() {
+			navigationBarSlideGestureAllowed = false;
+
+			if (navigationBarSlideGestureEnabled) {
+				var endCurrentDrag = true;
+				snapper.disable(endCurrentDrag);
+
+				navigationBarSlideGestureEnabled = false;
+				navigationBarSlideGestureEnablePending = true;
+			}
+		};
+
 		var toggleSnapperOnSize = function() {
 			if($(window).width() > 768) {
 				snapper.close();
 				snapper.disable();
-			} else {
+
+				navigationBarSlideGestureEnabled = false;
+				navigationBarSlideGestureEnablePending = false;
+			} else if (navigationBarSlideGestureAllowed) {
 				snapper.enable();
+
+				navigationBarSlideGestureEnabled = true;
+				navigationBarSlideGestureEnablePending = false;
+			} else {
+				navigationBarSlideGestureEnablePending = true;
 			}
 		};
 
@@ -1624,39 +1660,6 @@ function initCore() {
 
 		// initial call
 		toggleSnapperOnSize();
-
-		// adjust controls bar width
-		var adjustControlsWidth = function() {
-			if($('#controls').length) {
-				var controlsWidth;
-				// if there is a scrollbar …
-				if($('#app-content').get(0).scrollHeight > $('#app-content').height()) {
-					if($(window).width() > 768) {
-						controlsWidth = $('#content').width() - $('#app-navigation').width() - getScrollBarWidth();
-						if (!$('#app-sidebar').hasClass('hidden') && !$('#app-sidebar').hasClass('disappear')) {
-							controlsWidth -= $('#app-sidebar').width();
-						}
-					} else {
-						controlsWidth = $('#content').width() - getScrollBarWidth();
-					}
-				} else { // if there is none
-					if($(window).width() > 768) {
-						controlsWidth = $('#content').width() - $('#app-navigation').width();
-						if (!$('#app-sidebar').hasClass('hidden') && !$('#app-sidebar').hasClass('disappear')) {
-							controlsWidth -= $('#app-sidebar').width();
-						}
-					} else {
-						controlsWidth = $('#content').width();
-					}
-				}
-				$('#controls').css('width', controlsWidth);
-				$('#controls').css('min-width', controlsWidth);
-			}
-		};
-
-		$(window).resize(_.debounce(adjustControlsWidth, 250));
-
-		$('body').delegate('#app-content', 'apprendered appresized', _.debounce(adjustControlsWidth, 150));
 
 	}
 
@@ -1679,7 +1682,8 @@ OC.PasswordConfirmation = {
 
 	requiresPasswordConfirmation: function() {
 		var timeSinceLogin = moment.now() - (nc_lastLogin * 1000);
-		return timeSinceLogin > 30 * 60 * 1000; // 30 minutes
+		// if timeSinceLogin > 30 minutes and user backend allows password confirmation
+		return (backendAllowsPasswordConfirmation && timeSinceLogin > 30 * 60 * 1000);
 	},
 
 	/**

@@ -2,6 +2,9 @@
 /**
  * @copyright 2017, Morris Jobke <hey@morrisjobke.de>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Leon Klingele <leon@struktur.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
@@ -36,7 +39,7 @@ namespace OCP\Mail;
  *
  * $emailTemplate->addHeader();
  * $emailTemplate->addHeading('Welcome aboard');
- * $emailTemplate->addBodyText('You now have an Nextcloud account, you can add, protect, and share your data.');
+ * $emailTemplate->addBodyText('Welcome to your Nextcloud account, you can add, protect, and share your data.');
  *
  * $emailTemplate->addBodyButtonGroup(
  *     'Set your password', 'https://example.org/resetPassword/q1234567890qwertz',

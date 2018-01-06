@@ -2,6 +2,12 @@
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Steffen Lindner <mail@steffen-lindner.de>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -30,6 +36,7 @@ use OCP\Files\NotFoundException;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\ILogger;
+use OCP\Util;
 
 abstract class Fetcher {
 	const INVALIDATE_AFTER_SECONDS = 300;
@@ -122,8 +129,9 @@ abstract class Fetcher {
 	 */
 	public function get() {
 		$appstoreenabled = $this->config->getSystemValue('appstoreenabled', true);
+		$internetavailable = $this->config->getSystemValue('has_internet_connection', true);
 
-		if (!$appstoreenabled) {
+		if (!$appstoreenabled || !$internetavailable) {
 			return [];
 		}
 
@@ -163,7 +171,7 @@ abstract class Fetcher {
 			$file->putContent(json_encode($responseJson));
 			return json_decode($file->getContent(), true)['data'];
 		} catch (ConnectException $e) {
-			$this->logger->logException($e, ['app' => 'appstoreFetcher']);
+			$this->logger->logException($e, ['app' => 'appstoreFetcher', 'level' => Util::INFO, 'message' => 'Could not connect to appstore']);
 			return [];
 		} catch (\Exception $e) {
 			return [];

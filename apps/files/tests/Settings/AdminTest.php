@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -41,7 +42,7 @@ class AdminTest extends TestCase {
 	public function setUp() {
 		parent::setUp();
 		$this->iniGetWrapper = $this->getMockBuilder('\bantu\IniGetWrapper\IniGetWrapper')->disableOriginalConstructor()->getMock();
-		$this->request = $this->getMockBuilder('\OCP\IRequest')->getMock();
+		$this->request = $this->getMockBuilder(IRequest::class)->getMock();
 		$this->admin = new Admin(
 			$this->iniGetWrapper,
 			$this->request

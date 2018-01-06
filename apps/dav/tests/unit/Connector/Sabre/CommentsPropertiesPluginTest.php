@@ -4,6 +4,7 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
@@ -25,6 +26,11 @@
 namespace OCA\DAV\Tests\unit\Connector\Sabre;
 
 use \OCA\DAV\Connector\Sabre\CommentPropertiesPlugin as CommentPropertiesPluginImplementation;
+use OCA\DAV\Connector\Sabre\File;
+use OCP\Comments\ICommentsManager;
+use OCP\IUser;
+use OCP\IUserSession;
+use Sabre\DAV\PropFind;
 
 class CommentsPropertiesPluginTest extends \Test\TestCase {
 
@@ -37,10 +43,10 @@ class CommentsPropertiesPluginTest extends \Test\TestCase {
 	public function setUp() {
 		parent::setUp();
 
-		$this->commentsManager = $this->getMockBuilder('\OCP\Comments\ICommentsManager')
+		$this->commentsManager = $this->getMockBuilder(ICommentsManager::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$this->userSession = $this->getMockBuilder('\OCP\IUserSession')
+		$this->userSession = $this->getMockBuilder(IUserSession::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -73,7 +79,7 @@ class CommentsPropertiesPluginTest extends \Test\TestCase {
 	 * @param $expectedSuccessful
 	 */
 	public function testHandleGetProperties($node, $expectedSuccessful) {
-		$propFind = $this->getMockBuilder('\Sabre\DAV\PropFind')
+		$propFind = $this->getMockBuilder(PropFind::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -103,7 +109,7 @@ class CommentsPropertiesPluginTest extends \Test\TestCase {
 	 * @param $expectedHref
 	 */
 	public function testGetCommentsLink($baseUri, $fid, $expectedHref) {
-		$node = $this->getMockBuilder('\OCA\DAV\Connector\Sabre\File')
+		$node = $this->getMockBuilder(File::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$node->expects($this->any())
@@ -121,7 +127,7 @@ class CommentsPropertiesPluginTest extends \Test\TestCase {
 	public function userProvider() {
 		return [
 			[
-				$this->getMockBuilder('\OCP\IUser')
+				$this->getMockBuilder(IUser::class)
 					->disableOriginalConstructor()
 					->getMock()
 			],
@@ -134,7 +140,7 @@ class CommentsPropertiesPluginTest extends \Test\TestCase {
 	 * @param $user
 	 */
 	public function testGetUnreadCount($user) {
-		$node = $this->getMockBuilder('\OCA\DAV\Connector\Sabre\File')
+		$node = $this->getMockBuilder(File::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$node->expects($this->any())

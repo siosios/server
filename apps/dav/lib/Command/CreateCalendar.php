@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Thomas Citharel <tcit@tcit.fr>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -73,13 +75,16 @@ class CreateCalendar extends Command {
 		}
 		$principalBackend = new Principal(
 			$this->userManager,
-			$this->groupManager
+			$this->groupManager,
+			\OC::$server->getShareManager(),
+			\OC::$server->getUserSession()
 		);
 		$random = \OC::$server->getSecureRandom();
+		$logger = \OC::$server->getLogger();
 		$dispatcher = \OC::$server->getEventDispatcher();
 
 		$name = $input->getArgument('name');
-		$caldav = new CalDavBackend($this->dbConnection, $principalBackend, $this->userManager, $this->groupManager, $random, $dispatcher);
+		$caldav = new CalDavBackend($this->dbConnection, $principalBackend, $this->userManager, $this->groupManager, $random, $logger, $dispatcher);
 		$caldav->createCalendar("principals/users/$user", $name, []);
 	}
 }

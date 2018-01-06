@@ -2,8 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Georg Ehrke <georg@owncloud.com>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -41,6 +41,7 @@ use OC\Repair\NC11\MoveAvatars;
 use OC\Repair\NC12\InstallCoreBundle;
 use OC\Repair\NC12\UpdateLanguageCodes;
 use OC\Repair\NC12\RepairIdentityProofKeyFolders;
+use OC\Repair\NC13\AddLogRotateJob;
 use OC\Repair\OldGroupMembershipShares;
 use OC\Repair\Owncloud\DropAccountTermsTable;
 use OC\Repair\Owncloud\SaveAccountsTableData;
@@ -150,6 +151,7 @@ class Repair implements IOutput{
 			),
 			new RepairInvalidPaths(\OC::$server->getDatabaseConnection(), \OC::$server->getConfig()),
 			new RepairIdentityProofKeyFolders(\OC::$server->getConfig(), \OC::$server->query(Factory::class), \OC::$server->getRootFolder()),
+			new AddLogRotateJob(\OC::$server->getJobList()),
 		];
 	}
 

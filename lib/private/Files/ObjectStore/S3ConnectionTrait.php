@@ -2,6 +2,9 @@
 /**
  * @copyright Copyright (c) 2016 Robin Appelman <robin@icewind.nl>
  *
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,6 +24,7 @@
 
 namespace OC\Files\ObjectStore;
 
+use Aws\ClientResolver;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 
@@ -83,15 +87,19 @@ trait S3ConnectionTrait {
 			],
 			'endpoint' => $base_url,
 			'region' => $this->params['region'],
-			'use_path_style_endpoint' => isset($this->params['use_path_style']) ? $this->params['use_path_style'] : false
+			'use_path_style_endpoint' => isset($this->params['use_path_style']) ? $this->params['use_path_style'] : false,
+			'signature_provider' => \Aws\or_chain([self::class, 'legacySignatureProvider'], ClientResolver::_default_signature_provider())
 		];
 		if (isset($this->params['proxy'])) {
 			$options['request.options'] = ['proxy' => $this->params['proxy']];
 		}
+		if (isset($this->params['legacy_auth']) && $this->params['legacy_auth']) {
+			$options['signature_version'] = 'v2';
+		}
 		$this->connection = new S3Client($options);
 
-		if (!S3Client::isBucketDnsCompatible($this->bucket)) {
-			throw new \Exception("The configured bucket name is invalid.");
+		if (!$this->connection->isBucketDnsCompatible($this->bucket)) {
+			throw new \Exception("The configured bucket name is invalid: " . $this->bucket);
 		}
 
 		if (!$this->connection->doesBucketExist($this->bucket)) {
@@ -115,6 +123,16 @@ trait S3ConnectionTrait {
 	private function testTimeout() {
 		if ($this->test) {
 			sleep($this->timeout);
+		}
+	}
+
+	public static function legacySignatureProvider($version, $service, $region) {
+		switch ($version) {
+			case 'v2':
+			case 's3':
+				return new S3Signature();
+			default:
+				return null;
 		}
 	}
 }

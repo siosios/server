@@ -4,9 +4,10 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
- * @author Christoph Schaefer <christophł@wolkesicher.de>
+ * @author Christoph Schaefer "christophł@wolkesicher.de"
  * @author Christoph Wurst <christoph@owncloud.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Haertl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
@@ -305,7 +306,7 @@ class AppManager implements IAppManager {
 	 * Clear the cached list of apps when enabling/disabling an app
 	 */
 	public function clearAppsCache() {
-		$settingsMemCache = $this->memCacheFactory->create('settings');
+		$settingsMemCache = $this->memCacheFactory->createDistributed('settings');
 		$settingsMemCache->clear('listApps');
 	}
 

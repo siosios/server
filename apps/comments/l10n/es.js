@@ -2,7 +2,6 @@ OC.L10N.register(
     "comments",
     {
     "Comments" : "Comentarios",
-    "Unknown user" : "Usuario desconocido",
     "New comment …" : "Nuevo comentario",
     "Delete comment" : "Borrar comentario",
     "Post" : "Publicar",
@@ -26,9 +25,12 @@ OC.L10N.register(
     "%1$s commented on %2$s" : "%1$s comentados en %2$s",
     "{author} commented on {file}" : "{author} comentó en {file}",
     "<strong>Comments</strong> for files" : "<strong>Comentarios</strong> para archivos",
-    "A (now) deleted user mentioned you in a comment on “%s”" : "Un usuario (ahora) eliminado, te mencionó en un comentario en “%s”",
-    "A (now) deleted user mentioned you in a comment on “{file}”" : "Un usuario (ahora) eliminado, te mencionó en un comentario en “{file}”",
+    "You were mentioned on “%s”, in a comment by a user that has since been deleted" : "Te han mencionado en \"%s\", en un comentario por un usuario que después ha sido eliminado",
+    "You were mentioned on “{file}”, in a comment by a user that has since been deleted" : "Te han mencionado en \"{file}\", en un comentario de un usuario que después ha sido eliminado",
     "%1$s mentioned you in a comment on “%2$s”" : "%1$s te mencionó en un comentario en “%2$s”",
-    "{user} mentioned you in a comment on “{file}”" : "{user} te mencionó en un comentario en “{file}”"
+    "{user} mentioned you in a comment on “{file}”" : "{user} te mencionó en un comentario en “{file}”",
+    "Unknown user" : "Usuario desconocido",
+    "A (now) deleted user mentioned you in a comment on “%s”" : "Un usuario (ahora) eliminado, te mencionó en un comentario en “%s”",
+    "A (now) deleted user mentioned you in a comment on “{file}”" : "Un usuario (ahora) eliminado, te mencionó en un comentario en “{file}”"
 },
 "nplurals=2; plural=(n != 1);");

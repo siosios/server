@@ -12,8 +12,11 @@
  * @author Owen Winkler <a_github@midnightcircus.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Semih Serhat Karakaya <karakayasemi@itu.edu.tr>
+ * @author Stefan Schneider <stefan.schneider@squareweave.com.au>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
  *
  * @license AGPL-3.0
  *
@@ -33,13 +36,16 @@
 
 namespace OCA\DAV\Connector\Sabre;
 
+use OC\AppFramework\Http\Request;
 use OC\Files\Filesystem;
+use OC\Files\View;
 use OCA\DAV\Connector\Sabre\Exception\EntityTooLarge;
 use OCA\DAV\Connector\Sabre\Exception\FileLocked;
 use OCA\DAV\Connector\Sabre\Exception\Forbidden as DAVForbiddenException;
 use OCA\DAV\Connector\Sabre\Exception\UnsupportedMediaType;
 use OCP\Encryption\Exceptions\GenericEncryptionException;
 use OCP\Files\EntityTooLargeException;
+use OCP\Files\FileInfo;
 use OCP\Files\ForbiddenException;
 use OCP\Files\InvalidContentException;
 use OCP\Files\InvalidPathException;
@@ -48,6 +54,7 @@ use OCP\Files\NotPermittedException;
 use OCP\Files\StorageNotAvailableException;
 use OCP\Lock\ILockingProvider;
 use OCP\Lock\LockedException;
+use OCP\Share\IManager;
 use Sabre\DAV\Exception;
 use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\Exception\Forbidden;
@@ -57,6 +64,26 @@ use Sabre\DAV\IFile;
 use Sabre\DAV\Exception\NotFound;
 
 class File extends Node implements IFile {
+
+	protected $request;
+
+	/**
+	 * Sets up the node, expects a full path name
+	 *
+	 * @param \OC\Files\View $view
+	 * @param \OCP\Files\FileInfo $info
+	 * @param \OCP\Share\IManager $shareManager
+	 * @param \OC\AppFramework\Http\Request $request
+	 */
+	public function __construct(View $view, FileInfo $info, IManager $shareManager = null, Request $request = null) {
+		parent::__construct($view, $info, $shareManager);
+
+		if (isset($request)) {
+			$this->request = $request;
+		} else {
+			$this->request = \OC::$server->getRequest();
+		}
+	}
 
 	/**
 	 * Updates the data
@@ -205,15 +232,10 @@ class File extends Node implements IFile {
 			}
 
 			// allow sync clients to send the mtime along in a header
-			$request = \OC::$server->getRequest();
-			if (isset($request->server['HTTP_X_OC_MTIME'])) {
-				$mtimeStr = $request->server['HTTP_X_OC_MTIME'];
-				if (!is_numeric($mtimeStr)) {
-					throw new \InvalidArgumentException('X-OC-Mtime header must be an integer (unix timestamp).');
-				}
-				$mtime = intval($mtimeStr);
+			if (isset($this->request->server['HTTP_X_OC_MTIME'])) {
+				$mtime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_MTIME']);
 				if ($this->fileView->touch($this->path, $mtime)) {
-					header('X-OC-MTime: accepted');
+					$this->header('X-OC-MTime: accepted');
 				}
 			}
 					
@@ -223,8 +245,8 @@ class File extends Node implements IFile {
 
 			$this->refreshInfo();
 
-			if (isset($request->server['HTTP_OC_CHECKSUM'])) {
-				$checksum = trim($request->server['HTTP_OC_CHECKSUM']);
+			if (isset($this->request->server['HTTP_OC_CHECKSUM'])) {
+				$checksum = trim($this->request->server['HTTP_OC_CHECKSUM']);
 				$this->fileView->putFileInfo($this->path, ['checksum' => $checksum]);
 				$this->refreshInfo();
 			} else if ($this->getChecksum() !== null && $this->getChecksum() !== '') {
@@ -467,10 +489,10 @@ class File extends Node implements IFile {
 				}
 
 				// allow sync clients to send the mtime along in a header
-				$request = \OC::$server->getRequest();
-				if (isset($request->server['HTTP_X_OC_MTIME'])) {
-					if ($targetStorage->touch($targetInternalPath, $request->server['HTTP_X_OC_MTIME'])) {
-						header('X-OC-MTime: accepted');
+				if (isset($this->request->server['HTTP_X_OC_MTIME'])) {
+					$mtime = $this->sanitizeMtime($this->request->server['HTTP_X_OC_MTIME']);
+					if ($targetStorage->touch($targetInternalPath, $mtime)) {
+						$this->header('X-OC-MTime: accepted');
 					}
 				}
 
@@ -484,8 +506,8 @@ class File extends Node implements IFile {
 				// FIXME: should call refreshInfo but can't because $this->path is not the of the final file
 				$info = $this->fileView->getFileInfo($targetPath);
 
-				if (isset($request->server['HTTP_OC_CHECKSUM'])) {
-					$checksum = trim($request->server['HTTP_OC_CHECKSUM']);
+				if (isset($this->request->server['HTTP_OC_CHECKSUM'])) {
+					$checksum = trim($this->request->server['HTTP_OC_CHECKSUM']);
 					$this->fileView->putFileInfo($targetPath, ['checksum' => $checksum]);
 				} else if ($info->getChecksum() !== null && $info->getChecksum() !== '') {
 					$this->fileView->putFileInfo($this->path, ['checksum' => '']);
@@ -574,5 +596,9 @@ class File extends Node implements IFile {
 	 */
 	public function getChecksum() {
 		return $this->info->getChecksum();
+	}
+
+	protected function header($string) {
+		\header($string);
 	}
 }

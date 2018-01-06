@@ -2,6 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, Roeland Jago Douma <roeland@famdouma.nl>
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Felix Heidecke <felix@heidecke.me>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -96,8 +101,10 @@ class JSConfigHelper {
 
 		if ($this->currentUser !== null) {
 			$uid = $this->currentUser->getUID();
+			$userBackend = $this->currentUser->getBackendClassName();
 		} else {
 			$uid = null;
+			$userBackend = '';
 		}
 
 		// Get the config
@@ -142,6 +149,7 @@ class JSConfigHelper {
 		$array = [
 			"oc_debug" => $this->config->getSystemValue('debug', false) ? 'true' : 'false',
 			"oc_isadmin" => $this->groupManager->isAdmin($uid) ? 'true' : 'false',
+			"backendAllowsPasswordConfirmation" => $userBackend === 'user_saml'? 'false' : 'true',
 			"oc_dataURL" => is_string($dataLocation) ? "\"".$dataLocation."\"" : 'false',
 			"oc_webroot" => "\"".\OC::$WEBROOT."\"",
 			"oc_appswebroots" =>  str_replace('\\/', '/', json_encode($apps_paths)), // Ugly unescape slashes waiting for better solution
@@ -249,6 +257,7 @@ class JSConfigHelper {
 			$array['oc_userconfig'] = json_encode([
 				'avatar' => [
 					'version' => (int)$this->config->getUserValue($uid, 'avatar', 'version', 0),
+					'generated' => $this->config->getUserValue($uid, 'avatar', 'generated', 'true') === 'true',
 				]
 			]);
 		}

@@ -4,6 +4,8 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Brent Bloxam <brent.bloxam@gmail.com>
+ * @author Jarkko Lehtoranta <devel@jlranta.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
@@ -11,7 +13,9 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
- * @author Roger Szabo <roger.szabo@web.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author root <root@localhost.localdomain>
+ * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  * @author Xuanwo <xuanwo@yunify.com>
  *
  * @license AGPL-3.0
@@ -46,10 +50,12 @@ use OC\ServerNotAvailableException;
  * @property boolean turnOnPasswordChange
  * @property boolean hasPagedResultSupport
  * @property string[] ldapBaseUsers
- * @property int|string ldapPagingSize holds an integer
+ * @property int|null ldapPagingSize holds an integer
  * @property bool|mixed|void ldapGroupMemberAssocAttr
  * @property string ldapUuidUserAttribute
  * @property string ldapUuidGroupAttribute
+ * @property string ldapExpertUUIDUserAttr
+ * @property string ldapExpertUUIDGroupAttr
  */
 class Connection extends LDAPUtility {
 	private $ldapConnectionRes = null;
@@ -94,7 +100,7 @@ class Connection extends LDAPUtility {
 												 !is_null($configID));
 		$memcache = \OC::$server->getMemCacheFactory();
 		if($memcache->isAvailable()) {
-			$this->cache = $memcache->create();
+			$this->cache = $memcache->createDistributed();
 		}
 		$helper = new Helper(\OC::$server->getConfig());
 		$this->doNotValidate = !in_array($this->configPrefix,
@@ -122,7 +128,7 @@ class Connection extends LDAPUtility {
 
 	/**
 	 * @param string $name
-	 * @return bool|mixed|void
+	 * @return bool|mixed
 	 */
 	public function __get($name) {
 		if(!$this->configured) {
@@ -146,7 +152,7 @@ class Connection extends LDAPUtility {
 		$this->configuration->$name = $value;
 		$after = $this->configuration->$name;
 		if($before !== $after) {
-			if ($this->configID !== '') {
+			if ($this->configID !== '' && $this->configID !== null) {
 				$this->configuration->saveConfiguration();
 			}
 			$this->validateConfiguration();
@@ -346,8 +352,8 @@ class Connection extends LDAPUtility {
 			if(!empty($uuidOverride)) {
 				$this->configuration->$effectiveSetting = $uuidOverride;
 			} else {
-				$uuidAttributes = array('auto', 'entryuuid', 'nsuniqueid',
-										'objectguid', 'guid', 'ipauniqueid');
+				$uuidAttributes = Access::UUID_ATTRIBUTES;
+				array_unshift($uuidAttributes, 'auto');
 				if(!in_array($this->configuration->$effectiveSetting,
 							$uuidAttributes)
 					&& (!is_null($this->configID))) {
@@ -436,8 +442,8 @@ class Connection extends LDAPUtility {
 			|| ($agent !== '' && $pwd === '')
 		) {
 			\OCP\Util::writeLog('user_ldap',
-								$errorStr.'either no password is given for the'.
-								'user agent or a password is given, but not an'.
+								$errorStr.'either no password is given for the '.
+								'user agent or a password is given, but not an '.
 								'LDAP agent.',
 				\OCP\Util::WARN);
 			$configurationOK = false;

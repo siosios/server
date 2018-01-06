@@ -3,8 +3,10 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Andreas Fischer <bantu@owncloud.com>
+ * @author Artem Kochnev <MrJeos@gmail.com>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Florin Peter <github@florin-peter.de>
+ * @author Frédéric Fortier <frederic.fortier@oronospolytechnique.com>
  * @author Jens-Christian Fischer <jens-christian.fischer@switch.ch>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
@@ -14,10 +16,8 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author TheSFReader <TheSFReader@gmail.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
- * @author Xuanwo <xuanwo@yunify.com>
  *
  * @license AGPL-3.0
  *
@@ -259,7 +259,7 @@ class Cache implements ICache {
 
 		$data['path'] = $file;
 		$data['parent'] = $this->getParentId($file);
-		$data['name'] = \OC_Util::basename($file);
+		$data['name'] = basename($file);
 
 		list($queryParts, $params) = $this->buildParts($data);
 		$queryParts[] = '`storage`';
@@ -551,7 +551,7 @@ class Cache implements ICache {
 			}
 
 			$sql = 'UPDATE `*PREFIX*filecache` SET `storage` = ?, `path` = ?, `path_hash` = ?, `name` = ?, `parent` = ? WHERE `fileid` = ?';
-			$this->connection->executeQuery($sql, array($targetStorageId, $targetPath, md5($targetPath), \OC_Util::basename($targetPath), $newParentId, $sourceId));
+			$this->connection->executeQuery($sql, array($targetStorageId, $targetPath, md5($targetPath), basename($targetPath), $newParentId, $sourceId));
 			$this->connection->commit();
 		} else {
 			$this->moveFromCacheFallback($sourceCache, $sourcePath, $targetPath);

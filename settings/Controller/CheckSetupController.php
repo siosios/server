@@ -2,7 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Derek <derek.kelly27@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Ko- <k.stoffelen@cs.ru.nl>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
@@ -234,7 +238,7 @@ class CheckSetupController extends Controller {
 	 * @return bool
 	 */
 	protected function isPhpOutdated() {
-		if (version_compare(PHP_VERSION, '5.5.0') === -1) {
+		if (version_compare(PHP_VERSION, '7.0.0', '<')) {
 			return true;
 		}
 
@@ -406,6 +410,14 @@ Raw output
 	}
 
 	/**
+	 * Check if the required FreeType functions are present
+	 * @return bool
+	 */
+	protected function hasFreeTypeSupport() {
+		return function_exists('imagettfbbox') && function_exists('imagettftext');
+	}
+
+	/**
 	 * @return DataResponse
 	 */
 	public function check() {
@@ -426,6 +438,7 @@ Raw output
 				'isOpcacheProperlySetup' => $this->isOpcacheProperlySetup(),
 				'phpOpcacheDocumentation' => $this->urlGenerator->linkToDocs('admin-php-opcache'),
 				'isSettimelimitAvailable' => $this->isSettimelimitAvailable(),
+				'hasFreeTypeSupport' => $this->hasFreeTypeSupport(),
 			]
 		);
 	}

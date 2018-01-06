@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -235,7 +237,7 @@ class Storage extends Wrapper {
 			return false;
 		}
 
-		if ($this->userManager->userExists($parts[1]) && $parts[2] === 'files') {
+		if ($parts[2] === 'files' && $this->userManager->userExists($parts[1])) {
 			return true;
 		}
 

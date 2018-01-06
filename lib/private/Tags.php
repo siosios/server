@@ -5,10 +5,12 @@
  * @author Bernhard Reiter <ockham@raz.or.at>
  * @author derkostka <sebastian.kostka@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -140,7 +142,7 @@ class Tags implements \OCP\ITags {
 	/**
 	* Check if any tags are saved for this type and user.
 	*
-	* @return boolean.
+	* @return boolean
 	*/
 	public function isEmpty() {
 		return count($this->tags) === 0;

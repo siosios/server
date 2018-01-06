@@ -2,11 +2,13 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
@@ -259,7 +261,7 @@ class Storage extends DAV implements ISharedStorage {
 	 * @return bool
 	 */
 	private function testRemoteUrl($url) {
-		$cache = $this->memcacheFactory->create('files_sharing_remote_url');
+		$cache = $this->memcacheFactory->createDistributed('files_sharing_remote_url');
 		if($cache->hasKey($url)) {
 			return (bool)$cache->get($url);
 		}
@@ -278,7 +280,7 @@ class Storage extends DAV implements ISharedStorage {
 			$returnValue = false;
 		}
 
-		$cache->set($url, $returnValue);
+		$cache->set($url, $returnValue, 60*60*24);
 		return $returnValue;
 	}
 

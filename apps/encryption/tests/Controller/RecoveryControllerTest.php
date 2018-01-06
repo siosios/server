@@ -4,6 +4,7 @@
  *
  * @author Clark Tomlinson <fallen013@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license AGPL-3.0
  *
@@ -26,7 +27,11 @@ namespace OCA\Encryption\Tests\Controller;
 
 
 use OCA\Encryption\Controller\RecoveryController;
+use OCA\Encryption\Recovery;
 use OCP\AppFramework\Http;
+use OCP\IConfig;
+use OCP\IL10N;
+use OCP\IRequest;
 use Test\TestCase;
 
 class RecoveryControllerTest extends TestCase {
@@ -151,15 +156,15 @@ class RecoveryControllerTest extends TestCase {
 	protected function setUp() {
 		parent::setUp();
 
-		$this->requestMock = $this->getMockBuilder('OCP\IRequest')
+		$this->requestMock = $this->getMockBuilder(IRequest::class)
 			->disableOriginalConstructor()
 			->getMock();
 
-		$this->configMock = $this->getMockBuilder('OCP\IConfig')
+		$this->configMock = $this->getMockBuilder(IConfig::class)
 			->disableOriginalConstructor()
 			->getMock();
 
-		$this->l10nMock = $this->getMockBuilder('OCP\IL10N')
+		$this->l10nMock = $this->getMockBuilder(IL10N::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -168,7 +173,7 @@ class RecoveryControllerTest extends TestCase {
 			->method('t')
 			->willReturnArgument(0);
 
-		$this->recoveryMock = $this->getMockBuilder('OCA\Encryption\Recovery')
+		$this->recoveryMock = $this->getMockBuilder(Recovery::class)
 			->disableOriginalConstructor()
 			->getMock();
 

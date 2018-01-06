@@ -10,6 +10,8 @@ namespace Test;
 
 use OC_Util;
 use OCP\App\IAppManager;
+use OCP\IConfig;
+use OCP\IUser;
 
 /**
  * Class UtilTest
@@ -176,24 +178,6 @@ class UtilTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider baseNameProvider
-	 */
-	public function testBaseName($expected, $file) {
-		$base = \OC_Util::basename($file);
-		$this->assertEquals($expected, $base);
-	}
-
-	public function baseNameProvider() {
-		return array(
-			array('public_html', '/home/user/public_html/'),
-			array('public_html', '/home/user/public_html'),
-			array('', '/'),
-			array('public_html', 'public_html'),
-			array('442aa682de2a64db1e010f50e60fd9c9', 'local::C:\Users\ADMINI~1\AppData\Local\Temp\2/442aa682de2a64db1e010f50e60fd9c9/')
-		);
-	}
-
-	/**
 	 * @dataProvider filenameValidationProvider
 	 */
 	public function testFilenameValidation($file, $valid) {
@@ -259,9 +243,9 @@ class UtilTest extends \Test\TestCase {
 	 * @param bool $expected expected result
 	 */
 	function testIsSharingDisabledForUser($groups, $membership, $excludedGroups, $expected) {
-		$config = $this->getMockBuilder('OCP\IConfig')->disableOriginalConstructor()->getMock();
+		$config = $this->getMockBuilder(IConfig::class)->disableOriginalConstructor()->getMock();
 		$groupManager = $this->getMockBuilder('OCP\IGroupManager')->disableOriginalConstructor()->getMock();
-		$user = $this->getMockBuilder('OCP\IUser')->disableOriginalConstructor()->getMock();
+		$user = $this->getMockBuilder(IUser::class)->disableOriginalConstructor()->getMock();
 
 		$config
 				->expects($this->at(0))

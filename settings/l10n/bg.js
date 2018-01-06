@@ -38,8 +38,6 @@ OC.L10N.register(
     "Enable" : "Включване",
     "Enabling app …" : "Разрешаване на приложение ...",
     "Error while enabling app" : "Грешка при включване на приложението",
-    "Updating...." : "Обновяване...",
-    "Error while updating app" : "Грешка при обновяване на приложението",
     "Updated" : "Обновено",
     "Approved" : "Одобрен",
     "Experimental" : "Ексериментален",
@@ -184,7 +182,6 @@ OC.L10N.register(
     "Create" : "Създаване",
     "Admin Recovery Password" : "Възстановяване на администраторската парола",
     "Enter the recovery password in order to recover the users files during password change" : "Въведете паролата за възстановяване, за да възстановиш файловете на потребителите при промяна на паролата.",
-    "Group name" : "Име на група",
     "Everyone" : "Всички",
     "Admins" : "Администратори",
     "Default quota" : "Стандартна квота",
@@ -209,6 +206,8 @@ OC.L10N.register(
     "Unable to add user to group %s" : "Неуспешно добавяне на потребител към групата %s.",
     "Unable to remove user from group %s" : "Неуспешно премахване на потребител от групата %s.",
     "Sending..." : "Изпращане...",
+    "Updating...." : "Обновяване...",
+    "Error while updating app" : "Грешка при обновяване на приложението",
     "Uninstalling ...." : "Премахване ...",
     "Error while uninstalling app" : "Грешка при премахването на приложението",
     "Uninstall" : "Премахване",
@@ -239,6 +238,7 @@ OC.L10N.register(
     "Show First Run Wizard again" : "Покажи отново помощника за настройване",
     "Name" : "Име",
     "Subscribe to our newsletter!" : "Абонирайте се за нашата емисия!",
-    "Show last log in" : "Покажи последно вписване"
+    "Show last log in" : "Покажи последно вписване",
+    "Group name" : "Име на група"
 },
 "nplurals=2; plural=(n != 1);");

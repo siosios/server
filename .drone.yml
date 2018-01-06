@@ -299,6 +299,7 @@ pipeline:
       matrix:
         DB: postgres
         PHP: 5.6
+        POSTGRES: 9
   postgres-php7.0:
     image: nextcloudci/php7.0:php7.0-16
     commands:
@@ -598,6 +599,15 @@ pipeline:
     when:
       matrix:
         TESTS: integration-trashbin
+  integration-remote-api:
+    image: nextcloudci/integration-php7.0:integration-php7.0-6
+    commands:
+      - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
+      - cd build/integration
+      - ./run.sh remoteapi_features/remote.feature
+    when:
+      matrix:
+        TESTS: integration-remote-api
   acceptance-access-levels:
       image: nextcloudci/integration-php7.0:integration-php7.0-6
       commands:
@@ -746,12 +756,19 @@ matrix:
       ENABLE_REDIS: true
     - DB: postgres
       PHP: 5.6
+      POSTGRES: 9
       ENABLE_REDIS: true
     - DB: postgres
       PHP: 7.0
+      POSTGRES: 9
       ENABLE_REDIS: true
     - DB: postgres
       PHP: 7.1
+      POSTGRES: 9
+      ENABLE_REDIS: true
+    - DB: postgres
+      PHP: 7.1
+      POSTGRES: 10
       ENABLE_REDIS: true
     - DB: mysqlmb4
       PHP: 5.6
@@ -793,6 +810,7 @@ matrix:
     - TESTS: integration-transfer-ownership-features
     - TESTS: integration-ldap-features
     - TESTS: integration-trashbin
+    - TESTS: integration-remote-api
     - TESTS: acceptance
       TESTS-ACCEPTANCE: access-levels
     - TESTS: acceptance
@@ -833,7 +851,7 @@ services:
     when:
       matrix:
        ENABLE_REDIS_CLUSTER: true
-  postgres:
+  postgres-9:
     image: postgres:9
     environment:
       - POSTGRES_USER=oc_autotest
@@ -843,6 +861,18 @@ services:
     when:
       matrix:
         DB: postgres
+        POSTGRES: 9
+  postgres-10:
+      image: postgres:10
+      environment:
+        - POSTGRES_USER=oc_autotest
+        - POSTGRES_PASSWORD=owncloud
+      tmpfs:
+        - /var/lib/postgresql/data
+      when:
+        matrix:
+          DB: postgres
+          POSTGRES: 10
   mysql:
     image: mysql:5.7
     environment:

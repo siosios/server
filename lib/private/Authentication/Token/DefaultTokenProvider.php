@@ -4,6 +4,10 @@
  * @copyright Copyright (c) 2016, Christoph Wurst <christoph@winzerhof-wurst.at>
  *
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Marcel Waldvogel <marcel.waldvogel@uni-konstanz.de>
+ * @author Martin <github@diemattels.at>
+ * @author Robin Appelman <robin@icewind.nl>
  *
  * @license AGPL-3.0
  *
@@ -93,6 +97,7 @@ class DefaultTokenProvider implements IProvider {
 		$dbToken->setType($type);
 		$dbToken->setRemember($remember);
 		$dbToken->setLastActivity($this->time->getTime());
+		$dbToken->setLastCheck($this->time->getTime());
 
 		$this->mapper->insert($dbToken);
 

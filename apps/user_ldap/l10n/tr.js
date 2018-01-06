@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "Yapılacak bağlama için iİstemci kullanıcısının DN değeri. Örnek: uid=agent,dc=ornek,dc=com. Anonim erişim için DN ve Parolayı boş bırakın.",
     "Password" : "Parola",
     "For anonymous access, leave DN and Password empty." : "Anonim erişim için DN ve Parolayı boş bırakın.",
+    "Save Credentials" : "Kimlik Doğrulama Bilgilerini Kaydet",
     "One Base DN per line" : "Her satıra bir Base DN yazın",
     "You can specify Base DN for users and groups in the Advanced tab" : "Gelişmiş sekmesinde, kullanıcı ve gruplar için Base DN belirtilebilir",
     "Detect Base DN" : "Base DN Algıla",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Parola yanlış. Sıfırlamak ister misiniz?",
     "Wrong password." : "Parola yanlış.",
     "Cancel" : "İptal",
-    "LDAP" : "LDAP",
     "Server" : "Sunucu",
     "Users" : "Kullanıcılar",
     "Login Attributes" : "Oturum Açma Öznitelikleri",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Ayarları doğrula ve grupları say",
     "Add a new and blank configuration" : "Yeni ve boş bir yapılandırma ekle",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "SSL gerekmiyorsa iletişim kuralı belirtilmeyebilir. Gerekiyorsa ldaps:// ile başlayın",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Uyarı:</b> user_ldap ve user_webdavauth uygulamaları uyumlu değil. Beklenmedik bir davranışla karşılaşabilirsiniz. Lütfen ikisinden birini devre dışı bırakmak için sistem yöneticinizle görüşün.",
     "in bytes" : "bayt cinsinden"
 },

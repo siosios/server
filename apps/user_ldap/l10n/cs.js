@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "DN klientského uživatele, ke kterému tvoříte vazbu, např. uid=agent,dc=example,dc=com. Pro anonymní přístup ponechte DN a heslo prázdné.",
     "Password" : "Heslo",
     "For anonymous access, leave DN and Password empty." : "Pro anonymní přístup ponechte údaje DN and heslo prázdné.",
+    "Save Credentials" : "Uložit pověření",
     "One Base DN per line" : "Jedna základní DN na řádku",
     "You can specify Base DN for users and groups in the Advanced tab" : "V rozšířeném nastavení můžete určit základní DN pro uživatele a skupiny",
     "Detect Base DN" : "Detekovat Base DN",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Chybné heslo. Resetovat?",
     "Wrong password." : "Chybné heslo.",
     "Cancel" : "Zrušit",
-    "LDAP" : "LDAP",
     "Server" : "Server",
     "Users" : "Uživatelé",
     "Login Attributes" : "Přihlašovací atributy",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Ověřit nastavení a spočítat skupiny",
     "Add a new and blank configuration" : "Přidat novou a prázdnou konfiguraci",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "Můžete vynechat protokol, vyjma pokud požadujete SSL. Tehdy začněte s ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Varování:</b> Aplikace user_ldap a user_webdavauth jsou vzájemně nekompatibilní. Můžete zaznamenat neočekávané chování. Požádejte prosím svého správce systému o zakázání jedné z nich.",
     "in bytes" : "v bajtech"
 },

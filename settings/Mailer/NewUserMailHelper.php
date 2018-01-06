@@ -2,6 +2,11 @@
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Leon Klingele <leon@struktur.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -131,7 +136,7 @@ class NewUserMailHelper {
 		} else {
 			$emailTemplate->addHeading($this->l10n->t('Welcome aboard %s', [$displayName]));
 		}
-		$emailTemplate->addBodyText($this->l10n->t('You now have an %s account, you can add, protect, and share your data.', [$this->themingDefaults->getName()]));
+		$emailTemplate->addBodyText($this->l10n->t('Welcome to your %s account, you can add, protect, and share your data.', [$this->themingDefaults->getName()]));
 		$emailTemplate->addBodyText($this->l10n->t('Your username is: %s', [$userId]));
 		if ($generatePasswordResetToken) {
 			$leftButtonText = $this->l10n->t('Set your password');

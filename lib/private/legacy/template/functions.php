@@ -5,9 +5,10 @@
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Michael Letzgus <develope@michael-letzgus.de>
+ * @author Michael Letzgus <www@chronos.michael-letzgus.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -278,7 +279,7 @@ function human_file_size( $bytes ) {
 /**
  * Strips the timestamp of its time value
  * @param int $timestamp UNIX timestamp to strip
- * @return $timestamp without time value
+ * @return int timestamp without time value
  */
 function strip_time($timestamp){
 	$date = new \DateTime("@{$timestamp}");

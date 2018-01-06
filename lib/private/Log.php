@@ -2,15 +2,18 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Johannes Schlichenmaier <johannes@schlichenmaier.info>
+ * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Olivier Paroz <github@oparoz.com>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Thomas Pulzer <t.pulzer@kniel.de>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  *
  * @license AGPL-3.0
@@ -33,7 +36,8 @@ namespace OC;
 
 use InterfaSys\LogNormalizer\Normalizer;
 
-use \OCP\ILogger;
+use OCP\ILogger;
+use OCP\Support\CrashReport\IRegistry;
 use OCP\Util;
 
 /**
@@ -60,6 +64,9 @@ class Log implements ILogger {
 	/** @var Normalizer */
 	private $normalizer;
 
+	/** @var IRegistry */
+	private $crashReporters;
+
 	protected $methodsWithSensitiveParameters = [
 		// Session/User
 		'completeLogin',
@@ -69,6 +76,8 @@ class Log implements ILogger {
 		'loginWithPassword',
 		'updatePrivateKeyPassword',
 		'validateUserPass',
+		'loginWithToken',
+		'\{closure\}',
 
 		// TokenProvider
 		'getToken',
@@ -96,14 +105,19 @@ class Log implements ILogger {
 		'bind',
 		'areCredentialsValid',
 		'invokeLDAPMethod',
+
+		// Encryption
+		'storeKeyPair',
+		'setupUser',
 	];
 
 	/**
 	 * @param string $logger The logger that should be used
 	 * @param SystemConfig $config the system config object
-	 * @param null $normalizer
+	 * @param Normalizer|null $normalizer
+	 * @param IRegistry|null $registry
 	 */
-	public function __construct($logger = null, SystemConfig $config = null, $normalizer = null) {
+	public function __construct($logger = null, SystemConfig $config = null, $normalizer = null, IRegistry $registry = null) {
 		// FIXME: Add this for backwards compatibility, should be fixed at some point probably
 		if($config === null) {
 			$config = \OC::$server->getSystemConfig();
@@ -124,7 +138,7 @@ class Log implements ILogger {
 		} else {
 			$this->normalizer = $normalizer;
 		}
-
+		$this->crashReporters = $registry;
 	}
 
 	/**
@@ -337,6 +351,10 @@ class Log implements ILogger {
 		$msg = isset($context['message']) ? $context['message'] : 'Exception';
 		$msg .= ': ' . json_encode($data);
 		$this->log($level, $msg, $context);
+		$context['level'] = $level;
+		if (!is_null($this->crashReporters)) {
+			$this->crashReporters->delegateReport($exception, $context);
+		}
 	}
 
 	/**

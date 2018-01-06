@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "DN корисника клијента са којим треба да се успостави веза, нпр. uid=agent,dc=example,dc=com. За анониман приступ, оставите поља DN и лозинка празним.",
     "Password" : "Лозинка",
     "For anonymous access, leave DN and Password empty." : "За анониман приступ, оставите поља DN и лозинка празним.",
+    "Save Credentials" : "Сачувај акредитиве",
     "One Base DN per line" : "Један Base DN по линији",
     "You can specify Base DN for users and groups in the Advanced tab" : "Можете навести Base DN за кориснике и групе у картици Напредно",
     "Detect Base DN" : "Откриј Base DN",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Погрешна лозинка. Желите ли да је ресетујете?",
     "Wrong password." : "Лоша лозинка.",
     "Cancel" : "Одустани",
-    "LDAP" : "LDAP",
     "Server" : "Сервер",
     "Users" : "Корисници",
     "Login Attributes" : "Атрибути пријаве",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Провери поставке и преброј групе",
     "Add a new and blank configuration" : "Додај нову празну поставу",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "Можете да изоставите протокол, осим ако захтевате ССЛ. У том случају почните са ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Упозорење:</b> Апликације user_ldap и user_webdavauth нису компатибилне. Можете имати проблема. Питајте систем администратора да искључи једну од њих.",
     "in bytes" : "у бајтовима"
 },

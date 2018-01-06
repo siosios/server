@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -56,6 +57,17 @@ class Jail extends Wrapper {
 			return $this->rootPath;
 		} else {
 			return $this->rootPath . '/' . $path;
+		}
+	}
+
+	public function getJailedPath($path) {
+		$root = rtrim($this->rootPath, '/') . '/';
+
+		if (strpos($path, $root) !== 0) {
+			return null;
+		} else {
+			$path = substr($path, strlen($this->rootPath));
+			return trim($path, '/');
 		}
 	}
 

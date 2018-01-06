@@ -4,6 +4,9 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author root <root@localhost.localdomain>
+ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
  *
  * @license AGPL-3.0
  *
@@ -68,6 +71,13 @@ abstract class AbstractIntegrationTest {
 	 * the LDAP backend.
 	 */
 	public function init() {
+		\OC::$server->registerService('LDAPUserPluginManager', function() {
+			return new \OCA\User_LDAP\UserPluginManager();
+		});
+		\OC::$server->registerService('LDAPGroupPluginManager', function() {
+			return new \OCA\User_LDAP\GroupPluginManager();
+		});
+
 		$this->initLDAPWrapper();
 		$this->initConnection();
 		$this->initUserManager();
@@ -130,7 +140,7 @@ abstract class AbstractIntegrationTest {
 	 * initializes the Access test instance
 	 */
 	protected function initAccess() {
-		$this->access = new Access($this->connection, $this->ldap, $this->userManager, $this->helper);
+		$this->access = new Access($this->connection, $this->ldap, $this->userManager, $this->helper, \OC::$server->getConfig());
 	}
 
 	/**

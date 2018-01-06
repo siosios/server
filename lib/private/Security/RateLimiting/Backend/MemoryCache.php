@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2017 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -43,7 +45,7 @@ class MemoryCache implements IBackend {
 	 */
 	public function __construct(ICacheFactory $cacheFactory,
 								ITimeFactory $timeFactory) {
-		$this->cache = $cacheFactory->create(__CLASS__);
+		$this->cache = $cacheFactory->createDistributed(__CLASS__);
 		$this->timeFactory = $timeFactory;
 	}
 

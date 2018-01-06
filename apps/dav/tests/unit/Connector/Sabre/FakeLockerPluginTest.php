@@ -4,6 +4,7 @@
  *
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -25,7 +26,12 @@
 namespace OCA\DAV\Tests\unit\Connector\Sabre;
 
 use OCA\DAV\Connector\Sabre\FakeLockerPlugin;
+use Sabre\DAV\INode;
+use Sabre\DAV\PropFind;
+use Sabre\DAV\Server;
+use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\Response;
+use Sabre\HTTP\ResponseInterface;
 use Test\TestCase;
 
 /**
@@ -43,8 +49,8 @@ class FakeLockerPluginTest extends TestCase {
 	}
 
 	public function testInitialize() {
-		/** @var \Sabre\DAV\Server $server */
-		$server = $this->getMockBuilder('\Sabre\DAV\Server')
+		/** @var Server $server */
+		$server = $this->getMockBuilder(Server::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$server
@@ -83,10 +89,10 @@ class FakeLockerPluginTest extends TestCase {
 	}
 
 	public function testPropFind() {
-		$propFind = $this->getMockBuilder('\Sabre\DAV\PropFind')
+		$propFind = $this->getMockBuilder(PropFind::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$node = $this->getMockBuilder('\Sabre\DAV\INode')
+		$node = $this->getMockBuilder(INode::class)
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -143,7 +149,7 @@ class FakeLockerPluginTest extends TestCase {
 	 * @param array $expected
 	 */
 	public function testValidateTokens(array $input, array $expected) {
-		$request = $this->getMockBuilder('\Sabre\HTTP\RequestInterface')
+		$request = $this->getMockBuilder(RequestInterface::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$this->fakeLockerPlugin->validateTokens($request, $input);
@@ -151,11 +157,11 @@ class FakeLockerPluginTest extends TestCase {
 	}
 
 	public function testFakeLockProvider() {
-		$request = $this->getMockBuilder('\Sabre\HTTP\RequestInterface')
+		$request = $this->getMockBuilder(RequestInterface::class)
 			->disableOriginalConstructor()
 			->getMock();
 		$response = new Response();
-		$server = $this->getMockBuilder('\Sabre\DAV\Server')
+		$server = $this->getMockBuilder(Server::class)
 			->getMock();
 		$this->fakeLockerPlugin->initialize($server);
 
@@ -171,10 +177,10 @@ class FakeLockerPluginTest extends TestCase {
 	}
 
 	public function testFakeUnlockProvider() {
-		$request = $this->getMockBuilder('\Sabre\HTTP\RequestInterface')
+		$request = $this->getMockBuilder(RequestInterface::class)
 			->disableOriginalConstructor()
 			->getMock();
-		$response = $this->getMockBuilder('\Sabre\HTTP\ResponseInterface')
+		$response = $this->getMockBuilder(ResponseInterface::class)
 			->disableOriginalConstructor()
 			->getMock();
 

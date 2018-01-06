@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
@@ -46,15 +48,15 @@ class ConverterTest extends  TestCase {
 
 	public function setUp() {
 		parent::setUp();
-		$this->databaseConnection = $this->getMockBuilder('OCP\IDBConnection')->getMock();
-		$this->eventDispatcher = $this->getMockBuilder('Symfony\Component\EventDispatcher\EventDispatcher')
+		$this->databaseConnection = $this->getMockBuilder(IDBConnection::class)->getMock();
+		$this->eventDispatcher = $this->getMockBuilder(EventDispatcher::class)
 			->disableOriginalConstructor()->getMock();
-		$this->accountManager = $this->getMockBuilder('OC\Accounts\AccountManager')
+		$this->accountManager = $this->getMockBuilder(AccountManager::class)
 			->disableOriginalConstructor()->getMock();
 	}
 
 	public function getAccountManager(IUser $user) {
-		$accountManager = $this->getMockBuilder('OC\Accounts\AccountManager')
+		$accountManager = $this->getMockBuilder(AccountManager::class)
 			->disableOriginalConstructor()->getMock();
 		$accountManager->expects($this->any())->method('getUser')->willReturn(
 			[

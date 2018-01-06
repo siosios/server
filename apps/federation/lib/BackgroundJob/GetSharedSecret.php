@@ -2,9 +2,13 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -27,6 +31,9 @@
 namespace OCA\Federation\BackgroundJob;
 
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Ring\Exception\RingException;
 use OC\BackgroundJob\JobList;
 use OC\BackgroundJob\Job;
 use OCA\Federation\DbHandler;
@@ -192,6 +199,12 @@ class GetSharedSecret extends Job {
 			} else {
 				$this->logger->info($target . ' responded with a ' . $status . ' containing: ' . $e->getMessage(), ['app' => 'federation']);
 			}
+		} catch (RequestException $e) {
+			$status = -1; // There is no status code if we could not connect
+			$this->logger->info('Could not connect to ' . $target, ['app' => 'federation']);
+		} catch (RingException $e) {
+			$status = -1; // There is no status code if we could not connect
+			$this->logger->info('Could not connect to ' . $target, ['app' => 'federation']);
 		} catch (\Exception $e) {
 			$status = Http::STATUS_INTERNAL_SERVER_ERROR;
 			$this->logger->logException($e, ['app' => 'federation']);

@@ -4,9 +4,11 @@
  *
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Christian Kampka <christian@kampka.net>
+ * @author Daniel Hansson <daniel@techandme.se>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Pulzer <t.pulzer@kniel.de>
  *
@@ -28,6 +30,7 @@
 namespace OC\Core\Command\Maintenance;
 
 use InvalidArgumentException;
+use OC\Installer;
 use OC\Setup;
 use OC\SystemConfig;
 use OCP\Defaults;
@@ -71,9 +74,15 @@ class Install extends Command {
 
 		// validate the environment
 		$server = \OC::$server;
-		$setupHelper = new Setup($this->config, $server->getIniWrapper(),
-			$server->getL10N('lib'), $server->query(Defaults::class), $server->getLogger(),
-			$server->getSecureRandom());
+		$setupHelper = new Setup(
+			$this->config,
+			$server->getIniWrapper(),
+			$server->getL10N('lib'),
+			$server->query(Defaults::class),
+			$server->getLogger(),
+			$server->getSecureRandom(),
+			\OC::$server->query(Installer::class)
+		);
 		$sysInfo = $setupHelper->getSystemInfo(true);
 		$errors = $sysInfo['errors'];
 		if (count($errors) > 0) {

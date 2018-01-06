@@ -47,10 +47,7 @@
     "Enable" : "Aktivēt",
     "Enabling app …" : "Iespējojot programmu …",
     "Error while enabling app" : "Kļūda, pievienojot programmu",
-    "Updating...." : "Atjaunina....",
-    "Error while updating app" : "Kļūda, atjauninot programmu",
     "Updated" : "Atjaunināta",
-    "App update" : "Programmu atjaunināšana",
     "Approved" : "Apstiprināts",
     "Experimental" : "Eksperimentāls",
     "Disconnect" : "Atvienot",
@@ -228,7 +225,6 @@
     "Create" : "Izveidot",
     "Admin Recovery Password" : "Administratora atgūšanas parole",
     "Enter the recovery password in order to recover the users files during password change" : "Ievadiet atgūšanas paroli, lai varētu atgūt lietotāja failus paroles maiņas laikā.",
-    "Group name" : "Grupas nosaukums",
     "Everyone" : "Visi",
     "Admins" : "Admins",
     "Default quota" : "Apjoms pēc noklusējuma",
@@ -253,9 +249,12 @@
     "Unable to add user to group %s" : "Nevar pievienot lietotāju grupai %s",
     "Unable to remove user from group %s" : "Nevar izņemt lietotāju no grupas %s",
     "Sending..." : "Sūta...",
+    "Updating...." : "Atjaunina....",
+    "Error while updating app" : "Kļūda, atjauninot programmu",
     "Uninstalling ...." : "Atinstalē ....",
     "Error while uninstalling app" : "Kļūda, atinstalējot programmu",
     "Uninstall" : "Atinstalēt",
+    "App update" : "Programmu atjaunināšana",
     "__language_name__" : "Latviešu",
     "Personal info" : "Personiskā informācija",
     "Sessions" : "Sesijas",
@@ -277,6 +276,7 @@
     "Name" : "Nosaukums",
     "Follow us on Google Plus!" : "Seko mums Google Plus!",
     "Subscribe to our newsletter!" : "Abonēt mūsu jaunumus!",
-    "Show last log in" : "Rādīt pēdējo autorizāciju"
+    "Show last log in" : "Rādīt pēdējo autorizāciju",
+    "Group name" : "Grupas nosaukums"
 },"pluralForm" :"nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);"
 }

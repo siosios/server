@@ -2,7 +2,10 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
@@ -47,9 +50,9 @@ class AddressHandlerTest extends \Test\TestCase {
 	public function setUp() {
 		parent::setUp();
 
-		$this->urlGenerator = $this->getMockBuilder('OCP\IURLGenerator')
+		$this->urlGenerator = $this->getMockBuilder(IURLGenerator::class)
 			->getMock();
-		$this->il10n = $this->getMockBuilder('OCP\IL10N')
+		$this->il10n = $this->getMockBuilder(IL10N::class)
 			->getMock();
 
 		$this->cloudIdManager = new CloudIdManager();

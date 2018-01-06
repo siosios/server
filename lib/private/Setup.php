@@ -2,18 +2,20 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Administrator <Administrator@WINDOWS-2012>
+ * @author Administrator "Administrator@WINDOWS-2012"
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
  * @author Brice Maron <brice@bmaron.net>
  * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Frank Isemann <frank@isemann.name>
  * @author François Kubler <francois@kubler.org>
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author KB7777 <k.burkowski@gmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Martin Mattel <martin.mattel@diemattels.at>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robert Scheck <robert@fedoraproject.org>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Sean Comeau <sean@ftlnetworks.ca>
@@ -44,6 +46,7 @@ use Exception;
 use OC\App\AppStore\Bundles\BundleFetcher;
 use OC\Authentication\Token\DefaultTokenCleanupJob;
 use OC\Authentication\Token\DefaultTokenProvider;
+use OC\Log\Rotate;
 use OCP\Defaults;
 use OCP\IL10N;
 use OCP\ILogger;
@@ -62,6 +65,8 @@ class Setup {
 	protected $logger;
 	/** @var ISecureRandom */
 	protected $random;
+	/** @var Installer */
+	protected $installer;
 
 	/**
 	 * @param SystemConfig $config
@@ -70,13 +75,15 @@ class Setup {
 	 * @param Defaults $defaults
 	 * @param ILogger $logger
 	 * @param ISecureRandom $random
+	 * @param Installer $installer
 	 */
 	public function __construct(SystemConfig $config,
 						 IniGetWrapper $iniWrapper,
 						 IL10N $l10n,
 						 Defaults $defaults,
 						 ILogger $logger,
-						 ISecureRandom $random
+						 ISecureRandom $random,
+						 Installer $installer
 		) {
 		$this->config = $config;
 		$this->iniWrapper = $iniWrapper;
@@ -84,6 +91,7 @@ class Setup {
 		$this->defaults = $defaults;
 		$this->logger = $logger;
 		$this->random = $random;
+		$this->installer = $installer;
 	}
 
 	static protected $dbSetupClasses = [
@@ -292,10 +300,6 @@ class Setup {
 			$error[] = $l->t("Can't create or write into the data directory %s", array($dataDir));
 		}
 
-		if (!$this->validateDatabaseHost($options['dbhost'])) {
-			$error[] = $l->t('Given database host is invalid and must not contain the port: %s', [$options['dbhost']]);
-		}
-
 		if (!empty($error)) {
 			return $error;
 		}
@@ -372,18 +376,11 @@ class Setup {
 
 			// Install shipped apps and specified app bundles
 			Installer::installShippedApps();
-			$installer = new Installer(
-				\OC::$server->getAppFetcher(),
-				\OC::$server->getHTTPClientService(),
-				\OC::$server->getTempManager(),
-				\OC::$server->getLogger(),
-				\OC::$server->getConfig()
-			);
 			$bundleFetcher = new BundleFetcher(\OC::$server->getL10N('lib'));
 			$defaultInstallationBundles = $bundleFetcher->getDefaultInstallationBundle();
 			foreach($defaultInstallationBundles as $bundle) {
 				try {
-					$installer->installAppBundle($bundle);
+					$this->installer->installAppBundle($bundle);
 				} catch (Exception $e) {}
 			}
 
@@ -413,20 +410,10 @@ class Setup {
 		return $error;
 	}
 
-	/**
-	 * @param string $host
-	 * @return bool
-	 */
-	protected function validateDatabaseHost($host) {
-		if (strpos($host, ':') === false) {
-			return true;
-		}
-
-		return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
-	}
-
 	public static function installBackgroundJobs() {
-		\OC::$server->getJobList()->add(DefaultTokenCleanupJob::class);
+		$jobList = \OC::$server->getJobList();
+		$jobList->add(DefaultTokenCleanupJob::class);
+		$jobList->add(Rotate::class);
 	}
 
 	/**
@@ -455,9 +442,15 @@ class Setup {
 			$webRoot = !empty(\OC::$WEBROOT) ? \OC::$WEBROOT : '/';
 		}
 
-		$setupHelper = new \OC\Setup($config, \OC::$server->getIniWrapper(),
-			\OC::$server->getL10N('lib'), \OC::$server->query(Defaults::class), \OC::$server->getLogger(),
-			\OC::$server->getSecureRandom());
+		$setupHelper = new \OC\Setup(
+			$config,
+			\OC::$server->getIniWrapper(),
+			\OC::$server->getL10N('lib'),
+			\OC::$server->query(Defaults::class),
+			\OC::$server->getLogger(),
+			\OC::$server->getSecureRandom(),
+			\OC::$server->query(Installer::class)
+		);
 
 		$htaccessContent = file_get_contents($setupHelper->pathToHtaccess());
 		$content = "#### DO NOT CHANGE ANYTHING ABOVE THIS LINE ####\n";

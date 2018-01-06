@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Joas Schilling <coding@schilljs.com>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -77,6 +79,7 @@ class BackendTest extends TestCase {
 			['onCalendarAdd', [['data']], Calendar::SUBJECT_ADD, [['data'], [], []]],
 			['onCalendarUpdate', [['data'], ['shares'], ['changed-properties']], Calendar::SUBJECT_UPDATE, [['data'], ['shares'], ['changed-properties']]],
 			['onCalendarDelete', [['data'], ['shares']], Calendar::SUBJECT_DELETE, [['data'], ['shares'], []]],
+			['onCalendarPublication', [['data'], true], Calendar::SUBJECT_PUBLISH, [['data'], [], []]],
 		];
 	}
 
@@ -108,11 +111,13 @@ class BackendTest extends TestCase {
 			[Calendar::SUBJECT_ADD, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], [], [], '', 'admin', null, ['admin']],
 			[Calendar::SUBJECT_ADD, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], [], [], 'test2', 'test2', null, ['admin']],
 
@@ -122,17 +127,20 @@ class BackendTest extends TestCase {
 			[Calendar::SUBJECT_UPDATE, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], ['shares'], [], '', 'admin', null, ['admin']],
 			// Visible change
 			[Calendar::SUBJECT_UPDATE, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], ['shares'], ['{DAV:}displayname' => 'Name'], '', 'admin', ['user1'], ['user1', 'admin']],
 			[Calendar::SUBJECT_UPDATE, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], ['shares'], ['{DAV:}displayname' => 'Name'], 'test2', 'test2', ['user1'], ['user1', 'admin']],
 
@@ -141,18 +149,39 @@ class BackendTest extends TestCase {
 			[Calendar::SUBJECT_DELETE, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], ['shares'], [], '', 'admin', [], ['admin']],
 			[Calendar::SUBJECT_DELETE, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], ['shares'], [], '', 'admin', ['user1'], ['user1', 'admin']],
 			[Calendar::SUBJECT_DELETE, [
 				'principaluri' => 'principal/user/admin',
 				'id' => 42,
+				'uri' => 'this-uri',
 				'{DAV:}displayname' => 'Name of calendar',
 			], ['shares'], [], 'test2', 'test2', ['user1'], ['user1', 'admin']],
+
+			// Publish calendar
+			[Calendar::SUBJECT_PUBLISH, [], [], [], '', '', null, []],
+			[Calendar::SUBJECT_PUBLISH, [
+				'principaluri' => 'principal/user/admin',
+				'id' => 42,
+				'uri' => 'this-uri',
+				'{DAV:}displayname' => 'Name of calendar',
+			], ['shares'], [], '', 'admin', [], ['admin']],
+
+			// Unpublish calendar
+			[Calendar::SUBJECT_UNPUBLISH, [], [], [], '', '', null, []],
+			[Calendar::SUBJECT_UNPUBLISH, [
+				'principaluri' => 'principal/user/admin',
+				'id' => 42,
+				'uri' => 'this-uri',
+				'{DAV:}displayname' => 'Name of calendar',
+			], ['shares'], [], '', 'admin', [], ['admin']],
 		];
 	}
 

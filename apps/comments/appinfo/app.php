@@ -2,7 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -27,6 +29,7 @@ $eventDispatcher->addListener(
 	function() {
 		\OCP\Util::addScript('oc-backbone-webdav');
 		\OCP\Util::addScript('comments', 'merged');
+		\OCP\Util::addStyle('comments', 'autocomplete');
 		\OCP\Util::addStyle('comments', 'comments');
 	}
 );
@@ -56,15 +59,4 @@ $commentsManager->registerEventHandler(function () {
 	/** @var \OCA\Comments\EventHandler $handler */
 	$handler = $application->getContainer()->query(\OCA\Comments\EventHandler::class);
 	return $handler;
-});
-$commentsManager->registerDisplayNameResolver('user', function($id) {
-	$manager = \OC::$server->getUserManager();
-	$user = $manager->get($id);
-	if(is_null($user)) {
-		$l = \OC::$server->getL10N('comments');
-		$displayName = $l->t('Unknown user');
-	} else {
-		$displayName = $user->getDisplayName();
-	}
-	return $displayName;
 });

@@ -99,6 +99,7 @@ OC.L10N.register(
     "The DN of the client user with which the bind shall be done, e.g. uid=agent,dc=example,dc=com. For anonymous access, leave DN and Password empty." : "DN för användaren som skall användas, t.ex. uid=agent, dc=example, dc=com. För anonym åtkomst, lämna DN och lösenord tomt.",
     "Password" : "Lösenord",
     "For anonymous access, leave DN and Password empty." : "För anonym åtkomst, lämna DN och lösenord tomt.",
+    "Save Credentials" : "Spara Uppgifter",
     "One Base DN per line" : "Ett start-DN per rad",
     "You can specify Base DN for users and groups in the Advanced tab" : "Du kan ange start-DN för användare och grupper under fliken Avancerat",
     "Detect Base DN" : "Upptäck bas-DN",
@@ -121,7 +122,6 @@ OC.L10N.register(
     "Wrong password. Reset it?" : "Fel lösenord. Återställa det?",
     "Wrong password." : "Fel lösenord.",
     "Cancel" : "Avbryt",
-    "LDAP" : "LDAP",
     "Server" : "Server",
     "Users" : "Användare",
     "Login Attributes" : "Inloggningsattribut",
@@ -191,6 +191,7 @@ OC.L10N.register(
     "Verify settings and count groups" : "Verifiera inställningar och räkna grupper",
     "Add a new and blank configuration" : "Skapa en ny och tom konfiguration",
     "You can omit the protocol, except you require SSL. Then start with ldaps://" : "Du behöver inte ange protokoll förutom om du använder SSL. Starta då med ldaps://",
+    "LDAP" : "LDAP",
     "<b>Warning:</b> Apps user_ldap and user_webdavauth are incompatible. You may experience unexpected behavior. Please ask your system administrator to disable one of them." : "<b>Varning:</b> Apps user_ldap och user_webdavauth är inkompatibla. Oväntade problem kan uppstå. Be din systemadministratör att inaktivera en av dem.",
     "in bytes" : "i bytes"
 },

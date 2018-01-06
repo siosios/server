@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -32,13 +33,13 @@ namespace OC\AppFramework\Middleware\Security;
 use OC\AppFramework\Middleware\Security\Exceptions\AppNotEnabledException;
 use OC\AppFramework\Middleware\Security\Exceptions\CrossSiteRequestForgeryException;
 use OC\AppFramework\Middleware\Security\Exceptions\NotAdminException;
-use OC\AppFramework\Middleware\Security\Exceptions\NotConfirmedException;
 use OC\AppFramework\Middleware\Security\Exceptions\NotLoggedInException;
 use OC\AppFramework\Middleware\Security\Exceptions\StrictCookieMissingException;
 use OC\AppFramework\Utility\ControllerMethodReflector;
 use OC\Security\CSP\ContentSecurityPolicyManager;
 use OC\Security\CSP\ContentSecurityPolicyNonceManager;
 use OC\Security\CSRF\CsrfTokenManager;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\EmptyContentSecurityPolicy;
 use OCP\AppFramework\Http\RedirectResponse;
@@ -48,7 +49,6 @@ use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\OCSController;
 use OCP\INavigationManager;
-use OCP\ISession;
 use OCP\IURLGenerator;
 use OCP\IRequest;
 use OCP\ILogger;
@@ -75,8 +75,6 @@ class SecurityMiddleware extends Middleware {
 	private $urlGenerator;
 	/** @var ILogger */
 	private $logger;
-	/** @var ISession */
-	private $session;
 	/** @var bool */
 	private $isLoggedIn;
 	/** @var bool */
@@ -87,6 +85,8 @@ class SecurityMiddleware extends Middleware {
 	private $csrfTokenManager;
 	/** @var ContentSecurityPolicyNonceManager */
 	private $cspNonceManager;
+	/** @var IAppManager */
+	private $appManager;
 
 	/**
 	 * @param IRequest $request
@@ -94,38 +94,39 @@ class SecurityMiddleware extends Middleware {
 	 * @param INavigationManager $navigationManager
 	 * @param IURLGenerator $urlGenerator
 	 * @param ILogger $logger
-	 * @param ISession $session
 	 * @param string $appName
 	 * @param bool $isLoggedIn
 	 * @param bool $isAdminUser
 	 * @param ContentSecurityPolicyManager $contentSecurityPolicyManager
 	 * @param CSRFTokenManager $csrfTokenManager
 	 * @param ContentSecurityPolicyNonceManager $cspNonceManager
+	 * @param IAppManager $appManager
 	 */
 	public function __construct(IRequest $request,
 								ControllerMethodReflector $reflector,
 								INavigationManager $navigationManager,
 								IURLGenerator $urlGenerator,
 								ILogger $logger,
-								ISession $session,
 								$appName,
 								$isLoggedIn,
 								$isAdminUser,
 								ContentSecurityPolicyManager $contentSecurityPolicyManager,
 								CsrfTokenManager $csrfTokenManager,
-								ContentSecurityPolicyNonceManager $cspNonceManager) {
+								ContentSecurityPolicyNonceManager $cspNonceManager,
+								IAppManager $appManager
+	) {
 		$this->navigationManager = $navigationManager;
 		$this->request = $request;
 		$this->reflector = $reflector;
 		$this->appName = $appName;
 		$this->urlGenerator = $urlGenerator;
 		$this->logger = $logger;
-		$this->session = $session;
 		$this->isLoggedIn = $isLoggedIn;
 		$this->isAdminUser = $isAdminUser;
 		$this->contentSecurityPolicyManager = $contentSecurityPolicyManager;
 		$this->csrfTokenManager = $csrfTokenManager;
 		$this->cspNonceManager = $cspNonceManager;
+		$this->appManager = $appManager;
 	}
 
 	/**
@@ -156,13 +157,6 @@ class SecurityMiddleware extends Middleware {
 			}
 		}
 
-		if ($this->reflector->hasAnnotation('PasswordConfirmationRequired')) {
-			$lastConfirm = (int) $this->session->get('last-password-confirm');
-			if ($lastConfirm < (time() - (30 * 60 + 15))) { // allow 15 seconds delay
-				throw new NotConfirmedException();
-			}
-		}
-
 		// Check for strict cookie requirement
 		if($this->reflector->hasAnnotation('StrictCookieRequired') || !$this->reflector->hasAnnotation('NoCSRFRequired')) {
 			if(!$this->request->passesStrictCookieCheck()) {
@@ -190,7 +184,7 @@ class SecurityMiddleware extends Middleware {
 		 * The getAppPath() check is here since components such as settings also use the AppFramework and
 		 * therefore won't pass this check.
 		 */
-		if(\OC_App::getAppPath($this->appName) !== false && !\OC_App::isEnabled($this->appName)) {
+		if(\OC_App::getAppPath($this->appName) !== false && !$this->appManager->isEnabledForUser($this->appName)) {
 			throw new AppNotEnabledException();
 		}
 

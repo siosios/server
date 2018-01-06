@@ -8,9 +8,12 @@
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Roger Szabo <roger.szabo@web.de>
+ * @author root <root@localhost.localdomain>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
- * @author Roger Szabo <roger.szabo@web.de>
+ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
  *
  * @license AGPL-3.0
  *
@@ -226,7 +229,7 @@ class Helper {
 	/**
 	 * sanitizes a DN received from the LDAP server
 	 * @param array $dn the DN in question
-	 * @return array the sanitized DN
+	 * @return array|string the sanitized DN
 	 */
 	public function sanitizeDN($dn) {
 		//treating multiple base DNs
@@ -294,10 +297,12 @@ class Helper {
 		$ldapWrapper = new LDAP();
 		$ocConfig = \OC::$server->getConfig();
 		$notificationManager = \OC::$server->getNotificationManager();
+
 		$userSession = \OC::$server->getUserSession();
+		$userPluginManager = \OC::$server->query('LDAPUserPluginManager');
 
 		$userBackend  = new User_Proxy(
-			$configPrefixes, $ldapWrapper, $ocConfig, $notificationManager, $userSession
+			$configPrefixes, $ldapWrapper, $ocConfig, $notificationManager, $userSession, $userPluginManager
 		);
 		$uid = $userBackend->loginName2UserName($param['uid'] );
 		if($uid !== false) {

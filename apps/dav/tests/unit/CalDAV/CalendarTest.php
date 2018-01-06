@@ -2,7 +2,10 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -26,6 +29,7 @@ namespace OCA\DAV\Tests\unit\CalDAV;
 use OCA\DAV\CalDAV\BirthdayService;
 use OCA\DAV\CalDAV\CalDavBackend;
 use OCA\DAV\CalDAV\Calendar;
+use OCP\IConfig;
 use OCP\IL10N;
 use Sabre\DAV\PropPatch;
 use Sabre\VObject\Reader;
@@ -36,10 +40,14 @@ class CalendarTest extends TestCase {
 	/** @var IL10N */
 	protected $l10n;
 
+	/** @var IConfig */
+	protected $config;
+
 	public function setUp() {
 		parent::setUp();
-		$this->l10n = $this->getMockBuilder('\OCP\IL10N')
+		$this->l10n = $this->getMockBuilder(IL10N::class)
 			->disableOriginalConstructor()->getMock();
+		$this->config = $this->createMock(IConfig::class);
 		$this->l10n
 			->expects($this->any())
 			->method('t')
@@ -61,7 +69,7 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$c->delete();
 	}
 
@@ -81,7 +89,7 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$c->delete();
 	}
 
@@ -90,6 +98,8 @@ class CalendarTest extends TestCase {
 		$backend = $this->createMock(CalDavBackend::class);
 		$backend->expects($this->never())->method('updateShares');
 		$backend->expects($this->never())->method('getShares');
+
+		$this->config->expects($this->never())->method('setUserValue');
 
 		$backend->expects($this->once())->method('deleteCalendar')
 			->with(666);
@@ -100,7 +110,28 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
+		$c->delete();
+	}
+
+	public function testDeleteBirthdayCalendar() {
+		/** @var \PHPUnit_Framework_MockObject_MockObject | CalDavBackend $backend */
+		$backend = $this->createMock(CalDavBackend::class);
+		$backend->expects($this->once())->method('deleteCalendar')
+			->with(666);
+
+		$this->config->expects($this->once())
+			->method('setUserValue')
+			->with('user1', 'dav', 'generateBirthdayCalendar', 'no');
+
+		$calendarInfo = [
+			'{http://owncloud.org/ns}owner-principal' => 'principals/users/user1',
+			'principaluri' => 'principals/users/user1',
+			'id' => 666,
+			'uri' => 'contact_birthdays',
+		];
+
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$c->delete();
 	}
 
@@ -143,7 +174,7 @@ class CalendarTest extends TestCase {
 			'id' => 666,
 			'uri' => 'default'
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$propPatch = new PropPatch($mutations);
 
 		if (!$shared) {
@@ -173,7 +204,7 @@ class CalendarTest extends TestCase {
 		if ($hasOwnerSet) {
 			$calendarInfo['{http://owncloud.org/ns}owner-principal'] = 'user1';
 		}
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$acl = $c->getACL();
 		$childAcl = $c->getChildACL();
 
@@ -268,7 +299,7 @@ class CalendarTest extends TestCase {
 			$calendarInfo['{http://owncloud.org/ns}owner-principal'] = 'user1';
 
 		}
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 		$children = $c->getChildren();
 		$this->assertEquals($expectedChildren, count($children));
 		$children = $c->getMultipleChildren(['event-0', 'event-1', 'event-2']);
@@ -352,7 +383,7 @@ EOD;
 			'id' => 666,
 			'uri' => 'cal',
 		];
-		$c = new Calendar($backend, $calendarInfo, $this->l10n);
+		$c = new Calendar($backend, $calendarInfo, $this->l10n, $this->config);
 
 		$this->assertEquals(count($c->getChildren()), $expectedChildren);
 
@@ -380,5 +411,185 @@ EOD;
 			[3, false],
 			[2, true]
 		];
+	}
+
+	public function testRemoveVAlarms() {
+		$publicObjectData = <<<EOD
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Nextcloud calendar v1.5.6
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+CREATED:20171022T125130
+DTSTAMP:20171022T125130
+LAST-MODIFIED:20171022T125130
+UID:PPL24TH8UGOWE94XET87ER
+SUMMARY:Foo bar blub
+CLASS:PUBLIC
+STATUS:CONFIRMED
+DTSTART;VALUE=DATE:20171024
+DTEND;VALUE=DATE:20171025
+BEGIN:VALARM
+ACTION:AUDIO
+TRIGGER:-PT15M
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+
+EOD;
+
+		$confidentialObjectData = <<<EOD
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Nextcloud calendar v1.5.6
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+CREATED:20171022T125130
+DTSTAMP:20171022T125130
+LAST-MODIFIED:20171022T125130
+UID:PPL24TH8UGOWE94XET87ER
+SUMMARY:Foo bar blub
+CLASS:CONFIDENTIAL
+STATUS:CONFIRMED
+DTSTART;VALUE=DATE:20171024
+DTEND;VALUE=DATE:20171025
+BEGIN:VALARM
+ACTION:AUDIO
+TRIGGER:-PT15M
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+
+EOD;
+
+		$publicObjectDataWithoutVAlarm = <<<EOD
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Nextcloud calendar v1.5.6
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+CREATED:20171022T125130
+DTSTAMP:20171022T125130
+LAST-MODIFIED:20171022T125130
+UID:PPL24TH8UGOWE94XET87ER
+SUMMARY:Foo bar blub
+CLASS:PUBLIC
+STATUS:CONFIRMED
+DTSTART;VALUE=DATE:20171024
+DTEND;VALUE=DATE:20171025
+END:VEVENT
+END:VCALENDAR
+
+EOD;
+
+		$confidentialObjectCleaned = <<<EOD
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Nextcloud calendar v1.5.6
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+CREATED:20171022T125130
+UID:PPL24TH8UGOWE94XET87ER
+SUMMARY:Busy
+CLASS:CONFIDENTIAL
+DTSTART;VALUE=DATE:20171024
+DTEND;VALUE=DATE:20171025
+END:VEVENT
+END:VCALENDAR
+
+EOD;
+
+
+
+		$publicObject = ['uri' => 'event-0',
+			'classification' => CalDavBackend::CLASSIFICATION_PUBLIC,
+			'calendardata' => $publicObjectData];
+
+		$confidentialObject = ['uri' => 'event-1',
+			'classification' => CalDavBackend::CLASSIFICATION_CONFIDENTIAL,
+			'calendardata' => $confidentialObjectData];
+
+		/** @var \PHPUnit_Framework_MockObject_MockObject | CalDavBackend $backend */
+		$backend = $this->createMock(CalDavBackend::class);
+		$backend->expects($this->any())
+			->method('getCalendarObjects')
+			->willReturn([$publicObject, $confidentialObject]);
+
+		$backend->expects($this->any())
+			->method('getMultipleCalendarObjects')
+			->with(666, ['event-0', 'event-1'])
+			->willReturn([$publicObject, $confidentialObject]);
+
+		$backend->expects($this->any())
+			->method('getCalendarObject')
+			->will($this->returnCallback(function($cId, $uri) use($publicObject, $confidentialObject) {
+				switch($uri) {
+					case 'event-0':
+						return $publicObject;
+
+					case 'event-1':
+						return $confidentialObject;
+
+					default:
+						throw new \Exception('unexpected uri');
+				}
+			}));
+
+		$backend->expects($this->any())
+			->method('applyShareAcl')
+			->willReturnArgument(1);
+
+		$calendarInfoOwner = [
+			'{http://owncloud.org/ns}owner-principal' => 'user1',
+			'principaluri' => 'user1',
+			'id' => 666,
+			'uri' => 'cal',
+		];
+		$calendarInfoSharedRW = [
+			'{http://owncloud.org/ns}owner-principal' => 'user1',
+			'principaluri' => 'user2',
+			'id' => 666,
+			'uri' => 'cal',
+		];
+		$calendarInfoSharedRO = [
+			'{http://owncloud.org/ns}owner-principal' => 'user1',
+			'{http://owncloud.org/ns}read-only' => true,
+			'principaluri' => 'user2',
+			'id' => 666,
+			'uri' => 'cal',
+		];
+
+		$ownerCalendar = new Calendar($backend, $calendarInfoOwner, $this->l10n, $this->config);
+		$rwCalendar = new Calendar($backend, $calendarInfoSharedRW, $this->l10n, $this->config);
+		$roCalendar = new Calendar($backend, $calendarInfoSharedRO, $this->l10n, $this->config);
+
+		$this->assertEquals(count($ownerCalendar->getChildren()), 2);
+		$this->assertEquals(count($rwCalendar->getChildren()), 2);
+		$this->assertEquals(count($roCalendar->getChildren()), 2);
+
+		// calendar data shall not be altered for the owner
+		$this->assertEquals($ownerCalendar->getChild('event-0')->get(), $publicObjectData);
+		$this->assertEquals($ownerCalendar->getChild('event-1')->get(), $confidentialObjectData);
+
+		// valarms shall not be removed for read-write shares
+		$this->assertEquals(
+			$this->fixLinebreak($rwCalendar->getChild('event-0')->get()),
+			$this->fixLinebreak($publicObjectData));
+		$this->assertEquals(
+			$this->fixLinebreak($rwCalendar->getChild('event-1')->get()),
+			$this->fixLinebreak($confidentialObjectCleaned));
+
+		// valarms shall be removed for read-only shares
+		$this->assertEquals(
+			$this->fixLinebreak($roCalendar->getChild('event-0')->get()),
+			$this->fixLinebreak($publicObjectDataWithoutVAlarm));
+		$this->assertEquals(
+			$this->fixLinebreak($roCalendar->getChild('event-1')->get()),
+			$this->fixLinebreak($confidentialObjectCleaned));
+
+	}
+
+	private function fixLinebreak($str) {
+		return preg_replace('~(*BSR_ANYCRLF)\R~', "\r\n", $str);
 	}
 }
