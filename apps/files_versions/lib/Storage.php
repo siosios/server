@@ -167,7 +167,7 @@ class Storage {
 		// to get the right target
 		$ext = pathinfo($filename, PATHINFO_EXTENSION);
 		if ($ext === 'part') {
-			$filename = substr($filename, 0, strlen($filename) - 5);
+			$filename = substr($filename, 0, -5);
 		}
 
 		// we only handle existing files
@@ -503,7 +503,7 @@ class Storage {
 
 		$toDelete = [];
 		foreach (array_reverse($versions['all']) as $key => $version) {
-			if (intval($version['version'])<$threshold) {
+			if ((int)$version['version'] <$threshold) {
 				$toDelete[$key] = $version;
 			} else {
 				//Versions are sorted by time - nothing mo to iterate.
@@ -566,7 +566,7 @@ class Storage {
 				$fileData = $file->getData();
 				$filePath = $dir . '/' . $fileData['name'];
 				if ($file['type'] === 'dir') {
-					array_push($dirs, $filePath);
+					$dirs[] = $filePath;
 				} else {
 					$versionsBegin = strrpos($filePath, '.v');
 					$relPathStart = strlen(self::VERSIONS_ROOT);
@@ -658,7 +658,7 @@ class Storage {
 						//distance between two version too small, mark to delete
 						$toDelete[$key] = $version['path'] . '.v' . $version['version'];
 						$size += $version['size'];
-						\OCP\Util::writeLog('files_versions', 'Mark to expire '. $version['path'] .' next version should be ' . $nextVersion . " or smaller. (prevTimestamp: " . $prevTimestamp . "; step: " . $step, \OCP\Util::INFO);
+						\OC::$server->getLogger()->info('Mark to expire '. $version['path'] .' next version should be ' . $nextVersion . " or smaller. (prevTimestamp: " . $prevTimestamp . "; step: " . $step, ['app' => 'files_versions']);
 					} else {
 						$nextVersion = $version['version'] - $step;
 						$prevTimestamp = $version['version'];
@@ -713,7 +713,7 @@ class Storage {
 			// get available disk space for user
 			$user = \OC::$server->getUserManager()->get($uid);
 			if (is_null($user)) {
-				\OCP\Util::writeLog('files_versions', 'Backends provided no user object for ' . $uid, \OCP\Util::ERROR);
+				\OC::$server->getLogger()->error('Backends provided no user object for ' . $uid, ['app' => 'files_versions']);
 				throw new \OC\User\NoUserException('Backends provided no user object for ' . $uid);
 			}
 
@@ -782,12 +782,13 @@ class Storage {
 				$versionsSize = $versionsSize - $sizeOfDeletedVersions;
 			}
 
+			$logger = \OC::$server->getLogger();
 			foreach($toDelete as $key => $path) {
 				\OC_Hook::emit('\OCP\Versions', 'preDelete', array('path' => $path, 'trigger' => self::DELETE_TRIGGER_QUOTA_EXCEEDED));
 				self::deleteVersion($versionsFileview, $path);
 				\OC_Hook::emit('\OCP\Versions', 'delete', array('path' => $path, 'trigger' => self::DELETE_TRIGGER_QUOTA_EXCEEDED));
 				unset($allVersions[$key]); // update array with the versions we keep
-				\OCP\Util::writeLog('files_versions', "Expire: " . $path, \OCP\Util::INFO);
+				$logger->info('Expire: ' . $path, ['app' => 'files_versions']);
 			}
 
 			// Check if enough space is available after versions are rearranged.
@@ -803,7 +804,7 @@ class Storage {
 				\OC_Hook::emit('\OCP\Versions', 'preDelete', array('path' => $version['path'].'.v'.$version['version'], 'trigger' => self::DELETE_TRIGGER_QUOTA_EXCEEDED));
 				self::deleteVersion($versionsFileview, $version['path'] . '.v' . $version['version']);
 				\OC_Hook::emit('\OCP\Versions', 'delete', array('path' => $version['path'].'.v'.$version['version'], 'trigger' => self::DELETE_TRIGGER_QUOTA_EXCEEDED));
-				\OCP\Util::writeLog('files_versions', 'running out of space! Delete oldest version: ' . $version['path'].'.v'.$version['version'] , \OCP\Util::INFO);
+				\OC::$server->getLogger()->info('running out of space! Delete oldest version: ' . $version['path'].'.v'.$version['version'], ['app' => 'files_versions']);
 				$versionsSize -= $version['size'];
 				$availableSpace += $version['size'];
 				next($allVersions);
