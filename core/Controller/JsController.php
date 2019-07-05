@@ -56,9 +56,10 @@ class JsController extends Controller {
 	/**
 	 * @PublicPage
 	 * @NoCSRFRequired
+	 * @NoSameSiteCookieRequired
 	 *
-	 * @param string $fileName css filename with extension
-	 * @param string $appName css folder name
+	 * @param string $fileName js filename with extension
+	 * @param string $appName js folder name
 	 * @return FileDisplayResponse|NotFoundResponse
 	 */
 	public function getJs(string $fileName, string $appName): Response {

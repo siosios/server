@@ -62,18 +62,33 @@ $application->registerRoutes(
 				'verb' => 'POST'
 			],
 			[
+				'name' => 'API#showGridView',
+				'url' => '/api/v1/showgridview',
+				'verb' => 'POST'
+			],
+			[
+				'name' => 'API#getGridView',
+				'url' => '/api/v1/showgridview',
+				'verb' => 'GET'
+			],
+			[
 				'name' => 'view#index',
 				'url' => '/',
 				'verb' => 'GET',
 			],
 			[
-				'name' => 'settings#setMaxUploadSize',
-				'url' => '/settings/maxUpload',
-				'verb' => 'POST',
-			],
-			[
 				'name' => 'ajax#getStorageStats',
 				'url' => '/ajax/getstoragestats.php',
+				'verb' => 'GET',
+			],
+			[
+				'name' => 'API#toggleShowFolder',
+				'url' => '/api/v1/toggleShowFolder/{key}',
+				'verb' => 'POST'
+			],
+			[
+				'name' => 'API#getNodeType',
+				'url' => '/api/v1/quickaccess/get/NodeType',
 				'verb' => 'GET',
 			],
 		]

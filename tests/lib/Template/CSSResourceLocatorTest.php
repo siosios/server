@@ -23,13 +23,16 @@
 
 namespace Test\Template;
 
+use OC\Files\AppData\AppData;
 use OC\Files\AppData\Factory;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\IAppData;
 use OCP\ICacheFactory;
 use OCP\ILogger;
 use OCP\IURLGenerator;
 use OCP\IConfig;
 use OCA\Theming\ThemingDefaults;
+use OC\Template\IconsCacher;
 use OC\Template\SCSSCacher;
 use OC\Template\CSSResourceLocator;
 
@@ -46,16 +49,22 @@ class CSSResourceLocatorTest extends \Test\TestCase {
 	protected $cacheFactory;
 	/** @var ILogger|\PHPUnit_Framework_MockObject_MockObject */
 	protected $logger;
+	/** @var IconsCacher|\PHPUnit_Framework_MockObject_MockObject */
+	protected $iconsCacher;
+	/** @var ITimeFactory|\PHPUnit_Framework_MockObject_MockObject */
+	private $timeFactory;
 
 	protected function setUp() {
 		parent::setUp();
 
 		$this->logger = $this->createMock(ILogger::class);
-		$this->appData = $this->createMock(IAppData::class);
+		$this->appData = $this->createMock(AppData::class);
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 		$this->config = $this->createMock(IConfig::class);
 		$this->cacheFactory = $this->createMock(ICacheFactory::class);
 		$this->themingDefaults = $this->createMock(ThemingDefaults::class);
+		$this->iconsCacher = $this->createMock(IconsCacher::class);
+		$this->timeFactory = $this->createMock(ITimeFactory::class);
 	}
 
 	private function cssResourceLocator() {
@@ -69,7 +78,9 @@ class CSSResourceLocatorTest extends \Test\TestCase {
 			$this->config,
 			$this->themingDefaults,
 			\OC::$SERVERROOT,
-			$this->cacheFactory
+			$this->cacheFactory,
+			$this->iconsCacher,
+			$this->timeFactory
 		);
 		return new CSSResourceLocator(
 			$this->logger,

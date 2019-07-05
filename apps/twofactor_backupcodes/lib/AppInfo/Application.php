@@ -1,8 +1,10 @@
 <?php
+
 /**
  * @copyright Copyright (c) 2017 Joas Schilling <coding@schilljs.com>
  *
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -24,11 +26,22 @@
 namespace OCA\TwoFactorBackupCodes\AppInfo;
 
 use OCA\TwoFactorBackupCodes\Db\BackupCodeMapper;
+use OCA\TwoFactorBackupCodes\Event\CodesGenerated;
+use OCA\TwoFactorBackupCodes\Listener\ActivityPublisher;
+use OCA\TwoFactorBackupCodes\Listener\ClearNotifications;
+use OCA\TwoFactorBackupCodes\Listener\ProviderDisabled;
+use OCA\TwoFactorBackupCodes\Listener\ProviderEnabled;
+use OCA\TwoFactorBackupCodes\Listener\RegistryUpdater;
+use OCA\TwoFactorBackupCodes\Notifications\Notifier;
 use OCP\AppFramework\App;
+use OCP\Authentication\TwoFactorAuth\IRegistry;
+use OCP\EventDispatcher\IEventDispatcher;
+use OCP\IL10N;
+use OCP\Notification\IManager;
 use OCP\Util;
 
 class Application extends App {
-	public function __construct () {
+	public function __construct() {
 		parent::__construct('twofactor_backupcodes');
 	}
 
@@ -37,6 +50,7 @@ class Application extends App {
 	 */
 	public function register() {
 		$this->registerHooksAndEvents();
+		$this->registerNotification();
 	}
 
 	/**
@@ -44,6 +58,31 @@ class Application extends App {
 	 */
 	public function registerHooksAndEvents() {
 		Util::connectHook('OC_User', 'post_deleteUser', $this, 'deleteUser');
+
+		$container = $this->getContainer();
+
+		/** @var IEventDispatcher $eventDispatcher */
+		$eventDispatcher = $container->query(IEventDispatcher::class);
+		$eventDispatcher->addServiceListener(CodesGenerated::class, ActivityPublisher::class);
+		$eventDispatcher->addServiceListener(CodesGenerated::class, RegistryUpdater::class);
+		$eventDispatcher->addServiceListener(CodesGenerated::class, ClearNotifications::class);
+		$eventDispatcher->addServiceListener(IRegistry::EVENT_PROVIDER_ENABLED, ProviderEnabled::class);
+		$eventDispatcher->addServiceListener(IRegistry::EVENT_PROVIDER_DISABLED, ProviderDisabled::class);
+	}
+
+	public function registerNotification() {
+		$container = $this->getContainer();
+		/** @var IManager $manager */
+		$manager = $container->query(IManager::class);
+		$manager->registerNotifier(
+			function() use ($container) {
+				return $container->query(Notifier::class);
+			},
+			function () use ($container) {
+				$l = $container->query(IL10N::class);
+				return ['id' => 'twofactor_backupcodes', 'name' => $l->t('Second-factor backup codes')];
+			}
+		);
 	}
 
 	public function deleteUser($params) {

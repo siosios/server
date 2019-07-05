@@ -54,26 +54,13 @@ class Application extends \OCP\AppFramework\App {
 				script('core', [
 					'files/fileinfo',
 					'files/client',
-					'oc-backbone-webdav',
 					'systemtags/systemtags',
 					'systemtags/systemtagmodel',
 					'systemtags/systemtagscollection',
 				]);
 
-				vendor_script('jsTimezoneDetect/jstz');
-
 				script('workflowengine', [
-					'admin',
-
-					// Check plugins
-					'filemimetypeplugin',
-					'filesizeplugin',
-					'filesystemtagsplugin',
-					'requestremoteaddressplugin',
-					'requesttimeplugin',
-					'requesturlplugin',
-					'requestuseragentplugin',
-					'usergroupmembershipplugin',
+					'workflowengine',
 				]);
 			},
 			-100

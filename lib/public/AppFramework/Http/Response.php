@@ -35,6 +35,7 @@
 namespace OCP\AppFramework\Http;
 
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Utility\ITimeFactory;
 
 /**
  * Base class for responses. Also used to just send headers.
@@ -89,18 +90,38 @@ class Response {
 	private $throttleMetadata = [];
 
 	/**
+	 * Response constructor.
+	 *
+	 * @since 17.0.0
+	 */
+	public function __construct() {
+		$this->setContentSecurityPolicy(new EmptyContentSecurityPolicy());
+	}
+
+	/**
 	 * Caches the response
 	 * @param int $cacheSeconds the amount of seconds that should be cached
 	 * if 0 then caching will be disabled
 	 * @return $this
 	 * @since 6.0.0 - return value was added in 7.0.0
 	 */
-	public function cacheFor($cacheSeconds) {
-
+	public function cacheFor(int $cacheSeconds) {
 		if($cacheSeconds > 0) {
 			$this->addHeader('Cache-Control', 'max-age=' . $cacheSeconds . ', must-revalidate');
+
+			// Old scool prama caching
+			$this->addHeader('Pragma', 'public');
+
+			// Set expires header
+			$expires = new \DateTime();
+			/** @var ITimeFactory $time */
+			$time = \OC::$server->query(ITimeFactory::class);
+			$expires->setTimestamp($time->getTime());
+			$expires->add(new \DateInterval('PT'.$cacheSeconds.'S'));
+			$this->addHeader('Expires', $expires->format(\DateTime::RFC2822));
 		} else {
 			$this->addHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+			unset($this->headers['Expires'], $this->headers['Pragma']);
 		}
 
 		return $this;

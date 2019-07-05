@@ -47,8 +47,8 @@ style('theming', 'settings-admin');
 	</div>
 	<div>
 		<label>
-			<span><?php p($l->t('Web address')) ?></span>
-			<input id="theming-url" type="url" placeholder="<?php p($l->t('Web address https://…')); ?>" value="<?php p($_['url']) ?>" maxlength="500" />
+			<span><?php p($l->t('Web link')) ?></span>
+			<input id="theming-url" type="url" placeholder="<?php p($l->t('https://…')); ?>" value="<?php p($_['url']) ?>" maxlength="500" />
 			<div data-setting="url" data-toggle="tooltip" data-original-title="<?php p($l->t('Reset to default')); ?>" class="theme-undo icon icon-history"></div>
 		</label>
 	</div>
@@ -62,7 +62,7 @@ style('theming', 'settings-admin');
 	<div>
 		<label>
 			<span><?php p($l->t('Color')) ?></span>
-			<input id="theming-color" type="text" class="jscolor" data-jscolor="{hash:true}" maxlength="7" value="<?php p($_['color']) ?>" />
+			<input id="theming-color" type="text" maxlength="7" value="<?php p($_['color']) ?>" />
 			<div data-setting="color" data-toggle="tooltip" data-original-title="<?php p($l->t('Reset to default')); ?>" class="theme-undo icon icon-history"></div>
 		</label>
 	</div>
@@ -91,9 +91,23 @@ style('theming', 'settings-admin');
 		<div id="theming-preview-logo"></div>
 	</div>
 
-	<h2 class="inlineblock"><?php p($l->t('Advanced options')); ?></h2>
+	<h3 class="inlineblock"><?php p($l->t('Advanced options')); ?></h3>
 
 	<div class="advanced-options">
+		<div>
+			<label>
+			<span><?php p($l->t('Legal notice link')) ?></span>
+				<input id="theming-imprintUrl" type="url" placeholder="<?php p($l->t('https://…')); ?>" value="<?php p($_['imprintUrl']) ?>" maxlength="500" />
+				<div data-setting="imprintUrl" data-toggle="tooltip" data-original-title="<?php p($l->t('Reset to default')); ?>" class="theme-undo icon icon-history"></div>
+		</label>
+	</div>
+	<div>
+		<label>
+			<span><?php p($l->t('Privacy policy link')) ?></span>
+			<input id="theming-privacyUrl" type="url" placeholder="<?php p($l->t('https://…')); ?>" value="<?php p($_['privacyUrl']) ?>" maxlength="500" />
+			<div data-setting="privacyUrl" data-toggle="tooltip" data-original-title="<?php p($l->t('Reset to default')); ?>" class="theme-undo icon icon-history"></div>
+			</label>
+		</div>
 		<div class="advanced-option-logoheader">
 			<form class="uploadButton" method="post" action="<?php p($_['uploadLogoRoute']) ?>" data-image-key="logoheader">
 				<input type="hidden" id="theming-logoheaderMime" value="<?php p($_['images']['logoheader']['mime']); ?>" />

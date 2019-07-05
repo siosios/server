@@ -50,6 +50,8 @@ use OCP\ILogger;
 class File implements IWriter, IFileBased {
 	/** @var string */
 	protected $logFile;
+	/** @var int */
+	protected $logFileMode;
 	/** @var SystemConfig */
 	private $config;
 
@@ -67,6 +69,7 @@ class File implements IWriter, IFileBased {
 			}
 		}
 		$this->config = $config;
+		$this->logFileMode = $config->getValue('logfilemode', 0640);
 	}
 
 	/**
@@ -134,8 +137,8 @@ class File implements IWriter, IFileBased {
 		}
 		$entry = json_encode($entry, JSON_PARTIAL_OUTPUT_ON_ERROR);
 		$handle = @fopen($this->logFile, 'a');
-		if ((fileperms($this->logFile) & 0777) != 0640) {
-			@chmod($this->logFile, 0640);
+		if ($this->logFileMode > 0 && (fileperms($this->logFile) & 0777) != $this->logFileMode) {
+			@chmod($this->logFile, $this->logFileMode);
 		}
 		if ($handle) {
 			fwrite($handle, $entry."\n");
@@ -145,6 +148,9 @@ class File implements IWriter, IFileBased {
 			error_log($entry);
 		}
 		if (php_sapi_name() === 'cli-server') {
+			if (!\is_string($message)) {
+				$message = json_encode($message);
+			}
 			error_log($message, 4);
 		}
 	}

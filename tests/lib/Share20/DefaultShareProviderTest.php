@@ -22,15 +22,19 @@
 namespace Test\Share20;
 
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\Defaults;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\IDBConnection;
 use OCP\IGroup;
+use OCP\IL10N;
+use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IGroupManager;
 use OCP\Files\IRootFolder;
 use OC\Share20\DefaultShareProvider;
+use OCP\Mail\IMailer;
 use OCP\Share\IShare;
 
 /**
@@ -56,11 +60,27 @@ class DefaultShareProviderTest extends \Test\TestCase {
 	/** @var DefaultShareProvider */
 	protected $provider;
 
+	/** @var \PHPUnit_Framework_MockObject_MockObject|IMailer */
+	protected $mailer;
+
+	/** @var \PHPUnit_Framework_MockObject_MockObject|IL10N */
+	protected $l10n;
+
+	/** @var \PHPUnit_Framework_MockObject_MockObject|Defaults */
+	protected $defaults;
+
+	/** @var \PHPUnit_Framework_MockObject_MockObject|IURLGenerator */
+	protected $urlGenerator;
+
 	public function setUp() {
 		$this->dbConn = \OC::$server->getDatabaseConnection();
 		$this->userManager = $this->createMock(IUserManager::class);
 		$this->groupManager = $this->createMock(IGroupManager::class);
 		$this->rootFolder = $this->createMock(IRootFolder::class);
+		$this->mailer = $this->createMock(IMailer::class);
+		$this->l10n = $this->createMock(IL10N::class);
+		$this->defaults = $this->getMockBuilder(Defaults::class)->disableOriginalConstructor()->getMock();
+		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 
 		$this->userManager->expects($this->any())->method('userExists')->willReturn(true);
 
@@ -71,7 +91,11 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->dbConn,
 			$this->userManager,
 			$this->groupManager,
-			$this->rootFolder
+			$this->rootFolder,
+			$this->mailer,
+			$this->defaults,
+			$this->l10n,
+			$this->urlGenerator
 		);
 	}
 
@@ -339,6 +363,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			->values([
 				'share_type' => $qb->expr()->literal(\OCP\Share::SHARE_TYPE_LINK),
 				'password' => $qb->expr()->literal('password'),
+				'password_by_talk' => $qb->expr()->literal(true),
 				'uid_owner' => $qb->expr()->literal('shareOwner'),
 				'uid_initiator' => $qb->expr()->literal('sharedBy'),
 				'item_type'   => $qb->expr()->literal('file'),
@@ -368,6 +393,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$this->assertEquals(\OCP\Share::SHARE_TYPE_LINK, $share->getShareType());
 		$this->assertNull($share->getSharedWith());
 		$this->assertEquals('password', $share->getPassword());
+		$this->assertEquals(true, $share->getSendPasswordByTalk());
 		$this->assertEquals('sharedBy', $share->getSharedBy());
 		$this->assertEquals('shareOwner', $share->getShareOwner());
 		$this->assertEquals($ownerPath, $share->getNode());
@@ -403,6 +429,10 @@ class DefaultShareProviderTest extends \Test\TestCase {
 				$this->userManager,
 				$this->groupManager,
 				$this->rootFolder,
+				$this->mailer,
+				$this->defaults,
+				$this->l10n,
+				$this->urlGenerator
 			])
 			->setMethods(['getShareById'])
 			->getMock();
@@ -493,6 +523,10 @@ class DefaultShareProviderTest extends \Test\TestCase {
 				$this->userManager,
 				$this->groupManager,
 				$this->rootFolder,
+				$this->mailer,
+				$this->defaults,
+				$this->l10n,
+				$this->urlGenerator
 			])
 			->setMethods(['getShareById'])
 			->getMock();
@@ -629,6 +663,8 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share->setSharedBy('sharedBy');
 		$share->setShareOwner('shareOwner');
 		$share->setNode($path);
+		$share->setSharedWithDisplayName('Displayed Name');
+		$share->setSharedWithAvatar('/path/to/image.svg');
 		$share->setPermissions(1);
 		$share->setTarget('/target');
 
@@ -644,6 +680,12 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$this->assertSame('/target', $share2->getTarget());
 		$this->assertLessThanOrEqual(new \DateTime(), $share2->getShareTime());
 		$this->assertSame($path, $share2->getNode());
+
+		// nothing from setSharedWithDisplayName/setSharedWithAvatar is saved in DB
+		$this->assertSame('Displayed Name', $share->getSharedWithDisplayName());
+		$this->assertSame('/path/to/image.svg', $share->getSharedWithAvatar());
+		$this->assertSame(null, $share2->getSharedWithDisplayName());
+		$this->assertSame(null, $share2->getSharedWithAvatar());
 	}
 
 	public function testCreateGroupShare() {
@@ -678,6 +720,8 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share->setShareOwner('shareOwner');
 		$share->setNode($path);
 		$share->setPermissions(1);
+		$share->setSharedWithDisplayName('Displayed Name');
+		$share->setSharedWithAvatar('/path/to/image.svg');
 		$share->setTarget('/target');
 
 		$share2 = $this->provider->create($share);
@@ -692,6 +736,13 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$this->assertSame('/target', $share2->getTarget());
 		$this->assertLessThanOrEqual(new \DateTime(), $share2->getShareTime());
 		$this->assertSame($path, $share2->getNode());
+
+		// nothing from setSharedWithDisplayName/setSharedWithAvatar is saved in DB
+		$this->assertSame('Displayed Name', $share->getSharedWithDisplayName());
+		$this->assertSame('/path/to/image.svg', $share->getSharedWithAvatar());
+		$this->assertSame(null, $share2->getSharedWithDisplayName());
+		$this->assertSame(null, $share2->getSharedWithAvatar());
+
 	}
 
 	public function testCreateLinkShare() {
@@ -726,6 +777,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share->setNode($path);
 		$share->setPermissions(1);
 		$share->setPassword('password');
+		$share->setSendPasswordByTalk(true);
 		$share->setToken('token');
 		$expireDate = new \DateTime();
 		$share->setExpirationDate($expireDate);
@@ -743,6 +795,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$this->assertLessThanOrEqual(new \DateTime(), $share2->getShareTime());
 		$this->assertSame($path, $share2->getNode());
 		$this->assertSame('password', $share2->getPassword());
+		$this->assertSame(true, $share2->getSendPasswordByTalk());
 		$this->assertSame('token', $share2->getToken());
 		$this->assertEquals($expireDate->getTimestamp(), $share2->getExpirationDate()->getTimestamp());
 	}
@@ -754,6 +807,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			->values([
 				'share_type'    => $qb->expr()->literal(\OCP\Share::SHARE_TYPE_LINK),
 				'password'    => $qb->expr()->literal('password'),
+				'password_by_talk' => $qb->expr()->literal(true),
 				'uid_owner'     => $qb->expr()->literal('shareOwner'),
 				'uid_initiator' => $qb->expr()->literal('sharedBy'),
 				'item_type'     => $qb->expr()->literal('file'),
@@ -776,6 +830,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$this->assertSame('sharedBy', $share->getSharedBy());
 		$this->assertSame('secrettoken', $share->getToken());
 		$this->assertSame('password', $share->getPassword());
+		$this->assertSame(true, $share->getSendPasswordByTalk());
 		$this->assertSame(null, $share->getSharedWith());
 	}
 
@@ -1055,8 +1110,10 @@ class DefaultShareProviderTest extends \Test\TestCase {
 
 		$user0 = $this->createMock(IUser::class);
 		$user0->method('getUID')->willReturn('user0');
+		$user0->method('getDisplayName')->willReturn('user0');
 		$user1 = $this->createMock(IUser::class);
 		$user1->method('getUID')->willReturn('user1');
+		$user0->method('getDisplayName')->willReturn('user0');
 
 		$this->userManager->method('get')->willReturnMap([
 			['user0', $user0],
@@ -1585,8 +1642,10 @@ class DefaultShareProviderTest extends \Test\TestCase {
 
 		$user1 = $this->createMock(IUser::class);
 		$user1->method('getUID')->willReturn('user1');
+		$user1->method('getDisplayName')->willReturn('user1');
 		$user2 = $this->createMock(IUser::class);
 		$user2->method('getUID')->willReturn('user2');
+		$user2->method('getDisplayName')->willReturn('user2');
 		$this->userManager->method('get')->will($this->returnValueMap([
 			['user1', $user1],
 			['user2', $user2],
@@ -1636,8 +1695,10 @@ class DefaultShareProviderTest extends \Test\TestCase {
 
 		$user1 = $this->createMock(IUser::class);
 		$user1->method('getUID')->willReturn('user1');
+		$user1->method('getDisplayName')->willReturn('user1');
 		$user2 = $this->createMock(IUser::class);
 		$user2->method('getUID')->willReturn('user2');
+		$user2->method('getDisplayName')->willReturn('user2');
 		$user3 = $this->createMock(IUser::class);
 		$this->userManager->method('get')->will($this->returnValueMap([
 			['user1', $user1],
@@ -1700,6 +1761,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		for($i = 0; $i < 6; $i++) {
 			$user = $this->createMock(IUser::class);
 			$user->method('getUID')->willReturn('user'.$i);
+			$user->method('getDisplayName')->willReturn('user' . $i);
 			$users['user'.$i] = $user;
 		}
 
@@ -1733,6 +1795,14 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share->setPermissions(1);
 
 		$share2 = $this->provider->update($share);
+
+		$this->assertEquals($id, $share2->getId());
+		$this->assertSame('user3', $share2->getSharedWith());
+		$this->assertSame('user4', $share2->getSharedBy());
+		$this->assertSame('user5', $share2->getShareOwner());
+		$this->assertSame(1, $share2->getPermissions());
+
+		$share2 = $this->provider->getShareById($id);
 
 		$this->assertEquals($id, $share2->getId());
 		$this->assertSame('user3', $share2->getSharedWith());
@@ -1776,6 +1846,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share = $this->provider->getShareById($id);
 
 		$share->setPassword('password');
+		$share->setSendPasswordByTalk(true);
 		$share->setSharedBy('user4');
 		$share->setShareOwner('user5');
 		$share->setNode($file2);
@@ -1784,7 +1855,17 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share2 = $this->provider->update($share);
 
 		$this->assertEquals($id, $share2->getId());
-		$this->assertEquals('password', $share->getPassword());
+		$this->assertEquals('password', $share2->getPassword());
+		$this->assertSame(true, $share2->getSendPasswordByTalk());
+		$this->assertSame('user4', $share2->getSharedBy());
+		$this->assertSame('user5', $share2->getShareOwner());
+		$this->assertSame(1, $share2->getPermissions());
+
+		$share2 = $this->provider->getShareById($id);
+
+		$this->assertEquals($id, $share2->getId());
+		$this->assertEquals('password', $share2->getPassword());
+		$this->assertSame(true, $share2->getSendPasswordByTalk());
 		$this->assertSame('user4', $share2->getSharedBy());
 		$this->assertSame('user5', $share2->getShareOwner());
 		$this->assertSame(1, $share2->getPermissions());
@@ -1793,6 +1874,12 @@ class DefaultShareProviderTest extends \Test\TestCase {
 	public function testUpdateLinkRemovePassword() {
 		$id = $this->addShareToDB(\OCP\Share::SHARE_TYPE_LINK, 'foo', 'user1', 'user2',
 			'file', 42, 'target', 31, null, null);
+
+		$qb = $this->dbConn->getQueryBuilder();
+		$qb->update('share');
+		$qb->where($qb->expr()->eq('id', $qb->createNamedParameter($id)));
+		$qb->set('password', $qb->createNamedParameter('password'));
+		$this->assertEquals(1, $qb->execute());
 
 		$users = [];
 		for($i = 0; $i < 6; $i++) {
@@ -1833,7 +1920,15 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share2 = $this->provider->update($share);
 
 		$this->assertEquals($id, $share2->getId());
-		$this->assertEquals(null, $share->getPassword());
+		$this->assertEquals(null, $share2->getPassword());
+		$this->assertSame('user4', $share2->getSharedBy());
+		$this->assertSame('user5', $share2->getShareOwner());
+		$this->assertSame(1, $share2->getPermissions());
+
+		$share2 = $this->provider->getShareById($id);
+
+		$this->assertEquals($id, $share2->getId());
+		$this->assertEquals(null, $share2->getPassword());
 		$this->assertSame('user4', $share2->getSharedBy());
 		$this->assertSame('user5', $share2->getShareOwner());
 		$this->assertSame(1, $share2->getPermissions());
@@ -1893,6 +1988,15 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$share->setPermissions(1);
 
 		$share2 = $this->provider->update($share);
+
+		$this->assertEquals($id, $share2->getId());
+		// Group shares do not allow updating the recipient
+		$this->assertSame('group0', $share2->getSharedWith());
+		$this->assertSame('user4', $share2->getSharedBy());
+		$this->assertSame('user5', $share2->getShareOwner());
+		$this->assertSame(1, $share2->getPermissions());
+
+		$share2 = $this->provider->getShareById($id);
 
 		$this->assertEquals($id, $share2->getId());
 		// Group shares do not allow updating the recipient
@@ -1970,6 +2074,15 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$this->assertSame('user5', $share2->getShareOwner());
 		$this->assertSame(1, $share2->getPermissions());
 
+		$share2 = $this->provider->getShareById($id);
+
+		$this->assertEquals($id, $share2->getId());
+		// Group shares do not allow updating the recipient
+		$this->assertSame('group0', $share2->getSharedWith());
+		$this->assertSame('user4', $share2->getSharedBy());
+		$this->assertSame('user5', $share2->getShareOwner());
+		$this->assertSame(1, $share2->getPermissions());
+
 		$qb = $this->dbConn->getQueryBuilder();
 		$stmt = $qb->select('*')
 			->from('share')
@@ -1999,8 +2112,10 @@ class DefaultShareProviderTest extends \Test\TestCase {
 
 		$user0 = $this->createMock(IUser::class);
 		$user0->method('getUID')->willReturn('user0');
+		$user0->method('getDisplayName')->willReturn('user0');
 		$user1 = $this->createMock(IUser::class);
 		$user1->method('getUID')->willReturn('user1');
+		$user1->method('getDisplayName')->willReturn('user1');
 
 		$this->userManager->method('get')->will($this->returnValueMap([
 			['user0', $user0],
@@ -2351,7 +2466,11 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->dbConn,
 			$userManager,
 			$groupManager,
-			$rootFolder
+			$rootFolder,
+			$this->mailer,
+			$this->defaults,
+			$this->l10n,
+			$this->urlGenerator
 		);
 
 		$password = md5(time());
@@ -2444,7 +2563,11 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->dbConn,
 			$userManager,
 			$groupManager,
-			$rootFolder
+			$rootFolder,
+			$this->mailer,
+			$this->defaults,
+			$this->l10n,
+			$this->urlGenerator
 		);
 
 		$u1 = $userManager->createUser('testShare1', 'test');
@@ -2535,7 +2658,11 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->dbConn,
 			$userManager,
 			$groupManager,
-			$rootFolder
+			$rootFolder,
+			$this->mailer,
+			$this->defaults,
+			$this->l10n,
+			$this->urlGenerator
 		);
 
 		$u1 = $userManager->createUser('testShare1', 'test');

@@ -63,6 +63,14 @@ if (getenv('OBJECT_STORE') === 'swift') {
 						'name' => 'default',
 					]
 				],
+				'scope' => [
+					'project' => [
+						'name' => 'service',
+						'domain' => [
+							'name' => 'default',
+						],
+					],
+				],
 				'tenantName' => 'service',
 				'serviceName' => 'swift',
 				'region' => 'regionOne',
@@ -71,4 +79,16 @@ if (getenv('OBJECT_STORE') === 'swift') {
 			)
 		];
 	}
+}
+if (getenv('OBJECT_STORE') === 'azure') {
+	$CONFIG['objectstore'] = [
+		'class' => 'OC\\Files\\ObjectStore\\Azure',
+		'arguments' => array(
+			'container' => 'test',
+			'account_name' => 'devstoreaccount1',
+			'account_key' => 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
+			'endpoint' => 'http://' . (getenv('DRONE') === 'true' ? 'azurite' : 'localhost') . ':10000/devstoreaccount1',
+			'autocreate' => true
+		)
+	];
 }

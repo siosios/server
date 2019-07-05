@@ -68,6 +68,7 @@ try {
 		echo "Current user: " . $user['name'] . PHP_EOL;
 		echo "Owner of config.php: " . $configUser['name'] . PHP_EOL;
 		echo "Try adding 'sudo -u " . $configUser['name'] . " ' to the beginning of the command (without the single quotes)" . PHP_EOL;
+		echo "If running with 'docker exec' try adding the option '-u " . $configUser['name'] . "' to the docker command (without the single quotes)" . PHP_EOL;
 		exit(1);
 	}
 
@@ -85,7 +86,13 @@ try {
 		echo "The process control (PCNTL) extensions are required in case you want to interrupt long running commands - see http://php.net/manual/en/book.pcntl.php" . PHP_EOL;
 	}
 
-	$application = new Application(\OC::$server->getConfig(), \OC::$server->getEventDispatcher(), \OC::$server->getRequest(), \OC::$server->getLogger());
+	$application = new Application(
+		\OC::$server->getConfig(),
+		\OC::$server->getEventDispatcher(),
+		\OC::$server->getRequest(),
+		\OC::$server->getLogger(),
+		\OC::$server->query(\OC\MemoryInfo::class)
+	);
 	$application->loadCommands(new ArgvInput(), new ConsoleOutput());
 	$application->run();
 } catch (Exception $ex) {

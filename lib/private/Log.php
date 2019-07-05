@@ -35,6 +35,7 @@ declare(strict_types=1);
 
 namespace OC;
 
+use function array_merge;
 use InterfaSys\LogNormalizer\Normalizer;
 
 use OC\Log\ExceptionSerializer;
@@ -42,7 +43,6 @@ use OCP\Log\IFileBased;
 use OCP\Log\IWriter;
 use OCP\ILogger;
 use OCP\Support\CrashReport\IRegistry;
-use OCP\Util;
 
 /**
  * logging utilities
@@ -216,10 +216,27 @@ class Log implements ILogger {
 
 		if ($level >= $minLevel) {
 			$this->writeLog($app, $message, $level);
+
+			if ($this->crashReporters !== null) {
+				$messageContext = array_merge(
+					$context,
+					[
+						'level' => $level
+					]
+				);
+				$this->crashReporters->delegateMessage($message, $messageContext);
+			}
+		} else {
+			if ($this->crashReporters !== null) {
+				$this->crashReporters->delegateBreadcrumb($message, 'log', $context);
+			}
 		}
+
 	}
 
 	private function getLogLevel($context) {
+		$logCondition = $this->config->getValue('log.condition', []);
+
 		/**
 		 * check for a special log condition - this enables an increased log on
 		 * a per request/user base
@@ -233,8 +250,16 @@ class Log implements ILogger {
 				if (isset($logCondition['shared_secret'])) {
 					$request = \OC::$server->getRequest();
 
+					if ($request->getMethod() === 'PUT' &&
+						strpos($request->getHeader('Content-Type'), 'application/x-www-form-urlencoded') === false &&
+						strpos($request->getHeader('Content-Type'), 'application/json') === false) {
+						$logSecretRequest = '';
+					} else {
+						$logSecretRequest = $request->getParam('log_secret', '');
+					}
+
 					// if token is found in the request change set the log condition to satisfied
-					if ($request && hash_equals($logCondition['shared_secret'], $request->getParam('log_secret', ''))) {
+					if ($request && hash_equals($logCondition['shared_secret'], $logSecretRequest)) {
 						$this->logConditionSatisfied = true;
 					}
 				}
@@ -257,7 +282,6 @@ class Log implements ILogger {
 		}
 
 		if (isset($context['app'])) {
-			$logCondition = $this->config->getValue('log.condition', []);
 			$app = $context['app'];
 
 			/**

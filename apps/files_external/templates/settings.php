@@ -14,7 +14,10 @@
 	$l->t("Once every direct access");
 	$l->t('Read only');
 
-	script('files_external', 'settings');
+	script('files_external', [
+		'settings',
+		'templates'
+	]);
 	style('files_external', 'settings');
 
 	// load custom JS
@@ -95,6 +98,7 @@
 
 <form data-can-create="<?php echo $canCreateMounts?'true':'false' ?>" id="files_external" class="section" data-encryption-enabled="<?php echo $_['encryptionEnabled']?'true': 'false'; ?>">
 	<h2 data-anchor-name="external-storage"><?php p($l->t('External storages')); ?></h2>
+	<p class="settings-hint"><?php p($l->t('External storage enables you to mount external storage services and devices as secondary Nextcloud storage devices. You may also allow users to mount their own external storage services.')); ?></p>
 	<?php if (isset($_['dependencies']) and ($_['dependencies'] !== '') and $canCreateMounts) print_unescaped(''.$_['dependencies'].''); ?>
 	<table id="externalStorage" class="grid" data-admin='<?php print_unescaped(json_encode($_['visibilityType'] === BackendService::VISIBILITY_ADMIN)); ?>'>
 		<thead>
@@ -150,11 +154,8 @@
 					</td>
 				<?php endif; ?>
 				<td class="mountOptionsToggle hidden">
-					<div class="icon-settings-dark" title="<?php p($l->t('Advanced settings')); ?>"></div>
+					<div class="icon-more" title="<?php p($l->t('Advanced settings')); ?>"></div>
 					<input type="hidden" class="mountOptions" value="" />
-				</td>
-				<td class="remove hidden">
-					<div class="icon-delete" title="<?php p($l->t('Delete')); ?>"></div>
 				</td>
 				<td class="save hidden">
 					<div class="icon-checkmark" title="<?php p($l->t('Save')); ?>"></div>
@@ -169,7 +170,6 @@
 		<label for="allowUserMounting"><?php p($l->t('Allow users to mount external storage')); ?></label> <span id="userMountingMsg" class="msg"></span>
 
 		<p id="userMountingBackends"<?php if (!$_['allowUserMounting']): ?> class="hidden"<?php endif; ?>>
-			<?php p($l->t('Allow users to mount the following external storage')); ?><br />
 			<?php
 				$userBackends = array_filter($_['backends'], function($backend) {
 					return $backend->isAllowedVisibleFor(BackendService::VISIBILITY_PERSONAL);
@@ -189,9 +189,11 @@
 </form>
 
 <?php if ($canCreateMounts): ?>
-	<form autocomplete="false" class="section" action="#"
+<div class="followupsection">
+	<form autocomplete="false" action="#"
 		  id="global_credentials">
-		<p><?php p($l->t('Global credentials')); ?></p>
+		<h2><?php p($l->t('Global credentials')); ?></h2>
+		<p class="settings-hint"><?php p($l->t('Global credentials can be used to authenticate with multiple external storages that have the same credentials.')); ?></p>
 		<input type="text" name="username"
 			   autocomplete="false"
 			   value="<?php p($_['globalCredentials']['user']); ?>"
@@ -204,4 +206,5 @@
 			   value="<?php p($_['globalCredentialsUid']); ?>"/>
 		<input type="submit" value="<?php p($l->t('Save')) ?>"/>
 	</form>
+</div>
 <?php endif; ?>

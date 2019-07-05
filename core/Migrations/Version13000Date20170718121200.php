@@ -176,14 +176,14 @@ class Version13000Date20170718121200 extends SimpleMigrationStep {
 				'length' => 8,
 				'default' => 0,
 			]);
-			$table->addColumn('mtime', 'integer', [
+			$table->addColumn('mtime', Type::BIGINT, [
 				'notnull' => true,
-				'length' => 4,
+				'length' => 20,
 				'default' => 0,
 			]);
-			$table->addColumn('storage_mtime', 'integer', [
+			$table->addColumn('storage_mtime', Type::BIGINT, [
 				'notnull' => true,
-				'length' => 4,
+				'length' => 20,
 				'default' => 0,
 			]);
 			$table->addColumn('encrypted', 'integer', [
@@ -215,6 +215,7 @@ class Version13000Date20170718121200 extends SimpleMigrationStep {
 			$table->addIndex(['storage', 'mimetype'], 'fs_storage_mimetype');
 			$table->addIndex(['storage', 'mimepart'], 'fs_storage_mimepart');
 			$table->addIndex(['storage', 'size', 'fileid'], 'fs_storage_size');
+			$table->addIndex(['mtime'], 'fs_mtime');
 		}
 
 		if (!$schema->hasTable('group_user')) {
@@ -401,6 +402,9 @@ class Version13000Date20170718121200 extends SimpleMigrationStep {
 			$table->addIndex(['file_source'], 'file_source_index');
 			$table->addIndex(['token'], 'token_index');
 			$table->addIndex(['share_with'], 'share_with_index');
+			$table->addIndex(['parent'], 'parent_index');
+			$table->addIndex(['uid_owner'], 'owner_index');
+			$table->addIndex(['uid_initiator'], 'initiator_index');
 		}
 
 		if (!$schema->hasTable('jobs')) {
@@ -519,7 +523,7 @@ class Version13000Date20170718121200 extends SimpleMigrationStep {
 			]);
 			$table->setPrimaryKey(['id']);
 			$table->addUniqueIndex(['token'], 'authtoken_token_index');
-			$table->addIndex(['last_activity'], 'authtoken_last_activity_index');
+			$table->addIndex(['last_activity'], 'authtoken_last_activity_idx');
 		}
 
 		if (!$schema->hasTable('bruteforce_attempts')) {

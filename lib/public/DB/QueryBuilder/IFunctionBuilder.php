@@ -96,4 +96,13 @@ interface IFunctionBuilder {
 	 * @since 14.0.0
 	 */
 	public function subtract($x, $y);
+
+	/**
+	 * @param mixed $count The input to be counted
+	 * @param string $alias Alias for the counter
+	 *
+	 * @return IQueryFunction
+	 * @since 14.0.0
+	 */
+	public function count($count, $alias = '');
 }

@@ -29,17 +29,29 @@ declare(strict_types=1);
  */
 namespace OCA\Files_Sharing\Controller;
 
+use function array_filter;
+use function array_slice;
+use function array_values;
+use Generator;
+use OC\Collaboration\Collaborators\SearchResult;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCS\OCSBadRequestException;
 use OCP\AppFramework\OCSController;
 use OCP\Collaboration\Collaborators\ISearch;
+use OCP\Collaboration\Collaborators\ISearchResult;
+use OCP\Collaboration\Collaborators\SearchResultType;
 use OCP\IRequest;
 use OCP\IConfig;
 use OCP\IURLGenerator;
 use OCP\Share;
 use OCP\Share\IManager;
+use function usort;
 
 class ShareesAPIController extends OCSController {
+
+	/** @var userId */
+	protected $userId;
+
 	/** @var IConfig */
 	protected $config;
 
@@ -67,15 +79,20 @@ class ShareesAPIController extends OCSController {
 			'users' => [],
 			'groups' => [],
 			'remotes' => [],
+			'remote_groups' => [],
 			'emails' => [],
 			'circles' => [],
+			'rooms' => [],
 		],
 		'users' => [],
 		'groups' => [],
 		'remotes' => [],
+		'remote_groups' => [],
 		'emails' => [],
 		'lookup' => [],
 		'circles' => [],
+		'rooms' => [],
+		'lookupEnabled' => false,
 	];
 
 	protected $reachedEndFor = [];
@@ -83,6 +100,7 @@ class ShareesAPIController extends OCSController {
 	private $collaboratorSearch;
 
 	/**
+	 * @param string $UserId
 	 * @param string $appName
 	 * @param IRequest $request
 	 * @param IConfig $config
@@ -91,6 +109,7 @@ class ShareesAPIController extends OCSController {
 	 * @param ISearch $collaboratorSearch
 	 */
 	public function __construct(
+		$UserId,
 		string $appName,
 		IRequest $request,
 		IConfig $config,
@@ -99,7 +118,7 @@ class ShareesAPIController extends OCSController {
 		ISearch $collaboratorSearch
 	) {
 		parent::__construct($appName, $request);
-
+		$this->userId = $UserId;
 		$this->config = $config;
 		$this->urlGenerator = $urlGenerator;
 		$this->shareManager = $shareManager;
@@ -153,8 +172,16 @@ class ShareesAPIController extends OCSController {
 				$shareTypes[] = Share::SHARE_TYPE_REMOTE;
 			}
 
+			if ($this->isRemoteGroupSharingAllowed($itemType)) {
+				$shareTypes[] = Share::SHARE_TYPE_REMOTE_GROUP;
+			}
+
 			if ($this->shareManager->shareProviderExists(Share::SHARE_TYPE_EMAIL)) {
 				$shareTypes[] = Share::SHARE_TYPE_EMAIL;
+			}
+
+			if ($this->shareManager->shareProviderExists(Share::SHARE_TYPE_ROOM)) {
+				$shareTypes[] = Share::SHARE_TYPE_ROOM;
 			}
 		} else {
 			$shareTypes[] = Share::SHARE_TYPE_GROUP;
@@ -186,6 +213,7 @@ class ShareesAPIController extends OCSController {
 			$result['exact'] = array_merge($this->result['exact'], $result['exact']);
 		}
 		$this->result = array_merge($this->result, $result);
+		$this->result['lookupEnabled'] = $this->config->getAppValue('files_sharing', 'lookupServerEnabled', 'yes') === 'yes';
 		$response = new DataResponse($this->result);
 
 		if ($hasMoreResults) {
@@ -201,6 +229,148 @@ class ShareesAPIController extends OCSController {
 	}
 
 	/**
+	 * @param string $user
+	 * @param int $shareType
+	 *
+	 * @return Generator<array<string>>
+	 */
+	private function getAllShareesByType(string $user, int $shareType): Generator {
+		$offset = 0;
+		$pageSize = 50;
+
+		while (count($page = $this->shareManager->getSharesBy(
+			$user,
+			$shareType,
+			null,
+			false,
+			$pageSize,
+			$offset
+		))) {
+			foreach ($page as $share) {
+				yield [$share->getSharedWith(), $share->getSharedWithDisplayName() ?? $share->getSharedWith()];
+			}
+
+			$offset += $pageSize;
+		}
+	}
+
+	private function sortShareesByFrequency(array $sharees): array {
+		usort($sharees, function(array $s1, array $s2) {
+			return $s2['count'] - $s1['count'];
+		});
+		return $sharees;
+	}
+
+	private $searchResultTypeMap = [
+		Share::SHARE_TYPE_USER => 'users',
+		Share::SHARE_TYPE_GROUP => 'groups',
+		Share::SHARE_TYPE_REMOTE => 'remotes',
+		Share::SHARE_TYPE_REMOTE_GROUP => 'remote_groups',
+		Share::SHARE_TYPE_EMAIL => 'emails',
+	];
+
+	private function getAllSharees(string $user, array $shareTypes): ISearchResult {
+		$result = [];
+		foreach ($shareTypes as $shareType) {
+			$sharees = $this->getAllShareesByType($user, $shareType);
+			$shareTypeResults = [];
+			foreach ($sharees as list($sharee, $displayname)) {
+				if (!isset($this->searchResultTypeMap[$shareType])) {
+					continue;
+				}
+
+				if (!isset($shareTypeResults[$sharee])) {
+					$shareTypeResults[$sharee] = [
+						'count' => 1,
+						'label' => $displayname,
+						'value' => [
+							'shareType' => $shareType,
+							'shareWith' => $sharee,
+						],
+					];
+				} else {
+					$shareTypeResults[$sharee]['count']++;
+				}
+			}
+			$result = array_merge($result, array_values($shareTypeResults));
+		}
+
+		$top5 = array_slice(
+			$this->sortShareesByFrequency($result),
+			0,
+			5
+		);
+
+		$searchResult = new SearchResult();
+		foreach ($this->searchResultTypeMap as $int => $str) {
+			$searchResult->addResultSet(new SearchResultType($str), [], []);
+			foreach ($top5 as $x) {
+				if ($x['value']['shareType'] === $int) {
+					$searchResult->addResultSet(new SearchResultType($str), [], [$x]);
+				}
+			}
+		}
+		return $searchResult;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 *
+	 * @param string $itemType
+	 * @return DataResponse
+	 * @throws OCSBadRequestException
+	 */
+	public function findRecommended(string $itemType = null, $shareType = null): DataResponse {
+		$shareTypes = [
+			Share::SHARE_TYPE_USER,
+		];
+
+		if ($itemType === null) {
+			throw new OCSBadRequestException('Missing itemType');
+		} elseif ($itemType === 'file' || $itemType === 'folder') {
+			if ($this->shareManager->allowGroupSharing()) {
+				$shareTypes[] = Share::SHARE_TYPE_GROUP;
+			}
+
+			if ($this->isRemoteSharingAllowed($itemType)) {
+				$shareTypes[] = Share::SHARE_TYPE_REMOTE;
+			}
+
+			if ($this->isRemoteGroupSharingAllowed($itemType)) {
+				$shareTypes[] = Share::SHARE_TYPE_REMOTE_GROUP;
+			}
+
+			if ($this->shareManager->shareProviderExists(Share::SHARE_TYPE_EMAIL)) {
+				$shareTypes[] = Share::SHARE_TYPE_EMAIL;
+			}
+
+			if ($this->shareManager->shareProviderExists(Share::SHARE_TYPE_ROOM)) {
+				$shareTypes[] = Share::SHARE_TYPE_ROOM;
+			}
+		} else {
+			$shareTypes[] = Share::SHARE_TYPE_GROUP;
+			$shareTypes[] = Share::SHARE_TYPE_EMAIL;
+		}
+
+		// FIXME: DI
+		if (\OC::$server->getAppManager()->isEnabledForUser('circles') && class_exists('\OCA\Circles\ShareByCircleProvider')) {
+			$shareTypes[] = Share::SHARE_TYPE_CIRCLE;
+		}
+
+		if (isset($_GET['shareType']) && is_array($_GET['shareType'])) {
+			$shareTypes = array_intersect($shareTypes, $_GET['shareType']);
+			sort($shareTypes);
+		} else if (is_numeric($shareType)) {
+			$shareTypes = array_intersect($shareTypes, [(int) $shareType]);
+			sort($shareTypes);
+		}
+
+		return new DataResponse(
+			$this->getAllSharees($this->userId, $shareTypes)->asArray()
+		);
+	}
+
+	/**
 	 * Method to get out the static call for better testing
 	 *
 	 * @param string $itemType
@@ -211,6 +381,16 @@ class ShareesAPIController extends OCSController {
 			// FIXME: static foo makes unit testing unnecessarily difficult
 			$backend = \OC\Share\Share::getBackend($itemType);
 			return $backend->isShareTypeAllowed(Share::SHARE_TYPE_REMOTE);
+		} catch (\Exception $e) {
+			return false;
+		}
+	}
+
+	protected function isRemoteGroupSharingAllowed(string $itemType): bool {
+		try {
+			// FIXME: static foo makes unit testing unnecessarily difficult
+			$backend = \OC\Share\Share::getBackend($itemType);
+			return $backend->isShareTypeAllowed(Share::SHARE_TYPE_REMOTE_GROUP);
 		} catch (\Exception $e) {
 			return false;
 		}

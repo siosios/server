@@ -177,12 +177,14 @@ class JobList implements IJobList {
 	 * get the next job in the list
 	 *
 	 * @return IJob|null
+	 * @suppress SqlInjectionChecker
 	 */
 	public function getNext() {
 		$query = $this->connection->getQueryBuilder();
 		$query->select('*')
 			->from('jobs')
 			->where($query->expr()->lte('reserved_at', $query->createNamedParameter($this->timeFactory->getTime() - 12 * 3600, IQueryBuilder::PARAM_INT)))
+			->andWhere($query->expr()->lte('last_checked', $query->createNamedParameter($this->timeFactory->getTime(), IQueryBuilder::PARAM_INT)))
 			->orderBy('last_checked', 'ASC')
 			->setMaxResults(1);
 
@@ -211,6 +213,14 @@ class JobList implements IJobList {
 			$job = $this->buildJob($row);
 
 			if ($job === null) {
+				// set the last_checked to 12h in the future to not check failing jobs all over again
+				$reset = $this->connection->getQueryBuilder();
+				$reset->update('jobs')
+					->set('reserved_at', $reset->expr()->literal(0, IQueryBuilder::PARAM_INT))
+					->set('last_checked', $reset->createNamedParameter($this->timeFactory->getTime() + 12 * 3600, IQueryBuilder::PARAM_INT))
+					->where($reset->expr()->eq('id', $reset->createNamedParameter($row['id'], IQueryBuilder::PARAM_INT)));
+				$reset->execute();
+
 				// Background job from disabled app, try again.
 				return $this->getNext();
 			}
@@ -263,7 +273,7 @@ class JobList implements IJobList {
 				}
 			}
 
-			$job->setId($row['id']);
+			$job->setId((int) $row['id']);
 			$job->setLastRun($row['last_run']);
 			$job->setArgument(json_decode($row['argument'], true));
 			return $job;

@@ -61,6 +61,7 @@
 		}
 		this._client = new dav.Client(clientOptions);
 		this._client.xhrProvider = _.bind(this._xhrProvider, this);
+		this._fileInfoParsers = [];
 	};
 
 	Client.NS_OWNCLOUD = 'http://owncloud.org/ns';
@@ -271,7 +272,7 @@
 		 * @return {Array.<FileInfo>} array of file info
 		 */
 		_parseFileInfo: function(response) {
-			var path = response.href;
+			var path = decodeURIComponent(response.href);
 			if (path.substr(0, this._root.length) === this._root) {
 				path = path.substr(this._root.length);
 			}
@@ -279,8 +280,6 @@
 			if (path.charAt(path.length - 1) === '/') {
 				path = path.substr(0, path.length - 1);
 			}
-
-			path = decodeURIComponent(path);
 
 			if (response.propStat.length === 0 || response.propStat[0].status !== 'HTTP/1.1 200 OK') {
 				return null;
@@ -330,12 +329,10 @@
 			}
 
 			var resType = props[Client.PROPERTY_RESOURCETYPE];
-			var isFile = true;
 			if (!data.mimetype && resType) {
 				var xmlvalue = resType[0];
 				if (xmlvalue.namespaceURI === Client.NS_DAV && xmlvalue.nodeName.split(':')[1] === 'collection') {
 					data.mimetype = 'httpd/unix-directory';
-					isFile = false;
 				}
 			}
 
@@ -392,7 +389,7 @@
 
 			// extend the parsed data using the custom parsers
 			_.each(this._fileInfoParsers, function(parserFunction) {
-				_.extend(data, parserFunction(response) || {});
+				_.extend(data, parserFunction(response, data) || {});
 			});
 
 			return new FileInfo(data);
@@ -430,6 +427,9 @@
 		_getSabreException: function(response) {
 			var result = {};
 			var xml = response.xhr.responseXML;
+			if (xml === null) {
+				return result;
+			}
 			var messages = xml.getElementsByTagNameNS('http://sabredav.org/ns', 'message');
 			var exceptions = xml.getElementsByTagNameNS('http://sabredav.org/ns', 'exception');
 			if (messages.length) {
@@ -503,7 +503,7 @@
 
 		/**
 		 * Fetches a flat list of files filtered by a given filter criteria.
-		 * (currently only system tags is supported)
+		 * (currently system tags and circles are supported)
 		 *
 		 * @param {Object} filter filter criteria
 		 * @param {Object} [filter.systemTagIds] list of system tag ids to filter by
@@ -525,7 +525,8 @@
 				properties = options.properties;
 			}
 
-			if (!filter || (!filter.systemTagIds && _.isUndefined(filter.favorite))) {
+			if (!filter ||
+				(!filter.systemTagIds && _.isUndefined(filter.favorite) && !filter.circlesIds) ) {
 				throw 'Missing filter argument';
 			}
 
@@ -550,6 +551,9 @@
 			body +=	'    <oc:filter-rules>\n';
 			_.each(filter.systemTagIds, function(systemTagIds) {
 				body += '        <oc:systemtag>' + escapeHTML(systemTagIds) + '</oc:systemtag>\n';
+			});
+			_.each(filter.circlesIds, function(circlesIds) {
+				body += '        <oc:circle>' + escapeHTML(circlesIds) + '</oc:circle>\n';
 			});
 			if (filter.favorite) {
 				body += '        <oc:favorite>' + (filter.favorite ? '1': '0') + '</oc:favorite>\n';
@@ -840,7 +844,7 @@
 		/**
 		 * Add a file info parser function
 		 *
-		 * @param {OC.Files.Client~parseFileInfo>}
+		 * @param {OC.Files.Client~parseFileInfo} parserFunction
 		 */
 		addFileInfoParser: function(parserFunction) {
 			this._fileInfoParsers.push(parserFunction);
@@ -932,7 +936,7 @@
 		var client = new OC.Files.Client({
 			host: OC.getHost(),
 			port: OC.getPort(),
-			root: OC.linkToRemoteBase('webdav'),
+			root: OC.linkToRemoteBase('dav') + '/files/' + OC.getCurrentUser().uid,
 			useHTTPS: OC.getProtocol() === 'https'
 		});
 		OC.Files._defaultClient = client;

@@ -1,8 +1,6 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Saved" : "Disimpan",
-    "Saving failed:" : "Penyimpanan gagal:",
     "File MIME type" : "Berkas tipe MIME",
     "is" : "adalah",
     "is not" : "bukan",
@@ -40,6 +38,14 @@ OC.L10N.register(
     "User group membership" : "Keanggotaan grup pengguna",
     "is member of" : "anggota dari",
     "is not member of" : "bukan anggota dari",
+    "Short rule description" : "Deskripsi aturan singkat",
+    "Add rule" : "Tambahkan aturan",
+    "Reset" : "Setel ulang",
+    "Save" : "Simpan",
+    "Saving…" : "Menyimpan...",
+    "Saved" : "Disimpan",
+    "Saving failed:" : "Penyimpanan gagal:",
+    "Add rule group" : "Tambahkan aturan grup ",
     "The given operator is invalid" : "Operator yang diberikan tidak sah",
     "The given regular expression is invalid" : "Regular expression yang diberikan tidak sah",
     "The given file size is invalid" : "Ukuran berkas yang diberikan tidak sah",
@@ -58,14 +64,8 @@ OC.L10N.register(
     "Check %s does not exist" : "Cek %s tidak ada",
     "Check %s is invalid" : "Cek %s tidak valid",
     "Check #%s does not exist" : "Cek #%s tidak ada",
-    "Workflow" : "Alur kerja",
     "Open documentation" : "Buka dokumentasi",
-    "Add rule group" : "Tambahkan aturan grup ",
-    "Short rule description" : "Deskripsi aturan singkat",
-    "Add rule" : "Tambahkan aturan",
-    "Reset" : "Setel ulang",
-    "Save" : "Simpan",
-    "Saving…" : "Menyimpan...",
-    "Loading…" : "Memuat..."
+    "Loading…" : "Memuat...",
+    "Workflow" : "Alur kerja"
 },
 "nplurals=1; plural=0;");

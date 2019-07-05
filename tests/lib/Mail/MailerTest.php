@@ -48,50 +48,73 @@ class MailerTest extends TestCase {
 		);
 	}
 
-	public function testGetMailInstance() {
-		$this->assertEquals(\Swift_MailTransport::newInstance(), self::invokePrivate($this->mailer, 'getMailinstance'));
+	/**
+	 * @return array
+	 */
+	public function sendmailModeProvider(): array {
+		return [
+			'smtp' => ['smtp', ' -bs'],
+			'pipe' => ['pipe', ' -t'],
+		];
 	}
 
-	public function testGetSendMailInstanceSendMail() {
+	/**
+	 * @dataProvider sendmailModeProvider
+	 * @param $sendmailMode
+	 * @param $binaryParam
+	 */
+	public function testGetSendmailInstanceSendMail($sendmailMode, $binaryParam) {
 		$this->config
-			->expects($this->once())
+			->expects($this->exactly(2))
 			->method('getSystemValue')
-			->with('mail_smtpmode', 'php')
-			->will($this->returnValue('sendmail'));
+			->will($this->returnValueMap([
+				['mail_smtpmode', 'smtp', 'sendmail'],
+				['mail_sendmailmode', 'smtp', $sendmailMode],
+			]));
 
-		$this->assertEquals(\Swift_SendmailTransport::newInstance('/usr/sbin/sendmail -bs'), self::invokePrivate($this->mailer, 'getSendMailInstance'));
+		$path = \OC_Helper::findBinaryPath('sendmail');
+		if ($path === null) {
+			$path = '/usr/sbin/sendmail';
+		}
+
+		$expected = new \Swift_SendmailTransport($path . $binaryParam);
+		$this->assertEquals($expected, self::invokePrivate($this->mailer, 'getSendMailInstance'));
 	}
 
-	public function testGetSendMailInstanceSendMailQmail() {
+	/**
+	 * @dataProvider sendmailModeProvider
+	 * @param $sendmailMode
+	 * @param $binaryParam
+	 */
+	public function testGetSendmailInstanceSendMailQmail($sendmailMode, $binaryParam) {
 		$this->config
-			->expects($this->once())
+			->expects($this->exactly(2))
 			->method('getSystemValue')
-			->with('mail_smtpmode', 'php')
-			->will($this->returnValue('qmail'));
+			->will($this->returnValueMap([
+				['mail_smtpmode', 'smtp', 'qmail'],
+				['mail_sendmailmode', 'smtp', $sendmailMode],
+			]));
 
-		$this->assertEquals(\Swift_SendmailTransport::newInstance('/var/qmail/bin/sendmail -bs'), self::invokePrivate($this->mailer, 'getSendMailInstance'));
+		$this->assertEquals(new \Swift_SendmailTransport('/var/qmail/bin/sendmail' . $binaryParam), self::invokePrivate($this->mailer, 'getSendMailInstance'));
 	}
 
 	public function testGetInstanceDefault() {
-		$this->assertInstanceOf('\Swift_MailTransport', self::invokePrivate($this->mailer, 'getInstance'));
-	}
-
-	public function testGetInstancePhp() {
-		$this->config
-			->expects($this->any())
-			->method('getSystemValue')
-			->will($this->returnValue('php'));
-
-		$this->assertInstanceOf('\Swift_MailTransport', self::invokePrivate($this->mailer, 'getInstance'));
+		$mailer = self::invokePrivate($this->mailer, 'getInstance');
+		$this->assertInstanceOf(\Swift_Mailer::class, $mailer);
+		$this->assertInstanceOf(\Swift_SmtpTransport::class, $mailer->getTransport());
 	}
 
 	public function testGetInstanceSendmail() {
 		$this->config
-			->expects($this->any())
 			->method('getSystemValue')
-			->will($this->returnValue('sendmail'));
+			->will($this->returnValueMap([
+				['mail_smtpmode', 'smtp', 'sendmail'],
+				['mail_sendmailmode', 'smtp', 'smtp'],
+			]));
 
-		$this->assertInstanceOf('\Swift_Mailer', self::invokePrivate($this->mailer, 'getInstance'));
+		$mailer = self::invokePrivate($this->mailer, 'getInstance');
+		$this->assertInstanceOf(\Swift_Mailer::class, $mailer);
+		$this->assertInstanceOf(\Swift_SendmailTransport::class, $mailer->getTransport());
 	}
 
 	public function testCreateMessage() {
@@ -143,5 +166,27 @@ class MailerTest extends TestCase {
 			->willReturnArgument(1);
 
 		$this->assertSame(EMailTemplate::class, get_class($this->mailer->createEMailTemplate('tests.MailerTest')));
+	}
+
+	public function testStreamingOptions() {
+		$this->config->method('getSystemValue')
+			->will($this->returnValueMap([
+				['mail_smtpmode', 'smtp', 'smtp'],
+				['mail_smtpstreamoptions', [], ['foo' => 1]]
+			]));
+		$mailer = self::invokePrivate($this->mailer, 'getInstance');
+		$this->assertEquals(1, count($mailer->getTransport()->getStreamOptions()));
+		$this->assertTrue(isset($mailer->getTransport()->getStreamOptions()['foo']));
+
+	}
+
+	public function testStreamingOptionsWrongType() {
+		$this->config->method('getSystemValue')
+			->will($this->returnValueMap([
+				['mail_smtpmode', 'smtp', 'smtp'],
+				['mail_smtpstreamoptions', [], 'bar']
+			]));
+		$mailer = self::invokePrivate($this->mailer, 'getInstance');
+		$this->assertEquals(0, count($mailer->getTransport()->getStreamOptions()));
 	}
 }

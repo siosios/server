@@ -177,8 +177,10 @@ class Throttler {
 				$part = ord($addr[(int)($i/8)]);
 				$orig = ord($ip[(int)($i/8)]);
 
-				$part = $part & (15 << (1 - ($i % 2)));
-				$orig = $orig & (15 << (1 - ($i % 2)));
+				$bitmask = 1 << (7 - ($i % 8));
+
+				$part = $part & $bitmask;
+				$orig = $orig & $bitmask;
 
 				if ($part !== $orig) {
 					$valid = false;
@@ -228,7 +230,7 @@ class Throttler {
 			return 0;
 		}
 
-		$maxDelay = 30;
+		$maxDelay = 25;
 		$firstDelay = 0.1;
 		if ($attempts > (8 * PHP_INT_SIZE - 1))  {
 			// Don't ever overflow. Just assume the maxDelay time:s

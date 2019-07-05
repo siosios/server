@@ -48,8 +48,8 @@ use OCP\ILogger;
  * @property string ldapUserFilter
  * @property string ldapUserDisplayName
  * @property string ldapUserDisplayName2
+ * @property string ldapUserAvatarRule
  * @property boolean turnOnPasswordChange
- * @property boolean hasPagedResultSupport
  * @property string[] ldapBaseUsers
  * @property int|null ldapPagingSize holds an integer
  * @property bool|mixed|void ldapGroupMemberAssocAttr
@@ -57,13 +57,21 @@ use OCP\ILogger;
  * @property string ldapUuidGroupAttribute
  * @property string ldapExpertUUIDUserAttr
  * @property string ldapExpertUUIDGroupAttr
+ * @property string ldapQuotaAttribute
+ * @property string ldapQuotaDefault
+ * @property string ldapEmailAttribute
+ * @property string ldapExtStorageHomeAttribute
+ * @property string homeFolderNamingRule
+ * @property bool|string ldapNestedGroups
+ * @property string[] ldapBaseGroups
+ * @property string ldapGroupFilter
+ * @property string ldapGroupDisplayName
  */
 class Connection extends LDAPUtility {
 	private $ldapConnectionRes = null;
 	private $configPrefix;
 	private $configID;
 	private $configured = false;
-	private $hasPagedResultSupport = true;
 	//whether connection should be kept on __destruct
 	private $dontDestruct = false;
 
@@ -108,9 +116,6 @@ class Connection extends LDAPUtility {
 		$helper = new Helper(\OC::$server->getConfig());
 		$this->doNotValidate = !in_array($this->configPrefix,
 			$helper->getServerConfigurationPrefixes());
-		$this->hasPagedResultSupport =
-			(int)$this->configuration->ldapPagingSize !== 0
-			|| $this->ldap->hasPagedResultSupport();
 	}
 
 	public function __destruct() {
@@ -142,10 +147,6 @@ class Connection extends LDAPUtility {
 			$this->readConfiguration();
 		}
 
-		if($name === 'hasPagedResultSupport') {
-			return $this->hasPagedResultSupport;
-		}
-
 		return $this->configuration->$name;
 	}
 
@@ -164,6 +165,15 @@ class Connection extends LDAPUtility {
 			}
 			$this->validateConfiguration();
 		}
+	}
+
+	/**
+	 * @param string $rule
+	 * @return array
+	 * @throws \RuntimeException
+	 */
+	public function resolveRule($rule) {
+		return $this->configuration->resolveRule($rule);
 	}
 
 	/**
@@ -511,6 +521,8 @@ class Connection extends LDAPUtility {
 
 	/**
 	 * Connects and Binds to LDAP
+	 *
+	 * @throws ServerNotAvailableException
 	 */
 	private function establishConnection() {
 		if(!$this->configuration->ldapConfigurationActive) {
@@ -557,17 +569,11 @@ class Connection extends LDAPUtility {
 				|| $this->getFromCache('overrideMainServer'));
 			$isBackupHost = (trim($this->configuration->ldapBackupHost) !== "");
 			$bindStatus = false;
-			$error = -1;
 			try {
 				if (!$isOverrideMainServer) {
 					$this->doConnect($this->configuration->ldapHost,
 						$this->configuration->ldapPort);
-					$bindStatus = $this->bind();
-					$error = $this->ldap->isResource($this->ldapConnectionRes) ?
-						$this->ldap->errno($this->ldapConnectionRes) : -1;
-				}
-				if($bindStatus === true) {
-					return $bindStatus;
+					return $this->bind();
 				}
 			} catch (ServerNotAvailableException $e) {
 				if(!$isBackupHost) {
@@ -576,7 +582,7 @@ class Connection extends LDAPUtility {
 			}
 
 			//if LDAP server is not reachable, try the Backup (Replica!) Server
-			if($isBackupHost && ($error !== 0 || $isOverrideMainServer)) {
+			if($isBackupHost || $isOverrideMainServer) {
 				$this->doConnect($this->configuration->ldapBackupHost,
 								 $this->configuration->ldapBackupPort);
 				$this->bindResult = [];

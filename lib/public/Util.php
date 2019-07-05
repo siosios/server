@@ -82,14 +82,26 @@ class Util {
 	private static $shareManager;
 
 	/**
-	 * get the current installed version of ownCloud
+	 * get the current installed version of Nextcloud
 	 * @return array
 	 * @since 4.0.0
 	 */
 	public static function getVersion() {
 		return \OC_Util::getVersion();
 	}
-	
+
+	/**
+	 * @since 17.0.0
+	 */
+	public static function hasExtendedSupport(): bool {
+		try {
+			/** @var \OCP\Support\Subscription\IRegistry */
+			$subscriptionRegistry = \OC::$server->query(\OCP\Support\Subscription\IRegistry::class);
+			return $subscriptionRegistry->delegateHasExtendedSupport();
+		} catch (AppFramework\QueryException $e) {}
+		return \OC::$server->getConfig()->getSystemValueBool('extendedSupport', false);
+	}
+
 	/**
 	 * Set current update channel
 	 * @param string $channel
@@ -98,7 +110,7 @@ class Util {
 	public static function setChannel($channel) {
 		\OC::$server->getConfig()->setSystemValue('updater.release.channel', $channel);
 	}
-	
+
 	/**
 	 * Get current update channel
 	 * @return string
@@ -119,18 +131,6 @@ class Util {
 	public static function writeLog( $app, $message, $level ) {
 		$context = ['app' => $app];
 		\OC::$server->getLogger()->log($level, $message, $context);
-	}
-
-	/**
-	 * write exception into the log
-	 * @param string $app app name
-	 * @param \Exception $ex exception to log
-	 * @param int $level log level, defaults to \OCP\Util::FATAL
-	 * @since ....0.0 - parameter $level was added in 7.0.0
-	 * @deprecated 8.2.0 use logException of \OCP\ILogger
-	 */
-	public static function logException( $app, \Exception $ex, $level = ILogger::FATAL) {
-		\OC::$server->getLogger()->logException($ex, ['app' => $app]);
 	}
 
 	/**
@@ -242,9 +242,14 @@ class Util {
 	 * @param string $service id
 	 * @return string the url
 	 * @since 4.5.0
+	 * @deprecated 15.0.0 - use OCP\IURLGenerator
 	 */
 	public static function linkToPublic($service) {
-		return \OC_Helper::linkToPublic($service);
+		$urlGenerator = \OC::$server->getURLGenerator();
+		if ($service === 'files') {
+			return $urlGenerator->getAbsoluteURL('/s');
+		}
+		return $urlGenerator->getAbsoluteURL($urlGenerator->linkTo('', 'public.php').'?service='.$service);
 	}
 
 	/**
@@ -368,22 +373,6 @@ class Util {
 	}
 
 	/**
-	 * Check an ajax get/post call if the request token is valid. exit if not.
-	 * @since 4.5.0
-	 * @deprecated 9.0.0 Use annotations based on the app framework.
-	 */
-	public static function callCheck() {
-		if(!\OC::$server->getRequest()->passesStrictCookieCheck()) {
-			header('Location: '.\OC::$WEBROOT);
-			exit();
-		}
-
-		if (!\OC::$server->getRequest()->passesCSRFCheck()) {
-			exit();
-		}
-	}
-
-	/**
 	 * Used to sanitize HTML
 	 *
 	 * This function is used to sanitize HTML and should be applied on any
@@ -426,38 +415,6 @@ class Util {
 	}
 
 	/**
-	 * replaces a copy of string delimited by the start and (optionally) length parameters with the string given in replacement.
-	 *
-	 * @param string $string The input string. Opposite to the PHP build-in function does not accept an array.
-	 * @param string $replacement The replacement string.
-	 * @param int $start If start is positive, the replacing will begin at the start'th offset into string. If start is negative, the replacing will begin at the start'th character from the end of string.
-	 * @param int $length Length of the part to be replaced
-	 * @param string $encoding The encoding parameter is the character encoding. Defaults to UTF-8
-	 * @return string
-	 * @since 4.5.0
-	 * @deprecated 8.2.0 Use substr_replace() instead.
-	 */
-	public static function mb_substr_replace($string, $replacement, $start, $length = null, $encoding = 'UTF-8') {
-		return substr_replace($string, $replacement, $start, $length);
-	}
-
-	/**
-	 * Replace all occurrences of the search string with the replacement string
-	 *
-	 * @param string $search The value being searched for, otherwise known as the needle. String.
-	 * @param string $replace The replacement string.
-	 * @param string $subject The string or array being searched and replaced on, otherwise known as the haystack.
-	 * @param string $encoding The encoding parameter is the character encoding. Defaults to UTF-8
-	 * @param int $count If passed, this will be set to the number of replacements performed.
-	 * @return string
-	 * @since 4.5.0
-	 * @deprecated 8.2.0 Use str_replace() instead.
-	 */
-	public static function mb_str_replace($search, $replace, $subject, $encoding = 'UTF-8', &$count = null) {
-		return str_replace($search, $replace, $subject, $count);
-	}
-
-	/**
 	 * performs a search in a nested array
 	 *
 	 * @param array $haystack the array to be searched
@@ -465,6 +422,7 @@ class Util {
 	 * @param mixed $index optional, only search this key name
 	 * @return mixed the key of the matching field, otherwise false
 	 * @since 4.5.0
+	 * @deprecated 15.0.0
 	 */
 	public static function recursiveArraySearch($haystack, $needle, $index = null) {
 		return \OC_Helper::recursiveArraySearch($haystack, $needle, $index);
@@ -555,7 +513,17 @@ class Util {
 	public static function needUpgrade() {
 		if (!isset(self::$needUpgradeCache)) {
 			self::$needUpgradeCache=\OC_Util::needUpgrade(\OC::$server->getSystemConfig());
-		}		
+		}
 		return self::$needUpgradeCache;
+	}
+
+	/**
+	 * is this Internet explorer ?
+	 *
+	 * @return boolean
+	 * @since 14.0.0
+	 */
+	public static function isIe() {
+		return \OC_Util::isIe();
 	}
 }

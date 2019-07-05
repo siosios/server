@@ -101,6 +101,14 @@ interface IGroup {
 	public function count($search = '');
 
 	/**
+	 * returns the number of disabled users
+	 *
+	 * @return int|bool
+	 * @since 14.0.0
+	 */
+	public function countDisabled();
+
+	/**
 	 * search for users in the group by displayname
 	 *
 	 * @param string $search
@@ -118,4 +126,22 @@ interface IGroup {
 	 * @since 8.0.0
 	 */
 	public function delete();
+
+	/**
+	 * @return bool
+	 * @since 14.0.0
+	 */
+	public function canRemoveUser();
+
+	/**
+	 * @return bool
+	 * @since 14.0.0
+	 */
+	public function canAddUser();
+
+	/**
+	 * @return bool
+	 * @since 16.0.0
+	 */
+	public function hideFromCollaboration(): bool;
 }

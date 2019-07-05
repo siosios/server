@@ -27,6 +27,8 @@ use OCA\DAV\AppInfo\Application;
 use OCA\DAV\CardDAV\CardDavBackend;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
+\OC_App::loadApps(['dav']);
+
 $app = new Application();
 $app->registerHooks();
 
@@ -47,6 +49,47 @@ $eventDispatcher->addListener('OCP\Federation\TrustedServerEvent::remove',
 		}
 	}
 );
+
+$eventDispatcher->addListener('\OCA\DAV\CalDAV\CalDavBackend::createSubscription',
+	function(GenericEvent $event) use ($app) {
+		$jobList = $app->getContainer()->getServer()->getJobList();
+		$subscriptionData = $event->getArgument('subscriptionData');
+
+		$jobList->add(\OCA\DAV\BackgroundJob\RefreshWebcalJob::class, [
+			'principaluri' => $subscriptionData['principaluri'],
+			'uri' => $subscriptionData['uri']
+		]);
+	}
+);
+
+$eventDispatcher->addListener('\OCA\DAV\CalDAV\CalDavBackend::deleteSubscription',
+	function(GenericEvent $event) use ($app) {
+		$jobList = $app->getContainer()->getServer()->getJobList();
+		$subscriptionData = $event->getArgument('subscriptionData');
+
+		$jobList->remove(\OCA\DAV\BackgroundJob\RefreshWebcalJob::class, [
+			'principaluri' => $subscriptionData['principaluri'],
+			'uri' => $subscriptionData['uri']
+		]);
+
+		/** @var \OCA\DAV\CalDAV\CalDavBackend $calDavBackend */
+		$calDavBackend = $app->getContainer()->query(\OCA\DAV\CalDAV\CalDavBackend::class);
+		$calDavBackend->purgeAllCachedEventsForSubscription($subscriptionData['id']);
+	}
+);
+
+$eventHandler = function() use ($app) {
+	try {
+		$job = $app->getContainer()->query(\OCA\DAV\BackgroundJob\UpdateCalendarResourcesRoomsBackgroundJob::class);
+		$job->run([]);
+		$app->getContainer()->getServer()->getJobList()->setLastRun($job);
+	} catch(\Exception $ex) {
+		$app->getContainer()->getServer()->getLogger()->logException($ex);
+	}
+};
+
+$eventDispatcher->addListener('\OCP\Calendar\Resource\ForceRefreshEvent', $eventHandler);
+$eventDispatcher->addListener('\OCP\Calendar\Room\ForceRefreshEvent', $eventHandler);
 
 $cm = \OC::$server->getContactsManager();
 $cm->register(function() use ($cm, $app) {

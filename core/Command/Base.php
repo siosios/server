@@ -23,6 +23,7 @@
 
 namespace OC\Core\Command;
 
+use OC\Core\Command\User\ListCommand;
 use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
 use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Command\Command;
@@ -76,7 +77,7 @@ class Base extends Command implements CompletionAwareInterface {
 						$this->writeArrayInOutputFormat($input, $output, $item, '  ' . $prefix);
 						continue;
 					}
-					if (!is_int($key)) {
+					if (!is_int($key) || ListCommand::class === get_class($this)) {
 						$value = $this->valueToString($item);
 						if (!is_null($value)) {
 							$output->writeln($prefix . $key . ': ' . $value);
@@ -128,15 +129,19 @@ class Base extends Command implements CompletionAwareInterface {
 	}
 
 	/**
-	 * @return bool
+	 * Throw InterruptedException when interrupted by user
+	 *
+	 * @throws InterruptedException
 	 */
-	protected function hasBeenInterrupted() {
-		// return always false if pcntl_signal functions are not accessible
-		if ($this->php_pcntl_signal) {
-			pcntl_signal_dispatch();
-			return $this->interrupted;
-		} else {
-			return false;
+	protected function abortIfInterrupted() {
+		if ($this->php_pcntl_signal === false) {
+			return;
+		}
+
+		pcntl_signal_dispatch();
+
+		if ($this->interrupted === true) {
+			throw new InterruptedException('Command interrupted by user');
 		}
 	}
 

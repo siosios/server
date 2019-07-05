@@ -14,6 +14,7 @@ use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use OCP\L10N\ILanguageIterator;
 use Test\TestCase;
 
 /**
@@ -117,7 +118,12 @@ class FactoryTest extends TestCase {
 				->with('MyApp', 'de')
 				->willReturn(false);
 		$this->config
-			->expects($this->once())
+			->expects($this->at(0))
+			->method('getSystemValue')
+			->with('force_language', false)
+			->willReturn(false);
+		$this->config
+			->expects($this->at(1))
 			->method('getSystemValue')
 			->with('installed', false)
 			->willReturn(true);
@@ -151,7 +157,12 @@ class FactoryTest extends TestCase {
 				->with('MyApp', 'de')
 				->willReturn(false);
 		$this->config
-				->expects($this->at(0))
+			->expects($this->at(0))
+			->method('getSystemValue')
+			->with('force_language', false)
+			->willReturn(false);
+		$this->config
+				->expects($this->at(1))
 				->method('getSystemValue')
 				->with('installed', false)
 				->willReturn(true);
@@ -174,7 +185,7 @@ class FactoryTest extends TestCase {
 				->with('MyApp', 'jp')
 				->willReturn(false);
 		$this->config
-				->expects($this->at(2))
+				->expects($this->at(3))
 				->method('getSystemValue')
 				->with('default_language', false)
 				->willReturn('es');
@@ -194,7 +205,12 @@ class FactoryTest extends TestCase {
 				->with('MyApp', 'de')
 				->willReturn(false);
 		$this->config
-				->expects($this->at(0))
+			->expects($this->at(0))
+			->method('getSystemValue')
+			->with('force_language', false)
+			->willReturn(false);
+		$this->config
+				->expects($this->at(1))
 				->method('getSystemValue')
 				->with('installed', false)
 				->willReturn(true);
@@ -217,7 +233,7 @@ class FactoryTest extends TestCase {
 				->with('MyApp', 'jp')
 				->willReturn(false);
 		$this->config
-				->expects($this->at(2))
+				->expects($this->at(3))
 				->method('getSystemValue')
 				->with('default_language', false)
 				->willReturn('es');
@@ -240,7 +256,12 @@ class FactoryTest extends TestCase {
 				->with('MyApp', 'de')
 				->willReturn(false);
 		$this->config
-				->expects($this->at(0))
+			->expects($this->at(0))
+			->method('getSystemValue')
+			->with('force_language', false)
+			->willReturn(false);
+		$this->config
+				->expects($this->at(1))
 				->method('getSystemValue')
 				->with('installed', false)
 				->willReturn(true);
@@ -263,7 +284,7 @@ class FactoryTest extends TestCase {
 				->with('MyApp', 'jp')
 				->willReturn(false);
 		$this->config
-				->expects($this->at(2))
+				->expects($this->at(3))
 				->method('getSystemValue')
 				->with('default_language', false)
 				->willReturn('es');
@@ -278,6 +299,22 @@ class FactoryTest extends TestCase {
 
 
 		$this->assertSame('en', $factory->findLanguage('MyApp'));
+	}
+
+	public function testFindLanguageWithForcedLanguage() {
+		$factory = $this->getFactory(['languageExists']);
+		$this->config
+			->expects($this->at(0))
+			->method('getSystemValue')
+			->with('force_language', false)
+			->willReturn('de');
+
+		$factory->expects($this->once())
+			->method('languageExists')
+			->with('MyApp', 'de')
+			->willReturn(true);
+
+		$this->assertSame('de', $factory->findLanguage('MyApp'));
 	}
 
 	/**
@@ -558,6 +595,35 @@ class FactoryTest extends TestCase {
 
 		$result = $this->invokePrivate($factory, 'respectDefaultLanguage', ['app', $lang]);
 		$this->assertSame($expected, $result);
+	}
+
+	public function languageIteratorRequestProvider():array {
+		return [
+			[ true, $this->createMock(IUser::class)],
+			[ false, $this->createMock(IUser::class)],
+			[ false, null]
+		];
+	}
+
+	/**
+	 * @dataProvider languageIteratorRequestProvider
+	 */
+	public function testGetLanguageIterator(bool $hasSession, IUser $iUserMock = null) {
+		$factory = $this->getFactory();
+
+		if($iUserMock === null) {
+			$matcher  = $this->userSession->expects($this->once())
+				->method('getUser');
+
+			if($hasSession) {
+				$matcher->willReturn($this->createMock(IUser::class));
+			} else {
+				$this->expectException(\RuntimeException::class);
+			}
+		}
+
+		$iterator = $factory->getLanguageIterator($iUserMock);
+		$this->assertInstanceOf(ILanguageIterator::class, $iterator);
 	}
 
 }

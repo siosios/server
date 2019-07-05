@@ -111,7 +111,14 @@ class GroupsController extends AUserData {
 		$groups = $this->groupManager->search($search, $limit, $offset);
 		$groups = array_map(function($group) {
 			/** @var IGroup $group */
-			return ['id' => $group->getGID(), 'displayname' => $group->getDisplayName()];
+			return [
+				'id' => $group->getGID(),
+				'displayname' => $group->getDisplayName(),
+				'usercount' => $group->count(),
+				'disabled' => $group->countDisabled(),
+				'canAdd' => $group->canAddUser(),
+				'canRemove' => $group->canRemoveUser(),
+			];
 		}, $groups);
 
 		return new DataResponse(['groups' => $groups]);
@@ -172,36 +179,44 @@ class GroupsController extends AUserData {
 	 * @NoAdminRequired
 	 *
 	 * @param string $groupId
+	 * @param string $search
 	 * @param int $limit
 	 * @param int $offset
 	 * @return DataResponse
 	 * @throws OCSException
 	 */
-	public function getGroupUsersDetails(string $groupId, int $limit = null, int $offset = 0): DataResponse {
-		$user = $this->userSession->getUser();
-		$isSubadminOfGroup = false;
+	public function getGroupUsersDetails(string $groupId, string $search = '', int $limit = null, int $offset = 0): DataResponse {
+		$currentUser = $this->userSession->getUser();
 
 		// Check the group exists
 		$group = $this->groupManager->get($groupId);
 		if ($group !== null) {
-			$isSubadminOfGroup =$this->groupManager->getSubAdmin()->isSubAdminOfGroup($user, $group);
+			$isSubadminOfGroup = $this->groupManager->getSubAdmin()->isSubAdminOfGroup($currentUser, $group);
 		} else {
 			throw new OCSException('The requested group could not be found', \OCP\API::RESPOND_NOT_FOUND);
 		}
 
 		// Check subadmin has access to this group
-		if($this->groupManager->isAdmin($user->getUID())
-		   || $isSubadminOfGroup) {
-			$users = $this->groupManager->get($groupId)->getUsers();
+		if($this->groupManager->isAdmin($currentUser->getUID()) || $isSubadminOfGroup) {
+			$users = $group->searchUsers($search, $limit, $offset);
+
 			// Extract required number
-			$users = array_slice($users, $offset, $limit);
-			$users = array_keys($users);
 			$usersDetails = [];
-			foreach ($users as $userId) {
-				$userData = $this->getUserData($userId);
-				// Do not insert empty entry
-				if(!empty($userData)) {
-					$usersDetails[$userId] = $userData;
+			foreach ($users as $user) {
+				try {
+					/** @var IUser $user */
+					$userId = (string)$user->getUID();
+					$userData = $this->getUserData($userId);
+					// Do not insert empty entry
+					if (!empty($userData)) {
+						$usersDetails[$userId] = $userData;
+					} else {
+						// Logged user does not have permissions to see this user
+						// only showing its id
+						$usersDetails[$userId] = ['id' => $userId];
+					}
+				} catch(OCSNotFoundException $e) {
+					// continue if a users ceased to exist.
 				}
 			}
 			return new DataResponse(['users' => $usersDetails]);
@@ -227,7 +242,7 @@ class GroupsController extends AUserData {
 		}
 		// Check if it exists
 		if($this->groupManager->groupExists($groupid)){
-			throw new OCSException('', 102);
+			throw new OCSException('group exists', 102);
 		}
 		$this->groupManager->createGroup($groupid);
 		return new DataResponse();

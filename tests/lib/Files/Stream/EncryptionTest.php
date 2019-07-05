@@ -2,9 +2,12 @@
 
 namespace Test\Files\Stream;
 
+use OC\Files\Cache\CacheEntry;
 use OC\Files\View;
 use OC\Memcache\ArrayCache;
+use OCP\Files\Cache\ICache;
 use OCP\IConfig;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class EncryptionTest extends \Test\TestCase {
 
@@ -26,6 +29,7 @@ class EncryptionTest extends \Test\TestCase {
 		$header = [];
 		$uid = '';
 		$this->encryptionModule = $this->buildMockModule();
+		$cache = $this->createMock(ICache::class);
 		$storage = $this->getMockBuilder('\OC\Files\Storage\Storage')
 			->disableOriginalConstructor()->getMock();
 		$encStorage = $this->getMockBuilder('\OC\Files\Storage\Wrapper\Encryption')
@@ -44,11 +48,18 @@ class EncryptionTest extends \Test\TestCase {
 		$file->expects($this->any())->method('getAccessList')->willReturn([]);
 		$util = $this->getMockBuilder('\OC\Encryption\Util')
 			->setMethods(['getUidAndFilename'])
-			->setConstructorArgs([new View(), new \OC\User\Manager($config), $groupManager, $config, $arrayCache])
+			->setConstructorArgs([new View(), new \OC\User\Manager($config, $this->createMock(EventDispatcherInterface::class)), $groupManager, $config, $arrayCache])
 			->getMock();
 		$util->expects($this->any())
 			->method('getUidAndFilename')
 			->willReturn(['user1', $internalPath]);
+		$storage->expects($this->any())->method('getCache')->willReturn($cache);
+		$entry = new CacheEntry([
+			'fileid' => 5,
+			'encryptedVersion' => 2,
+		]);
+		$cache->expects($this->any())->method('get')->willReturn($entry	);
+		$cache->expects($this->any())->method('update')->with(5, ['encrypted' => 3, 'encryptedVersion' => 3]);
 
 
 		return $wrapper::wrap($source, $internalPath,
@@ -208,6 +219,7 @@ class EncryptionTest extends \Test\TestCase {
 
 	public function testSeek() {
 		$fileName = tempnam("/tmp", "FOO");
+
 		$stream = $this->getStream($fileName, 'w+', 0);
 		$this->assertEquals(6, fwrite($stream, 'foobar'));
 		$this->assertEquals(0, fseek($stream, 3));

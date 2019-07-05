@@ -290,7 +290,8 @@ class FolderTest extends NodeTest {
 			->method('getUser')
 			->will($this->returnValue($this->user));
 		$storage = $this->createMock(Storage::class);
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 
 		$storage->expects($this->once())
 			->method('getCache')
@@ -340,8 +341,10 @@ class FolderTest extends NodeTest {
 		$root->expects($this->any())
 			->method('getUser')
 			->will($this->returnValue($this->user));
+		/** @var \PHPUnit_Framework_MockObject_MockObject|Storage $storage */
 		$storage = $this->createMock(Storage::class);
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 
 		$mount = $this->createMock(IMountPoint::class);
 		$mount->expects($this->once())
@@ -391,7 +394,8 @@ class FolderTest extends NodeTest {
 			->method('getUser')
 			->will($this->returnValue($this->user));
 		$storage = $this->createMock(Storage::class);
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 
 		$mount = $this->createMock(IMountPoint::class);
 		$mount->expects($this->once())
@@ -441,7 +445,8 @@ class FolderTest extends NodeTest {
 			->method('getUser')
 			->will($this->returnValue($this->user));
 		$storage = $this->createMock(Storage::class);
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 
 		$mount = $this->createMock(IMountPoint::class);
 		$mount->expects($this->once())
@@ -491,8 +496,9 @@ class FolderTest extends NodeTest {
 			->method('getUser')
 			->will($this->returnValue($this->user));
 		$storage = $this->createMock(Storage::class);
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
-		$subCache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
+		$subCache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 		$subStorage = $this->createMock(Storage::class);
 		$subMount = $this->getMockBuilder(MountPoint::class)->setConstructorArgs([null, ''])->getMock();
 
@@ -572,7 +578,8 @@ class FolderTest extends NodeTest {
 			->getMock();
 		$storage = $this->createMock(\OC\Files\Storage\Storage::class);
 		$mount = new MountPoint($storage, '/bar');
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 
 		$fileInfo = new CacheEntry(['path' => 'foo/qwerty', 'mimetype' => 'text/plain'], null);
 
@@ -613,6 +620,55 @@ class FolderTest extends NodeTest {
 		$this->assertEquals('/bar/foo/qwerty', $result[0]->getPath());
 	}
 
+	public function testGetByIdMountRoot() {
+		$manager = $this->createMock(Manager::class);
+		/**
+		 * @var \OC\Files\View | \PHPUnit_Framework_MockObject_MockObject $view
+		 */
+		$view = $this->createMock(View::class);
+		$root = $this->getMockBuilder(Root::class)
+			->setMethods(['getMountsIn', 'getMount'])
+			->setConstructorArgs([$manager, $view, $this->user, $this->userMountCache, $this->logger, $this->userManager])
+			->getMock();
+		$storage = $this->createMock(\OC\Files\Storage\Storage::class);
+		$mount = new MountPoint($storage, '/bar');
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
+
+		$fileInfo = new CacheEntry(['path' => '', 'mimetype' => 'text/plain'], null);
+
+		$storage->expects($this->once())
+			->method('getCache')
+			->will($this->returnValue($cache));
+
+		$this->userMountCache->expects($this->any())
+			->method('getMountsForFileId')
+			->with(1)
+			->will($this->returnValue([new CachedMountInfo(
+				$this->user,
+				1,
+				0,
+				'/bar/',
+				1,
+				''
+			)]));
+
+		$cache->expects($this->once())
+			->method('get')
+			->with(1)
+			->will($this->returnValue($fileInfo));
+
+		$root->expects($this->once())
+			->method('getMount')
+			->with('/bar')
+			->will($this->returnValue($mount));
+
+		$node = new \OC\Files\Node\Folder($root, $view, '/bar');
+		$result = $node->getById(1);
+		$this->assertEquals(1, count($result));
+		$this->assertEquals('/bar', $result[0]->getPath());
+	}
+
 	public function testGetByIdOutsideFolder() {
 		$manager = $this->createMock(Manager::class);
 		/**
@@ -625,7 +681,8 @@ class FolderTest extends NodeTest {
 			->getMock();
 		$storage = $this->createMock(\OC\Files\Storage\Storage::class);
 		$mount = new MountPoint($storage, '/bar');
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 
 		$fileInfo = new CacheEntry(['path' => 'foobar', 'mimetype' => 'text/plain'], null);
 
@@ -678,7 +735,8 @@ class FolderTest extends NodeTest {
 		$storage = $this->createMock(\OC\Files\Storage\Storage::class);
 		$mount1 = new MountPoint($storage, '/bar');
 		$mount2 = new MountPoint($storage, '/bar/foo/asd');
-		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([''])->getMock();
+		$storage->method('getId')->willReturn('');
+		$cache = $this->getMockBuilder(Cache::class)->setConstructorArgs([$storage])->getMock();
 
 		$fileInfo = new CacheEntry(['path' => 'foo/qwerty', 'mimetype' => 'text/plain'], null);
 

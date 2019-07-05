@@ -38,8 +38,11 @@ use OC\Files\Mount\MoveableMount;
 use OC\Files\View;
 use OCA\DAV\Connector\Sabre\Exception\InvalidPath;
 use OCP\Files\FileInfo;
+use OCP\Files\StorageNotAvailableException;
 use OCP\Share\Exceptions\ShareNotFound;
 use OCP\Share\IManager;
+use OCP\Share;
+use OCP\Share\IShare;
 
 
 abstract class Node implements \Sabre\DAV\INode {
@@ -135,7 +138,9 @@ abstract class Node implements \Sabre\DAV\INode {
 
 		$newPath = $parentPath . '/' . $newName;
 
-		$this->fileView->rename($this->path, $newPath);
+		if (!$this->fileView->rename($this->path, $newPath)) {
+			throw new \Sabre\DAV\Exception('Failed to rename '. $this->path . ' to ' . $newPath);
+		}
 
 		$this->path = $newPath;
 
@@ -250,15 +255,17 @@ abstract class Node implements \Sabre\DAV\INode {
 			}
 		}
 
-		$storage = $this->info->getStorage();
+		try {
+			$storage = $this->info->getStorage();
+		} catch (StorageNotAvailableException $e) {
+			$storage = null;
+		}
 
-		$path = $this->info->getInternalPath();
-
-		if ($storage->instanceOfStorage('\OCA\Files_Sharing\SharedStorage')) {
+		if ($storage && $storage->instanceOfStorage('\OCA\Files_Sharing\SharedStorage')) {
 			/** @var \OCA\Files_Sharing\SharedStorage $storage */
 			$permissions = (int)$storage->getShare()->getPermissions();
 		} else {
-			$permissions = $storage->getPermissions($path);
+			$permissions = $this->info->getPermissions();
 		}
 
 		/*
@@ -285,6 +292,35 @@ abstract class Node implements \Sabre\DAV\INode {
 		}
 
 		return $permissions;
+	}
+
+	/**
+	 * @param string $user
+	 * @return string
+	 */
+	public function getNoteFromShare($user) {
+		if ($user === null) {
+			return '';
+		}
+
+		$types = [
+			Share::SHARE_TYPE_USER,
+			Share::SHARE_TYPE_GROUP,
+			Share::SHARE_TYPE_CIRCLE,
+			Share::SHARE_TYPE_ROOM
+		];
+
+		foreach ($types as $shareType) {
+			$shares = $this->shareManager->getSharedWith($user, $shareType, $this, -1);
+			foreach ($shares as $share) {
+				$note = $share->getNote();
+				if($share->getShareOwner() !== $user && !empty($note)) {
+					return $note;
+				}
+			}
+		}
+
+		return '';
 	}
 
 	/**

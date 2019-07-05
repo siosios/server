@@ -104,15 +104,23 @@ class Updater extends BasicEmitter {
 		$this->emit('\OC\Updater', 'setDebugLogLevel', [ $logLevel, $this->logLevelNames[$logLevel] ]);
 		$this->config->setSystemValue('loglevel', ILogger::DEBUG);
 
-		$wasMaintenanceModeEnabled = $this->config->getSystemValue('maintenance', false);
+		$wasMaintenanceModeEnabled = $this->config->getSystemValueBool('maintenance');
 
 		if(!$wasMaintenanceModeEnabled) {
 			$this->config->setSystemValue('maintenance', true);
 			$this->emit('\OC\Updater', 'maintenanceEnabled');
 		}
 
+		// Clear CAN_INSTALL file if not on git
+		if (\OC_Util::getChannel() !== 'git' && is_file(\OC::$configDir.'/CAN_INSTALL')) {
+			if (!unlink(\OC::$configDir . '/CAN_INSTALL')) {
+				$this->log->error('Could not cleanup CAN_INSTALL from your config folder. Please remove this file manually.');
+			}
+		}
+
 		$installedVersion = $this->config->getSystemValue('version', '0.0.0');
 		$currentVersion = implode('.', \OCP\Util::getVersion());
+
 		$this->log->debug('starting upgrade from ' . $installedVersion . ' to ' . $currentVersion, array('app' => 'core'));
 
 		$success = true;
@@ -248,6 +256,7 @@ class Updater extends BasicEmitter {
 
 		// upgrade appstore apps
 		$this->upgradeAppStoreApps(\OC::$server->getAppManager()->getInstalledApps());
+		$this->upgradeAppStoreApps(\OC_App::$autoDisabledApps, true);
 
 		// install new shipped apps on upgrade
 		OC_App::loadApps(['authentication']);
@@ -428,9 +437,10 @@ class Updater extends BasicEmitter {
 
 	/**
 	 * @param array $disabledApps
+	 * @param bool $reenable
 	 * @throws \Exception
 	 */
-	private function upgradeAppStoreApps(array $disabledApps) {
+	private function upgradeAppStoreApps(array $disabledApps, $reenable = false) {
 		foreach($disabledApps as $app) {
 			try {
 				$this->emit('\OC\Updater', 'checkAppStoreAppBefore', [$app]);
@@ -439,6 +449,11 @@ class Updater extends BasicEmitter {
 					$this->installer->updateAppstoreApp($app);
 				}
 				$this->emit('\OC\Updater', 'checkAppStoreApp', [$app]);
+
+				if ($reenable) {
+					$ocApp = new \OC_App();
+					$ocApp->enable($app);
+				}
 			} catch (\Exception $ex) {
 				$this->log->logException($ex, ['app' => 'core']);
 			}
@@ -606,4 +621,3 @@ class Updater extends BasicEmitter {
 	}
 
 }
-

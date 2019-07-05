@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
@@ -29,6 +30,7 @@ interface IToken extends JsonSerializable {
 
 	const TEMPORARY_TOKEN = 0;
 	const PERMANENT_TOKEN = 1;
+	const WIPE_TOKEN = 2;
 	const DO_NOT_REMEMBER = 0;
 	const REMEMBER = 1;
 
@@ -37,26 +39,26 @@ interface IToken extends JsonSerializable {
 	 *
 	 * @return int
 	 */
-	public function getId();
+	public function getId(): int;
 
 	/**
 	 * Get the user UID
 	 *
 	 * @return string
 	 */
-	public function getUID();
+	public function getUID(): string;
 
 	/**
 	 * Get the login name used when generating the token
 	 *
 	 * @return string
 	 */
-	public function getLoginName();
+	public function getLoginName(): string;
 
 	/**
 	 * Get the (encrypted) login password
 	 *
-	 * @return string
+	 * @return string|null
 	 */
 	public function getPassword();
 
@@ -65,28 +67,28 @@ interface IToken extends JsonSerializable {
 	 *
 	 * @return int
 	 */
-	public function getLastCheck();
+	public function getLastCheck(): int;
 
 	/**
 	 * Set the timestamp of the last password check
 	 *
 	 * @param int $time
 	 */
-	public function setLastCheck($time);
+	public function setLastCheck(int $time);
 
 	/**
 	 * Get the authentication scope for this token
 	 *
 	 * @return string
 	 */
-	public function getScope();
+	public function getScope(): string;
 
 	/**
 	 * Get the authentication scope for this token
 	 *
 	 * @return array
 	 */
-	public function getScopeAsArray();
+	public function getScopeAsArray(): array;
 
 	/**
 	 * Set the authentication scope for this token
@@ -94,4 +96,38 @@ interface IToken extends JsonSerializable {
 	 * @param array $scope
 	 */
 	public function setScope($scope);
+
+	/**
+	 * Get the name of the token
+	 * @return string
+	 */
+	public function getName(): string;
+
+	/**
+	 * Get the remember state of the token
+	 *
+	 * @return int
+	 */
+	public function getRemember(): int;
+
+	/**
+	 * Set the token
+	 *
+	 * @param string $token
+	 */
+	public function setToken(string $token);
+
+	/**
+	 * Set the password
+	 *
+	 * @param string $password
+	 */
+	public function setPassword(string $password);
+
+	/**
+	 * Set the expiration time of the token
+	 *
+	 * @param int|null $expires
+	 */
+	public function setExpires($expires);
 }

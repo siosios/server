@@ -32,10 +32,15 @@ use OCP\IConfig;
 use OCP\IDateTimeFormatter;
 use OCP\IGroup;
 use OCP\IGroupManager;
+use OCP\IUserSession;
+use OCP\L10N\IFactory;
+use OCP\L10N\ILanguageIterator;
 use OCP\Util;
 use Test\TestCase;
 
 class AdminTest extends TestCase {
+	/** @var IFactory|\PHPUnit_Framework_MockObject_MockObject */
+	protected $l10nFactory;
 	/** @var Admin */
 	private $admin;
 	/** @var IConfig|\PHPUnit_Framework_MockObject_MockObject */
@@ -54,12 +59,10 @@ class AdminTest extends TestCase {
 		$this->updateChecker = $this->createMock(UpdateChecker::class);
 		$this->groupManager = $this->createMock(IGroupManager::class);
 		$this->dateTimeFormatter = $this->createMock(IDateTimeFormatter::class);
+		$this->l10nFactory = $this->createMock(IFactory::class);
 
 		$this->admin = new Admin(
-			$this->config,
-			$this->updateChecker,
-			$this->groupManager,
-			$this->dateTimeFormatter
+			$this->config, $this->updateChecker, $this->groupManager, $this->dateTimeFormatter, $this->l10nFactory
 		);
 	}
 
@@ -98,7 +101,9 @@ class AdminTest extends TestCase {
 			->willReturn([
 				'updateAvailable' => true,
 				'updateVersion' => '8.1.2',
+				'updateVersionString' => 'Nextcloud 8.1.2',
 				'downloadLink' => 'https://downloads.nextcloud.org/server',
+				'changes' => [],
 				'updaterEnabled' => true,
 				'versionIsEol' => false,
 			]);
@@ -122,8 +127,10 @@ class AdminTest extends TestCase {
 				'lastChecked' => 'LastCheckedReturnValue',
 				'currentChannel' => Util::getChannel(),
 				'channels' => $channels,
-				'newVersionString' => '8.1.2',
+				'newVersion' => '8.1.2',
+				'newVersionString' => 'Nextcloud 8.1.2',
 				'downloadLink' => 'https://downloads.nextcloud.org/server',
+				'changes' => [],
 				'updaterEnabled' => true,
 				'versionIsEol' => false,
 				'isDefaultUpdateServerURL' => true,
@@ -140,10 +147,84 @@ class AdminTest extends TestCase {
 
 
 	public function testGetSection() {
-		$this->assertSame('server', $this->admin->getSection());
+		$this->assertSame('overview', $this->admin->getSection());
 	}
 
 	public function testGetPriority() {
-		$this->assertSame(1, $this->admin->getPriority());
+		$this->assertSame(11, $this->admin->getPriority());
+	}
+
+	public function changesProvider() {
+		return [
+			[ #0, all info, en
+				[
+					'changelogURL' => 'https://go.to.changelog',
+					'whatsNew' => [
+						'en' => [
+							'regular' => ['content'],
+						],
+						'de' => [
+							'regular' => ['inhalt'],
+						]
+					],
+				],
+				'en',
+				[
+					'changelogURL' => 'https://go.to.changelog',
+					'whatsNew' => [
+						'regular' => ['content'],
+					],
+				]
+			],
+			[ #1, all info, de
+				[
+					'changelogURL' => 'https://go.to.changelog',
+					'whatsNew' => [
+						'en' => [
+							'regular' => ['content'],
+						],
+						'de' => [
+							'regular' => ['inhalt'],
+						]
+					],
+				],
+				'de',
+				[
+					'changelogURL' => 'https://go.to.changelog',
+					'whatsNew' => [
+						'regular' => ['inhalt'],
+					]
+				],
+			],
+			[ #2, just changelog
+				[ 'changelogURL' => 'https://go.to.changelog' ],
+				'en',
+				[ 'changelogURL' => 'https://go.to.changelog' ],
+			],
+			[ #3 nothing
+				[],
+				'ru',
+				[]
+			]
+		];
+	}
+
+	/**
+	 * @dataProvider changesProvider
+	 */
+	public function testFilterChanges($changes, $userLang, $expectation) {
+		$iterator = $this->createMock(ILanguageIterator::class);
+		$iterator->expects($this->any())
+			->method('current')
+			->willReturnOnConsecutiveCalls('es', $userLang, 'it', 'en');
+		$iterator->expects($this->any())
+			->method('valid')
+			->willReturn(true);
+
+		$this->l10nFactory->expects($this->atMost(1))
+			->method('getLanguageIterator')
+			->willReturn($iterator);
+		$result = $this->invokePrivate($this->admin, 'filterChanges', [$changes]);
+		$this->assertSame($expectation, $result);
 	}
 }

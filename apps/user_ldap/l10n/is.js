@@ -57,7 +57,6 @@ OC.L10N.register(
     "Other Attributes:" : "Önnur eigindi:",
     "Test Loginname" : "Prófa innskráningarnafn",
     "Verify settings" : "Sannprófa stillingar",
-    "1. Server" : "1. Þjónn",
     "%s. Server:" : "%s. Þjónn:",
     "Add a new configuration" : "Bæta við nýrri uppsetningu",
     "Delete the current configuration" : "Eyða núgildandi uppsetningu",
@@ -66,6 +65,7 @@ OC.L10N.register(
     "Detect Port" : "Finna gátt",
     "User DN" : "DN notanda",
     "Password" : "Lykilorð",
+    "Save Credentials" : "Vista auðkenni",
     "Verify settings and count users" : "Sannprófa stillingar og telja notendur",
     "Saving" : "Vistun",
     "Back" : "Til baka",
@@ -76,7 +76,6 @@ OC.L10N.register(
     "Current password" : "Núverandi lykilorð",
     "New password" : "Nýtt lykilorð",
     "Renew password" : "Endurnýja lykilorð",
-    "Wrong password. Reset it?" : "Rangt lykilorð. Endursetja?",
     "Wrong password." : "Rangt lykilorð.",
     "Cancel" : "Hætta við",
     "Server" : "Þjónn",
@@ -93,11 +92,12 @@ OC.L10N.register(
     "Directory Settings" : "Stillingar möppu",
     "Nested Groups" : "Faldaðir hópar",
     "(New password is sent as plain text to LDAP)" : "(Nýtt lykilorð er sent sem hreinn texti til LDAP)",
+    "Default password policy DN" : "Sjálfgefin lykilorðastefna DN",
     "Special Attributes" : "Sérstök eigindi",
     "Quota Field" : "Gagnasvið fyrir kvóta",
     "Quota Default" : "Sjálfgefinn kvóti",
     "Email Field" : "Gagnasvið fyrir netfang",
     "Internal Username" : "Innra notandanafn",
-    "LDAP" : "LDAP"
+    "UUID Attribute for Groups:" : "UUID-eigindi fyrir hópa:"
 },
 "nplurals=2; plural=(n % 10 != 1 || n % 100 == 11);");

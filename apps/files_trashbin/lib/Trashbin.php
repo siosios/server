@@ -48,6 +48,7 @@ use OCA\Files_Trashbin\Command\Expire;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\NotFoundException;
+use OCP\Files\NotPermittedException;
 use OCP\User;
 
 class Trashbin {
@@ -414,6 +415,9 @@ class Trashbin {
 		$mtime = $view->filemtime($source);
 
 		// restore file
+		if (!$view->isCreatable(dirname($target))) {
+			throw new NotPermittedException("Can't restore trash item because the target folder is not writable");
+		}
 		$restoreResult = $view->rename($source, $target);
 
 		// handle the restore result
@@ -684,7 +688,7 @@ class Trashbin {
 			if(is_null($userFolder)) {
 				return 0;
 			}
-			$free = $quota - $userFolder->getSize(); // remaining free space for user
+			$free = $quota - $userFolder->getSize(false); // remaining free space for user
 			if ($free > 0) {
 				$availableSpace = ($free * self::DEFAULTMAXSIZE / 100) - $trashbinSize; // how much space can be used for versions
 			} else {
@@ -790,8 +794,12 @@ class Trashbin {
 			$timestamp = $file['mtime'];
 			$filename = $file['name'];
 			if ($expiration->isExpired($timestamp)) {
-				$count++;
-				$size += self::delete($filename, $user, $timestamp);
+				try {
+					$size += self::delete($filename, $user, $timestamp);
+					$count++;
+				} catch (\OCP\Files\NotPermittedException $e) {
+					\OC::$server->getLogger()->logException($e, ['app' => 'files_trashbin', 'level' => \OCP\ILogger::WARN, 'message' => 'Removing "' . $filename . '" from trashbin failed.']);
+				}
 				\OC::$server->getLogger()->info(
 					'Remove "' . $filename . '" from trashbin because it exceeds max retention obligation term.',
 					['app' => 'files_trashbin']
@@ -972,8 +980,6 @@ class Trashbin {
 		\OCP\Util::connectHook('OC_Filesystem', 'post_write', 'OCA\Files_Trashbin\Hooks', 'post_write_hook');
 		// pre and post-rename, disable trash logic for the copy+unlink case
 		\OCP\Util::connectHook('OC_Filesystem', 'delete', 'OCA\Files_Trashbin\Trashbin', 'ensureFileScannedHook');
-		\OCP\Util::connectHook('OC_Filesystem', 'rename', 'OCA\Files_Trashbin\Storage', 'preRenameHook');
-		\OCP\Util::connectHook('OC_Filesystem', 'post_rename', 'OCA\Files_Trashbin\Storage', 'postRenameHook');
 	}
 
 	/**

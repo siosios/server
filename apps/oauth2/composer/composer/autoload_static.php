@@ -30,6 +30,9 @@ class ComposerStaticInitOAuth2
         'OCA\\OAuth2\\Db\\ClientMapper' => __DIR__ . '/..' . '/../lib/Db/ClientMapper.php',
         'OCA\\OAuth2\\Exceptions\\AccessTokenNotFoundException' => __DIR__ . '/..' . '/../lib/Exceptions/AccessTokenNotFoundException.php',
         'OCA\\OAuth2\\Exceptions\\ClientNotFoundException' => __DIR__ . '/..' . '/../lib/Exceptions/ClientNotFoundException.php',
+        'OCA\\OAuth2\\Migration\\SetTokenExpiration' => __DIR__ . '/..' . '/../lib/Migration/SetTokenExpiration.php',
+        'OCA\\OAuth2\\Migration\\Version010401Date20181207190718' => __DIR__ . '/..' . '/../lib/Migration/Version010401Date20181207190718.php',
+        'OCA\\OAuth2\\Migration\\Version010402Date20190107124745' => __DIR__ . '/..' . '/../lib/Migration/Version010402Date20190107124745.php',
         'OCA\\OAuth2\\Settings\\Admin' => __DIR__ . '/..' . '/../lib/Settings/Admin.php',
     );
 

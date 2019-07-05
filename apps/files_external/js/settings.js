@@ -10,53 +10,6 @@
 
 (function(){
 
-// TODO: move to a separate file
-var MOUNT_OPTIONS_DROPDOWN_TEMPLATE =
-	'<div class="popovermenu open">'+
-	// FIXME: options are hard-coded for now
-	'	<ul>'+
-	'		<li class="optionRow">'+
-	'			<span class="menuitem">'+
-	'				<input id="mountOptionsEncrypt" class="checkbox" name="encrypt" type="checkbox" value="true" checked="checked"/>'+
-	'				<label for="mountOptionsEncrypt">{{t "files_external" "Enable encryption"}}</label>'+
-	'			</span>'+
-	'		</li>'+
-	'		<li class="optionRow">'+
-	'			<span class="menuitem">'+
-	'				<input id="mountOptionsPreviews" class="checkbox" name="previews" type="checkbox" value="true" checked="checked"/>'+
-	'				<label for="mountOptionsPreviews">{{t "files_external" "Enable previews"}}</label>'+
-	'			</span>'+
-	'		</li>'+
-	'		<li class="optionRow">'+
-	'			<span class="menuitem">'+
-	'				<input id="mountOptionsSharing" class="checkbox" name="enable_sharing" type="checkbox" value="true"/>'+
-	'				<label for="mountOptionsSharing">{{t "files_external" "Enable sharing"}}</label>'+
-	'			</span>'+
-	'		</li>'+
-	'		<li class="optionRow">'+
-	'			<span class="menuitem icon-search">'+
-	'				<label for="mountOptionsFilesystemCheck">{{t "files_external" "Check for changes"}}</label>'+
-	'				<select id="mountOptionsFilesystemCheck" name="filesystem_check_changes" data-type="int">'+
-	'					<option value="0">{{t "files_external" "Never"}}</option>'+
-	'					<option value="1" selected="selected">{{t "files_external" "Once every direct access"}}</option>'+
-	'				</select>'+
-	'			</span>'+
-	'		</li>'+
-	'		<li class="optionRow">'+
-	'			<span class="menuitem">'+
-	'				<input id="mountOptionsEncoding" class="checkbox" name="encoding_compatibility" type="checkbox" value="true"/>'+
-	'				<label for="mountOptionsEncoding">{{mountOptionsEncodingLabel}}</label>'+
-	'			</span>'+
-	'		</li>'+
-	'		<li class="optionRow">' +
-	'			<span class="menuitem">' +
-	'				<input id="mountOptionsReadOnly" class="checkbox" name="readonly" type="checkbox" value="true"/>' +
-	'				<label for="mountOptionsReadOnly">{{t "files_external" "Read only"}}</label>' +
-	'			</span>' +
-	'		</li>' +
-	'	</ul>'+
-	'</div>';
-
 /**
  * Returns the selection of applicable users in the given configuration row
  *
@@ -186,7 +139,7 @@ function addSelect2 ($elements, userListLimit) {
 				.attr('data-name', element.name)
 				.attr('data-displayname', element.displayname);
 			if (element.type === 'group') {
-				var url = OC.imagePath('core','places/contacts-dark'); // TODO better group icon
+				var url = OC.imagePath('core','actions/group');
 				$div.html('<img width="32" height="32" src="'+url+'">');
 			}
 			return $result.get(0).outerHTML;
@@ -210,7 +163,7 @@ function addSelect2 ($elements, userListLimit) {
 }
 
 /**
- * @class OCA.External.Settings.StorageConfig
+ * @class OCA.Files_External.Settings.StorageConfig
  *
  * @classdesc External storage config
  */
@@ -232,7 +185,7 @@ StorageConfig.Visibility = {
 	DEFAULT: 3
 };
 /**
- * @memberof OCA.External.Settings
+ * @memberof OCA.Files_External.Settings
  */
 StorageConfig.prototype = {
 	_url: null,
@@ -395,8 +348,8 @@ StorageConfig.prototype = {
 };
 
 /**
- * @class OCA.External.Settings.GlobalStorageConfig
- * @augments OCA.External.Settings.StorageConfig
+ * @class OCA.Files_External.Settings.GlobalStorageConfig
+ * @augments OCA.Files_External.Settings.StorageConfig
  *
  * @classdesc Global external storage config
  */
@@ -406,10 +359,10 @@ var GlobalStorageConfig = function(id) {
 	this.applicableGroups = [];
 };
 /**
- * @memberOf OCA.External.Settings
+ * @memberOf OCA.Files_External.Settings
  */
 GlobalStorageConfig.prototype = _.extend({}, StorageConfig.prototype,
-	/** @lends OCA.External.Settings.GlobalStorageConfig.prototype */ {
+	/** @lends OCA.Files_External.Settings.GlobalStorageConfig.prototype */ {
 	_url: 'apps/files_external/globalstorages',
 
 	/**
@@ -449,8 +402,8 @@ GlobalStorageConfig.prototype = _.extend({}, StorageConfig.prototype,
 });
 
 /**
- * @class OCA.External.Settings.UserStorageConfig
- * @augments OCA.External.Settings.StorageConfig
+ * @class OCA.Files_External.Settings.UserStorageConfig
+ * @augments OCA.Files_External.Settings.StorageConfig
  *
  * @classdesc User external storage config
  */
@@ -458,13 +411,13 @@ var UserStorageConfig = function(id) {
 	this.id = id;
 };
 UserStorageConfig.prototype = _.extend({}, StorageConfig.prototype,
-	/** @lends OCA.External.Settings.UserStorageConfig.prototype */ {
+	/** @lends OCA.Files_External.Settings.UserStorageConfig.prototype */ {
 	_url: 'apps/files_external/userstorages'
 });
 
 /**
- * @class OCA.External.Settings.UserGlobalStorageConfig
- * @augments OCA.External.Settings.StorageConfig
+ * @class OCA.Files_External.Settings.UserGlobalStorageConfig
+ * @augments OCA.Files_External.Settings.StorageConfig
  *
  * @classdesc User external storage config
  */
@@ -472,13 +425,13 @@ var UserGlobalStorageConfig = function (id) {
 	this.id = id;
 };
 UserGlobalStorageConfig.prototype = _.extend({}, StorageConfig.prototype,
-	/** @lends OCA.External.Settings.UserStorageConfig.prototype */ {
+	/** @lends OCA.Files_External.Settings.UserStorageConfig.prototype */ {
 
 	_url: 'apps/files_external/userglobalstorages'
 });
 
 /**
- * @class OCA.External.Settings.MountOptionsDropdown
+ * @class OCA.Files_External.Settings.MountOptionsDropdown
  *
  * @classdesc Dropdown for mount options
  *
@@ -487,7 +440,7 @@ UserGlobalStorageConfig.prototype = _.extend({}, StorageConfig.prototype,
 var MountOptionsDropdown = function() {
 };
 /**
- * @memberof OCA.External.Settings
+ * @memberof OCA.Files_External.Settings
  */
 MountOptionsDropdown.prototype = {
 	/**
@@ -509,14 +462,16 @@ MountOptionsDropdown.prototype = {
 			MountOptionsDropdown._last.hide();
 		}
 
-		var template = MountOptionsDropdown._template;
-		if (!template) {
-			template = Handlebars.compile(MOUNT_OPTIONS_DROPDOWN_TEMPLATE);
-			MountOptionsDropdown._template = template;
-		}
-
-		var $el = $(template({
-			mountOptionsEncodingLabel: t('files_external', 'Compatibility with Mac NFD encoding (slow)')
+		var $el = $(OCA.Files_External.Templates.mountOptionsDropDown({
+			mountOptionsEncodingLabel: t('files_external', 'Compatibility with Mac NFD encoding (slow)'),
+			mountOptionsEncryptLabel: t('files_external', 'Enable encryption'),
+			mountOptionsPreviewsLabel: t('files_external', 'Enable previews'),
+			mountOptionsSharingLabel: t('files_external', 'Enable sharing'),
+			mountOptionsFilesystemCheckLabel: t('files_external', 'Check for changes'),
+			mountOptionsFilesystemCheckOnce: t('files_external', 'Never'),
+			mountOptionsFilesystemCheckDA: t('files_external', 'Once every direct access'),
+			mountOptionsReadOnlyLabel: t('files_external', 'Read only'),
+			deleteLabel: t('files_external', 'Delete')
 		}));
 		this.$el = $el;
 
@@ -584,7 +539,7 @@ MountOptionsDropdown.prototype = {
 		$el.find('.optionRow').each(function(i, row){
 			var $row = $(row);
 			var optionId = $row.find('input, select').attr('name');
-			if (visibleOptions.indexOf(optionId) === -1) {
+			if (visibleOptions.indexOf(optionId) === -1 && !$row.hasClass('persistent')) {
 				$row.hide();
 			} else {
 				$row.show();
@@ -594,7 +549,7 @@ MountOptionsDropdown.prototype = {
 };
 
 /**
- * @class OCA.External.Settings.MountConfigListView
+ * @class OCA.Files_External.Settings.MountConfigListView
  *
  * @classdesc Mount configuration list view
  *
@@ -619,7 +574,7 @@ MountConfigListView.ParameterTypes = {
 };
 
 /**
- * @memberOf OCA.External.Settings
+ * @memberOf OCA.Files_External.Settings
  */
 MountConfigListView.prototype = _.extend({
 
@@ -678,9 +633,9 @@ MountConfigListView.prototype = _.extend({
 		this.$el = $el;
 		this._isPersonal = ($el.data('admin') !== true);
 		if (this._isPersonal) {
-			this._storageConfigClass = OCA.External.Settings.UserStorageConfig;
+			this._storageConfigClass = OCA.Files_External.Settings.UserStorageConfig;
 		} else {
-			this._storageConfigClass = OCA.External.Settings.GlobalStorageConfig;
+			this._storageConfigClass = OCA.Files_External.Settings.GlobalStorageConfig;
 		}
 
 		if (options && !_.isUndefined(options.userListLimit)) {
@@ -734,7 +689,7 @@ MountConfigListView.prototype = _.extend({
 			self.recheckStorageConfig($(this).closest('tr'));
 		});
 
-		this.$el.on('click', 'td.remove>.icon-delete', function() {
+		this.$el.on('click', 'td.mountOptionsToggle .icon-delete', function() {
 			self.deleteStorageConfig($(this).closest('tr'));
 		});
 
@@ -742,7 +697,7 @@ MountConfigListView.prototype = _.extend({
 			self.saveStorageConfig($(this).closest('tr'));
 		});
 
-		this.$el.on('click', 'td.mountOptionsToggle>.icon-settings-dark', function() {
+		this.$el.on('click', 'td.mountOptionsToggle>.icon-more', function() {
 			self._showMountOptionsDropdown($(this).closest('tr'));
 		});
 
@@ -1053,7 +1008,7 @@ MountConfigListView.prototype = _.extend({
 	 * Gets the storage model from the given row
 	 *
 	 * @param $tr row element
-	 * @return {OCA.External.StorageConfig} storage model instance
+	 * @return {OCA.Files_External.StorageConfig} storage model instance
 	 */
 	getStorageConfig: function($tr) {
 		var storageId = $tr.data('id');
@@ -1311,7 +1266,8 @@ MountConfigListView.prototype = _.extend({
 			'filesystem_check_changes',
 			'enable_sharing',
 			'encoding_compatibility',
-			'readonly'
+			'readonly',
+			'delete'
 		];
 		if (this._encryptionEnabled) {
 			visibleOptions.push('encrypt');
@@ -1411,13 +1367,13 @@ $(document).ready(function() {
 	});
 
 	// global instance
-	OCA.External.Settings.mountConfig = mountConfigListView;
+	OCA.Files_External.Settings.mountConfig = mountConfigListView;
 
 	/**
 	 * Legacy
 	 *
 	 * @namespace
-	 * @deprecated use OCA.External.Settings.mountConfig instead
+	 * @deprecated use OCA.Files_External.Settings.mountConfig instead
 	 */
 	OC.MountConfig = {
 		saveStorage: _.bind(mountConfigListView.saveStorageConfig, mountConfigListView)
@@ -1426,14 +1382,14 @@ $(document).ready(function() {
 
 // export
 
-OCA.External = OCA.External || {};
+OCA.Files_External = OCA.Files_External || {};
 /**
  * @namespace
  */
-OCA.External.Settings = OCA.External.Settings || {};
+OCA.Files_External.Settings = OCA.Files_External.Settings || {};
 
-OCA.External.Settings.GlobalStorageConfig = GlobalStorageConfig;
-OCA.External.Settings.UserStorageConfig = UserStorageConfig;
-OCA.External.Settings.MountConfigListView = MountConfigListView;
+OCA.Files_External.Settings.GlobalStorageConfig = GlobalStorageConfig;
+OCA.Files_External.Settings.UserStorageConfig = UserStorageConfig;
+OCA.Files_External.Settings.MountConfigListView = MountConfigListView;
 
 })();

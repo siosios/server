@@ -13,6 +13,7 @@ declare(strict_types=1);
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Tom Needham <tom@owncloud.com>
  * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Thomas Citharel <tcit@tcit.fr>
  *
  * @license AGPL-3.0
  *
@@ -153,33 +154,39 @@ class UsersController extends AUserData {
 	 * returns a list of users and their data
 	 */
 	public function getUsersDetails(string $search = '', $limit = null, $offset = 0): DataResponse {
-		$user = $this->userSession->getUser();
+		$currentUser = $this->userSession->getUser();
 		$users = [];
 
 		// Admin? Or SubAdmin?
-		$uid = $user->getUID();
+		$uid = $currentUser->getUID();
 		$subAdminManager = $this->groupManager->getSubAdmin();
 		if ($this->groupManager->isAdmin($uid)){
 			$users = $this->userManager->search($search, $limit, $offset);
-		} else if ($subAdminManager->isSubAdmin($user)) {
-			$subAdminOfGroups = $subAdminManager->getSubAdminsGroups($user);
+			$users = array_keys($users);
+		} else if ($subAdminManager->isSubAdmin($currentUser)) {
+			$subAdminOfGroups = $subAdminManager->getSubAdminsGroups($currentUser);
 			foreach ($subAdminOfGroups as $key => $group) {
 				$subAdminOfGroups[$key] = $group->getGID();
 			}
 
 			$users = [];
 			foreach ($subAdminOfGroups as $group) {
-				$users = array_merge($users, $this->groupManager->displayNamesInGroup($group, $search, $limit, $offset));
+				$users[] = array_keys($this->groupManager->displayNamesInGroup($group, $search, $limit, $offset));
 			}
+			$users = array_merge(...$users);
 		}
 
-		$users = array_keys($users);
 		$usersDetails = [];
-		foreach ($users as $key => $userId) {
+		foreach ($users as $userId) {
+			$userId = (string) $userId;
 			$userData = $this->getUserData($userId);
 			// Do not insert empty entry
 			if (!empty($userData)) {
 				$usersDetails[$userId] = $userData;
+			} else {
+				// Logged user does not have permissions to see this user
+				// only showing its id
+				$usersDetails[$userId] = ['id' => $userId];
 			}
 		}
 
@@ -189,14 +196,30 @@ class UsersController extends AUserData {
 	}
 
 	/**
+	 * @throws OCSException
+	 */
+	private function createNewUserId(): string {
+		$attempts = 0;
+		do {
+			$uidCandidate = $this->secureRandom->generate(10, ISecureRandom::CHAR_HUMAN_READABLE);
+			if (!$this->userManager->userExists($uidCandidate)) {
+				return $uidCandidate;
+			}
+			$attempts++;
+		} while ($attempts < 10);
+		throw new OCSException('Could not create non-existing user id', 111);
+	}
+
+	/**
 	 * @PasswordConfirmationRequired
 	 * @NoAdminRequired
 	 *
 	 * @param string $userid
 	 * @param string $password
+	 * @param string $displayName
 	 * @param string $email
 	 * @param array $groups
-	 * @param array $subadmins
+	 * @param array $subadmin
 	 * @param string $quota
 	 * @param string $language
 	 * @return DataResponse
@@ -204,6 +227,7 @@ class UsersController extends AUserData {
 	 */
 	public function addUser(string $userid,
 							string $password = '',
+							string $displayName = '',
 							string $email = '',
 							array $groups = [],
 							array $subadmin = [],
@@ -212,6 +236,10 @@ class UsersController extends AUserData {
 		$user = $this->userSession->getUser();
 		$isAdmin = $this->groupManager->isAdmin($user->getUID());
 		$subAdminManager = $this->groupManager->getSubAdmin();
+
+		if(empty($userid) && $this->config->getAppValue('core', 'newUser.generateUserID', 'no') === 'yes') {
+			$userid = $this->createNewUserId();
+		}
 
 		if ($this->userManager->userExists($userid)) {
 			$this->logger->error('Failed addUser attempt: User already exists.', ['app' => 'ocs_api']);
@@ -265,6 +293,10 @@ class UsersController extends AUserData {
 			$generatePasswordResetToken = true;
 		}
 
+		if ($email === '' && $this->config->getAppValue('core', 'newUser.requireEmail', 'no') === 'yes') {
+			throw new OCSException('Required email address was not provided', 110);
+		}
+
 		try {
 			$newUser = $this->userManager->createUser($userid, $password);
 			$this->logger->info('Successful addUser call with userid: ' . $userid, ['app' => 'ocs_api']);
@@ -275,6 +307,10 @@ class UsersController extends AUserData {
 			}
 			foreach ($subadminGroups as $group) {
 				$subAdminManager->createSubAdmin($newUser, $group);
+			}
+
+			if ($displayName !== '') {
+				$this->editUser($userid, 'display', $displayName);
 			}
 
 			if ($quota !== '') {
@@ -292,24 +328,32 @@ class UsersController extends AUserData {
 					$emailTemplate = $this->newUserMailHelper->generateTemplate($newUser, $generatePasswordResetToken);
 					$this->newUserMailHelper->sendMail($newUser, $emailTemplate);
 				} catch (\Exception $e) {
+					// Mail could be failing hard or just be plain not configured
+					// Logging error as it is the hardest of the two
 					$this->logger->logException($e, [
-						'message' => "Can't send new user mail to $email",
+						'message' => "Unable to send the invitation mail to $email",
 						'level' => ILogger::ERROR,
 						'app' => 'ocs_api',
 					]);
-					throw new OCSException('Unable to send the invitation mail', 109);
 				}
 			}
 
-			return new DataResponse();
+			return new DataResponse(['id' => $userid]);
 
-		} catch (HintException $e ) {
+		} catch (HintException $e) {
 			$this->logger->logException($e, [
 				'message' => 'Failed addUser attempt with hint exception.',
 				'level' => ILogger::WARN,
 				'app' => 'ocs_api',
 			]);
 			throw new OCSException($e->getHint(), 107);
+		} catch (OCSException $e) {
+			$this->logger->logException($e, [
+				'message' => 'Failed addUser attempt with ocs exeption.',
+				'level' => ILogger::ERROR,
+				'app' => 'ocs_api',
+			]);
+			throw $e;
 		} catch (\Exception $e) {
 			$this->logger->logException($e, [
 				'message' => 'Failed addUser attempt with exception.',
@@ -426,6 +470,11 @@ class UsersController extends AUserData {
 				$permittedFields[] = 'language';
 			}
 
+			if ($this->config->getSystemValue('force_locale', false) === false ||
+				$this->groupManager->isAdmin($currentLoggedInUser->getUID())) {
+				$permittedFields[] = 'locale';
+			}
+
 			if ($this->appManager->isEnabledForUser('federatedfilesharing')) {
 				$federatedFileSharing = new \OCA\FederatedFileSharing\AppInfo\Application();
 				$shareProvider = $federatedFileSharing->getFederatedShareProvider();
@@ -452,6 +501,7 @@ class UsersController extends AUserData {
 				$permittedFields[] = AccountManager::PROPERTY_EMAIL;
 				$permittedFields[] = 'password';
 				$permittedFields[] = 'language';
+				$permittedFields[] = 'locale';
 				$permittedFields[] = AccountManager::PROPERTY_PHONE;
 				$permittedFields[] = AccountManager::PROPERTY_ADDRESS;
 				$permittedFields[] = AccountManager::PROPERTY_WEBSITE;
@@ -483,9 +533,7 @@ class UsersController extends AUserData {
 					if ($quota === false) {
 						throw new OCSException('Invalid quota value '.$value, 103);
 					}
-					if ($quota === 0) {
-						$quota = 'default';
-					}else if ($quota === -1) {
+					if ($quota === -1) {
 						$quota = 'none';
 					} else {
 						$quota = \OCP\Util::humanFileSize($quota);
@@ -494,7 +542,14 @@ class UsersController extends AUserData {
 				$targetUser->setQuota($quota);
 				break;
 			case 'password':
-				$targetUser->setPassword($value);
+				try {
+					if (!$targetUser->canChangePassword()) {
+						throw new OCSException('Setting the password is not supported by the users backend', 103);
+					}
+					$targetUser->setPassword($value);
+				} catch (HintException $e) { // password policy error
+					throw new OCSException($e->getMessage(), 103);
+				}
 				break;
 			case 'language':
 				$languagesCodes = $this->l10nFactory->findAvailableLanguages();
@@ -502,6 +557,12 @@ class UsersController extends AUserData {
 					throw new OCSException('Invalid language', 102);
 				}
 				$this->config->setUserValue($targetUser->getUID(), 'core', 'lang', $value);
+				break;
+			case 'locale':
+				if (!$this->l10nFactory->localeExists($value)) {
+					throw new OCSException('Invalid locale', 102);
+				}
+				$this->config->setUserValue($targetUser->getUID(), 'core', 'locale', $value);
 				break;
 			case AccountManager::PROPERTY_EMAIL:
 				if (filter_var($value, FILTER_VALIDATE_EMAIL) || $value === '') {
@@ -742,7 +803,7 @@ class UsersController extends AUserData {
 
 			if (count($userSubAdminGroups) <= 1) {
 				// Subadmin must not be able to remove a user from all their subadmin groups.
-				throw new OCSException('Cannot remove user from this group as this is the only remaining group you are a SubAdmin of', 105);
+				throw new OCSException('Not viable to remove user from the last group you are SubAdmin of', 105);
 			}
 		}
 
@@ -785,11 +846,8 @@ class UsersController extends AUserData {
 			return new DataResponse();
 		}
 		// Go
-		if ($subAdminManager->createSubAdmin($user, $group)) {
-			return new DataResponse();
-		} else {
-			throw new OCSException('Unknown error occurred', 103);
-		}
+		$subAdminManager->createSubAdmin($user, $group);
+		return new DataResponse();
 	}
 
 	/**
@@ -821,11 +879,8 @@ class UsersController extends AUserData {
 		}
 
 		// Go
-		if ($subAdminManager->deleteSubAdmin($user, $group)) {
-			return new DataResponse();
-		} else {
-			throw new OCSException('Unknown error occurred', 103);
-		}
+		$subAdminManager->deleteSubAdmin($user, $group);
+		return new DataResponse();
 	}
 
 	/**
@@ -870,16 +925,8 @@ class UsersController extends AUserData {
 		if ($email === '' || $email === null) {
 			throw new OCSException('Email address not available', 101);
 		}
-		$username = $targetUser->getUID();
-		$lang = $this->config->getUserValue($username, 'core', 'lang', 'en');
-		if (!$this->l10nFactory->languageExists('settings', $lang)) {
-			$lang = 'en';
-		}
-
-		$l10n = $this->l10nFactory->get('settings', $lang);
 
 		try {
-			$this->newUserMailHelper->setL10N($l10n);
 			$emailTemplate = $this->newUserMailHelper->generateTemplate($targetUser, false);
 			$this->newUserMailHelper->sendMail($targetUser, $emailTemplate);
 		} catch(\Exception $e) {

@@ -332,15 +332,18 @@ class Scanner extends BasicEmitter implements IScanner {
 				$this->storage->acquireLock($path, ILockingProvider::LOCK_SHARED, $this->lockingProvider);
 			}
 		}
-		$data = $this->scanFile($path, $reuse, -1, null, $lock);
-		if ($data and $data['mimetype'] === 'httpd/unix-directory') {
-			$size = $this->scanChildren($path, $recursive, $reuse, $data['fileid'], $lock);
-			$data['size'] = $size;
-		}
-		if ($lock) {
-			if ($this->storage->instanceOfStorage('\OCP\Files\Storage\ILockingStorage')) {
-				$this->storage->releaseLock($path, ILockingProvider::LOCK_SHARED, $this->lockingProvider);
-				$this->storage->releaseLock('scanner::' . $path, ILockingProvider::LOCK_EXCLUSIVE, $this->lockingProvider);
+		try {
+			$data = $this->scanFile($path, $reuse, -1, null, $lock);
+			if ($data and $data['mimetype'] === 'httpd/unix-directory') {
+				$size = $this->scanChildren($path, $recursive, $reuse, $data['fileid'], $lock);
+				$data['size'] = $size;
+			}
+		} finally {
+			if ($lock) {
+				if ($this->storage->instanceOfStorage('\OCP\Files\Storage\ILockingStorage')) {
+					$this->storage->releaseLock($path, ILockingProvider::LOCK_SHARED, $this->lockingProvider);
+					$this->storage->releaseLock('scanner::' . $path, ILockingProvider::LOCK_EXCLUSIVE, $this->lockingProvider);
+				}
 			}
 		}
 		return $data;
@@ -529,7 +532,7 @@ class Scanner extends BasicEmitter implements IScanner {
 			$callback();
 			\OC_Hook::emit('Scanner', 'correctFolderSize', array('path' => $path));
 			if ($this->cacheActive && $this->cache instanceof Cache) {
-				$this->cache->correctFolderSize($path);
+				$this->cache->correctFolderSize($path, null, true);
 			}
 		} catch (\OCP\Files\StorageInvalidException $e) {
 			// skip unavailable storages

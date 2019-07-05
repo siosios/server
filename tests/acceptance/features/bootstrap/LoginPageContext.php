@@ -66,8 +66,16 @@ class LoginPageContext implements Context, ActorAwareInterface {
 	 * @return Locator
 	 */
 	public static function wrongPasswordMessage() {
-		return Locator::forThe()->xpath("//*[@class = 'warning wrongPasswordMsg' and normalize-space() = 'Wrong password.']")->
+		return Locator::forThe()->xpath("//*[@class = 'warning wrongPasswordMsg' and normalize-space() = 'Wrong username or password.']")->
 				describedAs("Wrong password message in Login page");
+	}
+
+	/**
+	 * @return Locator
+	 */
+	public static function userDisabledMessage() {
+		return Locator::forThe()->xpath("//*[@class = 'warning userDisabledMsg' and normalize-space() = 'User disabled']")->
+				describedAs('User disabled message on login page');
 	}
 
 	/**
@@ -97,6 +105,14 @@ class LoginPageContext implements Context, ActorAwareInterface {
 	}
 
 	/**
+	 * @Then I see that the disabled user message is shown
+	 */
+	public function iSeeThatTheDisabledUserMessageIsShown() {
+		PHPUnit_Framework_Assert::assertTrue(
+				$this->actor->find(self::userDisabledMessage(), 10)->isVisible());
+	}
+
+	/**
 	 * @BeforeScenario
 	 */
 	public function getOtherRequiredSiblingContexts(BeforeScenarioScope $scope) {
@@ -112,6 +128,15 @@ class LoginPageContext implements Context, ActorAwareInterface {
 	public function iAmLoggedIn() {
 		$this->featureContext->iVisitTheHomePage();
 		$this->iLogInWithUserAndPassword("user0", "123456acb");
+		$this->filesAppContext->iSeeThatTheCurrentPageIsTheFilesApp();
+	}
+
+	/**
+	 * @Given I am logged in as :userName
+	 */
+	public function iAmLoggedInAs($userName) {
+		$this->featureContext->iVisitTheHomePage();
+		$this->iLogInWithUserAndPassword($userName, "123456acb");
 		$this->filesAppContext->iSeeThatTheCurrentPageIsTheFilesApp();
 	}
 

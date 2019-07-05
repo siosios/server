@@ -29,9 +29,11 @@
  *
  */
 
+use Behat\Gherkin\Node\TableNode;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Exception\ClientException;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 
 require __DIR__ . '/../../vendor/autoload.php';
@@ -164,7 +166,7 @@ trait BasicStructure {
 	 * @When /^sending "([^"]*)" to "([^"]*)" with$/
 	 * @param string $verb
 	 * @param string $url
-	 * @param \Behat\Gherkin\Node\TableNode $body
+	 * @param TableNode $body
 	 */
 	public function sendingToWith($verb, $url, $body) {
 		$fullUrl = $this->baseUrl . "v{$this->apiVersion}.php" . $url;
@@ -178,7 +180,7 @@ trait BasicStructure {
 		$options['headers'] = [
 			'OCS_APIREQUEST' => 'true'
 		];
-		if ($body instanceof \Behat\Gherkin\Node\TableNode) {
+		if ($body instanceof TableNode) {
 			$fd = $body->getRowsHash();
 			$options['form_params'] = $fd;
 		}
@@ -215,7 +217,7 @@ trait BasicStructure {
 		} else {
 			$options['auth'] = [$this->currentUser, $this->regularUser];
 		}
-		if ($body instanceof \Behat\Gherkin\Node\TableNode) {
+		if ($body instanceof TableNode) {
 			$fd = $body->getRowsHash();
 			$options['form_params'] = $fd;
 		}
@@ -238,7 +240,7 @@ trait BasicStructure {
 	 * @param int $statusCode
 	 */
 	public function theOCSStatusCodeShouldBe($statusCode) {
-		PHPUnit_Framework_Assert::assertEquals($statusCode, $this->getOCSResponse($this->response));
+		Assert::assertEquals($statusCode, $this->getOCSResponse($this->response));
 	}
 
 	/**
@@ -246,7 +248,7 @@ trait BasicStructure {
 	 * @param int $statusCode
 	 */
 	public function theHTTPStatusCodeShouldBe($statusCode) {
-		PHPUnit_Framework_Assert::assertEquals($statusCode, $this->response->getStatusCode());
+		Assert::assertEquals($statusCode, $this->response->getStatusCode());
 	}
 
 	/**
@@ -254,7 +256,7 @@ trait BasicStructure {
 	 * @param string $contentType
 	 */
 	public function theContentTypeShouldbe($contentType) {
-		PHPUnit_Framework_Assert::assertEquals($contentType, $this->response->getHeader('Content-Type')[0]);
+		Assert::assertEquals($contentType, $this->response->getHeader('Content-Type')[0]);
 	}
 
 	/**
@@ -494,6 +496,36 @@ trait BasicStructure {
 		$ri = new RecursiveIteratorIterator($di, RecursiveIteratorIterator::CHILD_FIRST);
 		foreach ($ri as $file) {
 			$file->isDir() ? rmdir($file) : unlink($file);
+		}
+	}
+
+	/**
+	 * @Given /^cookies are reset$/
+	 */
+	public function cookiesAreReset() {
+		$this->cookieJar = new CookieJar();
+	}
+
+	/**
+	 * @Then The following headers should be set
+	 * @param TableNode $table
+	 * @throws \Exception
+	 */
+	public function theFollowingHeadersShouldBeSet(TableNode $table) {
+		foreach($table->getTable() as $header) {
+			$headerName = $header[0];
+			$expectedHeaderValue = $header[1];
+			$returnedHeader = $this->response->getHeader($headerName)[0];
+			if($returnedHeader !== $expectedHeaderValue) {
+				throw new \Exception(
+					sprintf(
+						"Expected value '%s' for header '%s', got '%s'",
+						$expectedHeaderValue,
+						$headerName,
+						$returnedHeader
+					)
+				);
+			}
 		}
 	}
 }

@@ -31,6 +31,8 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IConfig;
 use OCP\IDateTimeFormatter;
 use OCP\IGroupManager;
+use OCP\IUserSession;
+use OCP\L10N\IFactory;
 use OCP\Settings\ISettings;
 use OCP\Util;
 
@@ -43,21 +45,21 @@ class Admin implements ISettings {
 	private $groupManager;
 	/** @var IDateTimeFormatter */
 	private $dateTimeFormatter;
+	/** @var IFactory */
+	private $l10nFactory;
 
-	/**
-	 * @param IConfig $config
-	 * @param UpdateChecker $updateChecker
-	 * @param IGroupManager $groupManager
-	 * @param IDateTimeFormatter $dateTimeFormatter
-	 */
-	public function __construct(IConfig $config,
-								UpdateChecker $updateChecker,
-								IGroupManager $groupManager,
-								IDateTimeFormatter $dateTimeFormatter) {
+	public function __construct(
+		IConfig $config,
+		UpdateChecker $updateChecker,
+		IGroupManager $groupManager,
+		IDateTimeFormatter $dateTimeFormatter,
+		IFactory $l10nFactory
+	) {
 		$this->config = $config;
 		$this->updateChecker = $updateChecker;
 		$this->groupManager = $groupManager;
 		$this->dateTimeFormatter = $dateTimeFormatter;
+		$this->l10nFactory = $l10nFactory;
 	}
 
 	/**
@@ -91,8 +93,10 @@ class Admin implements ISettings {
 			'lastChecked' => $lastUpdateCheck,
 			'currentChannel' => $currentChannel,
 			'channels' => $channels,
-			'newVersionString' => empty($updateState['updateVersion']) ? '' : $updateState['updateVersion'],
+			'newVersion' => empty($updateState['updateVersion']) ? '' : $updateState['updateVersion'],
+			'newVersionString' => empty($updateState['updateVersionString']) ? '' : $updateState['updateVersionString'],
 			'downloadLink' => empty($updateState['downloadLink']) ? '' : $updateState['downloadLink'],
+			'changes' => $this->filterChanges($updateState['changes'] ?? []),
 			'updaterEnabled' => empty($updateState['updaterEnabled']) ? false : $updateState['updaterEnabled'],
 			'versionIsEol' => empty($updateState['versionIsEol']) ? false : $updateState['versionIsEol'],
 			'isDefaultUpdateServerURL' => $updateServerURL === $defaultUpdateServerURL,
@@ -105,6 +109,28 @@ class Admin implements ISettings {
 		];
 
 		return new TemplateResponse('updatenotification', 'admin', $params, '');
+	}
+
+	protected function filterChanges(array $changes): array {
+		$filtered = [];
+		if(isset($changes['changelogURL'])) {
+			$filtered['changelogURL'] = $changes['changelogURL'];
+		}
+		if(!isset($changes['whatsNew'])) {
+			return $filtered;
+		}
+
+		$iterator = $this->l10nFactory->getLanguageIterator();
+		do {
+			$lang = $iterator->current();
+			if(isset($changes['whatsNew'][$lang])) {
+				$filtered['whatsNew'] = $changes['whatsNew'][$lang];
+				return $filtered;
+			}
+			$iterator->next();
+		} while($lang !== 'en' && $iterator->valid());
+
+		return $filtered;
 	}
 
 	/**
@@ -130,7 +156,7 @@ class Admin implements ISettings {
 	 * @return string the section ID, e.g. 'sharing'
 	 */
 	public function getSection(): string {
-		return 'server';
+		return 'overview';
 	}
 
 	/**
@@ -141,6 +167,6 @@ class Admin implements ISettings {
 	 * E.g.: 70
 	 */
 	public function getPriority(): int {
-		return 1;
+		return 11;
 	}
 }

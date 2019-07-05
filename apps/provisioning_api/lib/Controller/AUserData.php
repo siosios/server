@@ -22,6 +22,8 @@ declare(strict_types=1);
 namespace OCA\Provisioning_API\Controller;
 
 use OC\Accounts\AccountManager;
+use OC\User\Backend;
+use OC\User\NoUserException;
 use OCP\AppFramework\OCS\OCSException;
 use OCP\AppFramework\OCS\OCSNotFoundException;
 use OCP\AppFramework\OCSController;
@@ -32,6 +34,8 @@ use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUserManager;
 use OCP\IUserSession;
+use OCP\User\Backend\ISetDisplayNameBackend;
+use OCP\User\Backend\ISetPasswordBackend;
 
 abstract class AUserData extends OCSController {
 
@@ -74,9 +78,11 @@ abstract class AUserData extends OCSController {
 	/**
 	 * creates a array with all user data
 	 *
-	 * @param $userId
+	 * @param string $userId
 	 * @return array
+	 * @throws NotFoundException
 	 * @throws OCSException
+	 * @throws OCSNotFoundException
 	 */
 	protected function getUserData(string $userId): array {
 		$currentLoggedInUser = $this->userSession->getUser();
@@ -90,12 +96,12 @@ abstract class AUserData extends OCSController {
 		}
 
 		// Should be at least Admin Or SubAdmin!
-		if( $this->groupManager->isAdmin($currentLoggedInUser->getUID())
+		if ($this->groupManager->isAdmin($currentLoggedInUser->getUID())
 			|| $this->groupManager->getSubAdmin()->isUserAccessible($currentLoggedInUser, $targetUserObject)) {
 				$data['enabled'] = $this->config->getUserValue($targetUserObject->getUID(), 'core', 'enabled', 'true') === 'true';
 		} else {
 			// Check they are looking up themselves
-			if($currentLoggedInUser->getUID() !== $targetUserObject->getUID()) {
+			if ($currentLoggedInUser->getUID() !== $targetUserObject->getUID()) {
 				return $data;
 			}
 		}
@@ -105,12 +111,20 @@ abstract class AUserData extends OCSController {
 		$groups = $this->groupManager->getUserGroups($targetUserObject);
 		$gids = [];
 		foreach ($groups as $group) {
-			$gids[] = $group->getDisplayName();
+			$gids[] = $group->getGID();
+		}
+
+		try {
+			# might be thrown by LDAP due to handling of users disappears
+			# from the external source (reasons unknown to us)
+			# cf. https://github.com/nextcloud/server/issues/12991
+			$data['storageLocation'] = $targetUserObject->getHome();
+		} catch (NoUserException $e) {
+			throw new OCSNotFoundException($e->getMessage(), $e);
 		}
 
 		// Find the data
 		$data['id'] = $targetUserObject->getUID();
-		$data['storageLocation'] = $targetUserObject->getHome();
 		$data['lastLogin'] = $targetUserObject->getLastLogin() * 1000;
 		$data['backend'] = $targetUserObject->getBackendClassName();
 		$data['subadmin'] = $this->getUserSubAdminGroupsData($targetUserObject->getUID());
@@ -123,6 +137,13 @@ abstract class AUserData extends OCSController {
 		$data[AccountManager::PROPERTY_TWITTER] = $userAccount[AccountManager::PROPERTY_TWITTER]['value'];
 		$data['groups'] = $gids;
 		$data['language'] = $this->config->getUserValue($targetUserObject->getUID(), 'core', 'lang');
+		$data['locale'] = $this->config->getUserValue($targetUserObject->getUID(), 'core', 'locale');
+
+		$backend = $targetUserObject->getBackend();
+		$data['backendCapabilities'] = [
+			'setDisplayName' => $backend instanceof ISetDisplayNameBackend || $backend->implementsActions(Backend::SET_DISPLAYNAME),
+			'setPassword' => $backend instanceof ISetPasswordBackend || $backend->implementsActions(Backend::SET_PASSWORD),
+		];
 
 		return $data;
     }
@@ -174,9 +195,12 @@ abstract class AUserData extends OCSController {
 			if ($user === null) {
 				throw new OCSException('User does not exist', 101);
 			}
-			$quota = OC_Helper::computerFileSize($user->getQuota());
+			$quota = $user->getQuota();
+			if ($quota !== 'none') {
+				$quota = OC_Helper::computerFileSize($quota);
+			}
 			$data = [
-				'quota' => $quota ? $quota : 'none',
+				'quota' => $quota !== false ? $quota : 'none',
 				'used' => 0
 			];
 		}

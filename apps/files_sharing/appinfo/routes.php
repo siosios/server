@@ -34,13 +34,7 @@ return [
 		],
 		[
 			'name' => 'PublicPreview#getPreview',
-			'url' => '/publicpreview',
-			'verb' => 'GET',
-		],
-
-		[
-			'name' => 'PublicPreview#getPreview',
-			'url' => '/ajax/publicpreview.php',
+			'url' => '/publicpreview/{token}',
 			'verb' => 'GET',
 		],
 
@@ -80,11 +74,29 @@ return [
 			'verb' => 'DELETE',
 		],
 		/*
+		 * Deleted Shares
+		 */
+		[
+			'name' => 'DeletedShareAPI#index',
+			'url'  => '/api/v1/deletedshares',
+			'verb' => 'GET',
+		],
+		[
+			'name' => 'DeletedShareAPI#undelete',
+			'url'  => '/api/v1/deletedshares/{id}',
+			'verb' => 'POST',
+		],
+		/*
 		 * OCS Sharee API
 		 */
 		[
 			'name' => 'ShareesAPI#search',
 			'url' => '/api/v1/sharees',
+			'verb' => 'GET',
+		],
+		[
+			'name' => 'ShareesAPI#findRecommended',
+			'url' => '/api/v1/sharees_recommended',
 			'verb' => 'GET',
 		],
 		/*

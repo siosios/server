@@ -43,6 +43,7 @@
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  * @author Vincent Petry <pvince81@owncloud.com>
  * @author Volkan Gezer <volkangezer@gmail.com>
+ * @author Robert Dailey <rcdailey@gmail.com>
  *
  * @license AGPL-3.0
  *
@@ -64,6 +65,7 @@ use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\ILogger;
 use OCP\IUser;
+use OC\AppFramework\Http\Request;
 
 class OC_Util {
 	public static $scripts = array();
@@ -202,7 +204,7 @@ class OC_Util {
 
 		\OC\Files\Filesystem::initMountManager();
 
-		\OC\Files\Filesystem::logWarningWhenAddingStorageWrapper(false);
+		$prevLogging = \OC\Files\Filesystem::logWarningWhenAddingStorageWrapper(false);
 		\OC\Files\Filesystem::addStorageWrapper('mount_options', function ($mountPoint, \OCP\Files\Storage $storage, \OCP\Files\Mount\IMountPoint $mount) {
 			if ($storage->instanceOfStorage('\OC\Files\Storage\Common')) {
 				/** @var \OC\Files\Storage\Common $storage */
@@ -277,7 +279,8 @@ class OC_Util {
 		});
 
 		OC_Hook::emit('OC_Filesystem', 'preSetup', array('user' => $user));
-		\OC\Files\Filesystem::logWarningWhenAddingStorageWrapper(true);
+
+		\OC\Files\Filesystem::logWarningWhenAddingStorageWrapper($prevLogging);
 
 		//check if we are using an object storage
 		$objectStore = \OC::$server->getSystemConfig()->getValue('objectstore', null);
@@ -389,9 +392,10 @@ class OC_Util {
 	/**
 	 * copies the skeleton to the users /files
 	 *
-	 * @param String $userId
+	 * @param string $userId
 	 * @param \OCP\Files\Folder $userDirectory
-	 * @throws \RuntimeException
+	 * @throws \OCP\Files\NotFoundException
+	 * @throws \OCP\Files\NotPermittedException
 	 * @suppress PhanDeprecatedFunction
 	 */
 	public static function copySkeleton($userId, \OCP\Files\Folder $userDirectory) {
@@ -687,13 +691,20 @@ class OC_Util {
 	 * @param string $tag tag name of the element
 	 * @param array $attributes array of attributes for the element
 	 * @param string $text the text content for the element
+	 * @param bool $prepend prepend the header to the beginning of the list
 	 */
-	public static function addHeader($tag, $attributes, $text=null) {
-		self::$headers[] = array(
+	public static function addHeader($tag, $attributes, $text = null, $prepend = false) {
+		$header = array(
 			'tag' => $tag,
 			'attributes' => $attributes,
 			'text' => $text
 		);
+		if ($prepend === true) {
+			array_unshift (self::$headers, $header);
+
+		} else {
+			self::$headers[] = $header;
+		}
 	}
 
 	/**
@@ -745,7 +756,9 @@ class OC_Util {
 				$errors[] = array(
 					'error' => $l->t('Cannot write into "config" directory'),
 					'hint' => $l->t('This can usually be fixed by giving the webserver write access to the config directory. See %s',
-						[$urlGenerator->linkToDocs('admin-dir_permissions')])
+						[ $urlGenerator->linkToDocs('admin-dir_permissions') ]) . '. '
+						. $l->t('Or, if you prefer to keep config.php file read only, set the option "config_is_read_only" to true in it. See %s',
+						[ $urlGenerator->linkToDocs('admin-config') ] )
 				);
 			}
 		}
@@ -778,13 +791,20 @@ class OC_Util {
 					];
 				}
 			} else if (!is_writable($CONFIG_DATADIRECTORY) or !is_readable($CONFIG_DATADIRECTORY)) {
-				//common hint for all file permissions error messages
-				$permissionsHint = $l->t('Permissions can usually be fixed by giving the webserver write access to the root directory. See %s.',
-					[$urlGenerator->linkToDocs('admin-dir_permissions')]);
-				$errors[] = [
-					'error' => 'Your data directory is not writable',
-					'hint' => $permissionsHint
-				];
+				// is_writable doesn't work for NFS mounts, so try to write a file and check if it exists.
+				$testFile = sprintf('%s/%s.tmp', $CONFIG_DATADIRECTORY, uniqid('data_dir_writability_test_'));
+				$handle = fopen($testFile, 'w');
+				if (!$handle || fwrite($handle, 'Test write operation') === FALSE) {
+					$permissionsHint = $l->t('Permissions can usually be fixed by giving the webserver write access to the root directory. See %s.',
+						[$urlGenerator->linkToDocs('admin-dir_permissions')]);
+					$errors[] = [
+						'error' => 'Your data directory is not writable',
+						'hint' => $permissionsHint
+					];
+				} else {
+					fclose($handle);
+					unlink($testFile);
+				}
 			} else {
 				$errors = array_merge($errors, self::checkDataDirectoryPermissions($CONFIG_DATADIRECTORY));
 			}
@@ -816,7 +836,7 @@ class OC_Util {
 			),
 			'functions' => [
 				'xml_parser_create' => 'libxml',
-				'mb_strcut' => 'mb multibyte',
+				'mb_strcut' => 'mbstring',
 				'ctype_digit' => 'ctype',
 				'json_encode' => 'JSON',
 				'gd_info' => 'GD',
@@ -838,44 +858,36 @@ class OC_Util {
 		$invalidIniSettings = [];
 		$moduleHint = $l->t('Please ask your server administrator to install the module.');
 
-		/**
-		 * FIXME: The dependency check does not work properly on HHVM on the moment
-		 *        and prevents installation. Once HHVM is more compatible with our
-		 *        approach to check for these values we should re-enable those
-		 *        checks.
-		 */
 		$iniWrapper = \OC::$server->getIniWrapper();
-		if (!self::runningOnHhvm()) {
-			foreach ($dependencies['classes'] as $class => $module) {
-				if (!class_exists($class)) {
-					$missingDependencies[] = $module;
+		foreach ($dependencies['classes'] as $class => $module) {
+			if (!class_exists($class)) {
+				$missingDependencies[] = $module;
+			}
+		}
+		foreach ($dependencies['functions'] as $function => $module) {
+			if (!function_exists($function)) {
+				$missingDependencies[] = $module;
+			}
+		}
+		foreach ($dependencies['defined'] as $defined => $module) {
+			if (!defined($defined)) {
+				$missingDependencies[] = $module;
+			}
+		}
+		foreach ($dependencies['ini'] as $setting => $expected) {
+			if (is_bool($expected)) {
+				if ($iniWrapper->getBool($setting) !== $expected) {
+					$invalidIniSettings[] = [$setting, $expected];
 				}
 			}
-			foreach ($dependencies['functions'] as $function => $module) {
-				if (!function_exists($function)) {
-					$missingDependencies[] = $module;
+			if (is_int($expected)) {
+				if ($iniWrapper->getNumeric($setting) !== $expected) {
+					$invalidIniSettings[] = [$setting, $expected];
 				}
 			}
-			foreach ($dependencies['defined'] as $defined => $module) {
-				if (!defined($defined)) {
-					$missingDependencies[] = $module;
-				}
-			}
-			foreach ($dependencies['ini'] as $setting => $expected) {
-				if (is_bool($expected)) {
-					if ($iniWrapper->getBool($setting) !== $expected) {
-						$invalidIniSettings[] = [$setting, $expected];
-					}
-				}
-				if (is_int($expected)) {
-					if ($iniWrapper->getNumeric($setting) !== $expected) {
-						$invalidIniSettings[] = [$setting, $expected];
-					}
-				}
-				if (is_string($expected)) {
-					if (strtolower($iniWrapper->getString($setting)) !== strtolower($expected)) {
-						$invalidIniSettings[] = [$setting, $expected];
-					}
+			if (is_string($expected)) {
+				if (strtolower($iniWrapper->getString($setting)) !== strtolower($expected)) {
+					$invalidIniSettings[] = [$setting, $expected];
 				}
 			}
 		}
@@ -1073,26 +1085,6 @@ class OC_Util {
 			header('Location: ' . \OCP\Util::linkToAbsolute('', 'index.php'));
 			exit();
 		}
-	}
-
-	/**
-	 * Check if the user is a subadmin, redirects to home if not
-	 *
-	 * @return null|boolean $groups where the current user is subadmin
-	 */
-	public static function checkSubAdminUser() {
-		OC_Util::checkLoggedIn();
-		$userObject = \OC::$server->getUserSession()->getUser();
-		$isSubAdmin = false;
-		if($userObject !== null) {
-			$isSubAdmin = \OC::$server->getGroupManager()->getSubAdmin()->isSubAdmin($userObject);
-		}
-
-		if (!$isSubAdmin) {
-			header('Location: ' . \OCP\Util::linkToAbsolute('', 'index.php'));
-			exit();
-		}
-		return true;
 	}
 
 	/**
@@ -1323,15 +1315,6 @@ class OC_Util {
 	}
 
 	/**
-	 * Checks whether server is running on HHVM
-	 *
-	 * @return bool True if running on HHVM, false otherwise
-	 */
-	public static function runningOnHhvm() {
-		return defined('HHVM_VERSION');
-	}
-
-	/**
 	 * Handles the case that there may not be a theme, then check if a "default"
 	 * theme exists and take that one
 	 *
@@ -1347,64 +1330,6 @@ class OC_Util {
 		}
 
 		return $theme;
-	}
-
-	/**
-	 * Clear a single file from the opcode cache
-	 * This is useful for writing to the config file
-	 * in case the opcode cache does not re-validate files
-	 * Returns true if successful, false if unsuccessful:
-	 * caller should fall back on clearing the entire cache
-	 * with clearOpcodeCache() if unsuccessful
-	 *
-	 * @param string $path the path of the file to clear from the cache
-	 * @return bool true if underlying function returns true, otherwise false
-	 */
-	public static function deleteFromOpcodeCache($path) {
-		$ret = false;
-		if ($path) {
-			// APC >= 3.1.1
-			if (function_exists('apc_delete_file')) {
-				$ret = @apc_delete_file($path);
-			}
-			// Zend OpCache >= 7.0.0, PHP >= 5.5.0
-			if (function_exists('opcache_invalidate')) {
-				$ret = opcache_invalidate($path);
-			}
-		}
-		return $ret;
-	}
-
-	/**
-	 * Clear the opcode cache if one exists
-	 * This is necessary for writing to the config file
-	 * in case the opcode cache does not re-validate files
-	 *
-	 * @return void
-	 * @suppress PhanDeprecatedFunction
-	 * @suppress PhanUndeclaredConstant
-	 */
-	public static function clearOpcodeCache() {
-		// APC
-		if (function_exists('apc_clear_cache')) {
-			apc_clear_cache();
-		}
-		// Zend Opcache
-		if (function_exists('accelerator_reset')) {
-			accelerator_reset();
-		}
-		// XCache
-		if (function_exists('xcache_clear_cache')) {
-			if (\OC::$server->getIniWrapper()->getBool('xcache.admin.enable_auth')) {
-				\OCP\Util::writeLog('core', 'XCache opcode cache will not be cleared because "xcache.admin.enable_auth" is enabled.', ILogger::WARN);
-			} else {
-				@xcache_clear_cache(XC_TYPE_PHP, 0);
-			}
-		}
-		// Opcache (PHP >= 5.5)
-		if (function_exists('opcache_reset')) {
-			opcache_reset();
-		}
 	}
 
 	/**
@@ -1517,6 +1442,19 @@ class OC_Util {
 		} else {
 			return false;
 		}
+	}
+
+	/**
+	 * is this Internet explorer ?
+	 *
+	 * @return boolean
+	 */
+	public static function isIe() {
+		if (!isset($_SERVER['HTTP_USER_AGENT'])) {
+			return false;
+		}
+
+		return preg_match(Request::USER_AGENT_IE, $_SERVER['HTTP_USER_AGENT']) === 1;
 	}
 
 }

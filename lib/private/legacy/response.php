@@ -31,49 +31,6 @@
  */
 
 class OC_Response {
-	const STATUS_FOUND = 302;
-	const STATUS_NOT_MODIFIED = 304;
-	const STATUS_TEMPORARY_REDIRECT = 307;
-	const STATUS_BAD_REQUEST = 400;
-	const STATUS_FORBIDDEN = 403;
-	const STATUS_NOT_FOUND = 404;
-	const STATUS_INTERNAL_SERVER_ERROR = 500;
-	const STATUS_SERVICE_UNAVAILABLE = 503;
-
-	/**
-	* Set response status
-	* @param int $status a HTTP status code, see also the STATUS constants
-	*/
-	static public function setStatus($status) {
-		$protocol = \OC::$server->getRequest()->getHttpProtocol();
-		switch($status) {
-			case self::STATUS_NOT_MODIFIED:
-				$status = $status . ' Not Modified';
-				break;
-			case self::STATUS_TEMPORARY_REDIRECT:
-				if ($protocol == 'HTTP/1.0') {
-					$status = self::STATUS_FOUND;
-					// fallthrough
-				} else {
-					$status = $status . ' Temporary Redirect';
-					break;
-				}
-			case self::STATUS_FOUND;
-				$status = $status . ' Found';
-				break;
-			case self::STATUS_NOT_FOUND;
-				$status = $status . ' Not Found';
-				break;
-			case self::STATUS_INTERNAL_SERVER_ERROR;
-				$status = $status . ' Internal Server Error';
-				break;
-			case self::STATUS_SERVICE_UNAVAILABLE;
-				$status = $status . ' Service Unavailable';
-				break;
-		}
-		header($protocol.' '.$status);
-	}
-
 	/**
 	 * Sets the content disposition header (with possible workarounds)
 	 * @param string $filename file name
@@ -127,7 +84,7 @@ class OC_Response {
 		 * @see \OCP\AppFramework\Http\Response::getHeaders
 		 */
 		$policy = 'default-src \'self\'; '
-			. 'script-src \'self\' \'unsafe-eval\' \'nonce-'.\OC::$server->getContentSecurityPolicyNonceManager()->getNonce().'\'; '
+			. 'script-src \'self\' \'nonce-'.\OC::$server->getContentSecurityPolicyNonceManager()->getNonce().'\'; '
 			. 'style-src \'self\' \'unsafe-inline\'; '
 			. 'frame-src *; '
 			. 'img-src * data: blob:; '
@@ -147,6 +104,7 @@ class OC_Response {
 			header('X-Robots-Tag: none'); // https://developers.google.com/webmasters/control-crawl-index/docs/robots_meta_tag
 			header('X-Download-Options: noopen'); // https://msdn.microsoft.com/en-us/library/jj542450(v=vs.85).aspx
 			header('X-Permitted-Cross-Domain-Policies: none'); // https://www.adobe.com/devnet/adobe-media-server/articles/cross-domain-xml-for-streaming.html
+			header('Referrer-Policy: no-referrer'); // https://www.w3.org/TR/referrer-policy/
 		}
 	}
 

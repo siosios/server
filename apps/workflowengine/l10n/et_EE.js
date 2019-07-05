@@ -1,8 +1,6 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Saved" : "Salvestatud",
-    "Saving failed:" : "Salvestamine ebaõnnestus:",
     "File MIME type" : "Faili MIME tüüp",
     "is" : "on",
     "is not" : "ei ole",
@@ -40,6 +38,14 @@ OC.L10N.register(
     "User group membership" : "Kasutajagrupi liige",
     "is member of" : "on liige",
     "is not member of" : "ei ole liige",
+    "Short rule description" : "Reegli lühikirjeldus",
+    "Add rule" : "Lisa reegel",
+    "Reset" : "Lähtesta",
+    "Save" : "Salvesta",
+    "Saving…" : "Salvestamine...",
+    "Saved" : "Salvestatud",
+    "Saving failed:" : "Salvestamine ebaõnnestus:",
+    "Add rule group" : "Lisa reegligrupp",
     "The given regular expression is invalid" : "Antud regulaaravaldis on vigane",
     "The given file size is invalid" : "Antud faili suurus on vigane",
     "The given tag id is invalid" : "Antud sildi ID on vigane",
@@ -53,14 +59,8 @@ OC.L10N.register(
     "Operation #%s does not exist" : "Tegevus # %s ei leitud",
     "Operation %s does not exist" : "Tegevust %s ei leitud",
     "Operation %s is invalid" : "Tegevus %s on vigane",
-    "Workflow" : "Töövoog",
     "Open documentation" : "Ava dokumentatsioon",
-    "Add rule group" : "Lisa reegligrupp",
-    "Short rule description" : "Reegli lühikirjeldus",
-    "Add rule" : "Lisa reegel",
-    "Reset" : "Lähtesta",
-    "Save" : "Salvesta",
-    "Saving…" : "Salvestamine...",
-    "Loading…" : "Laadimine..."
+    "Loading…" : "Laadimine...",
+    "Workflow" : "Töövoog"
 },
 "nplurals=2; plural=(n != 1);");

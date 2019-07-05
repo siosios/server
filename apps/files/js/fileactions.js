@@ -10,17 +10,6 @@
 
 (function() {
 
-	var TEMPLATE_FILE_ACTION_TRIGGER =
-		'<a class="action action-{{nameLowerCase}}" href="#" data-action="{{name}}">' +
-		'{{#if icon}}' +
-			'<img class="svg" alt="{{altText}}" src="{{icon}}" />' +
-		'{{else}}' +
-			'{{#if iconClass}}<span class="icon {{iconClass}}" />{{/if}}' +
-			'{{#unless hasDisplayName}}<span class="hidden-visually">{{altText}}</span>{{/unless}}' +
-		'{{/if}}' +
-		'{{#if displayName}}<span> {{displayName}}</span>{{/if}}' +
-		'</a>';
-
 	/**
 	 * Construct a new FileActions instance
 	 * @constructs FileActions
@@ -75,7 +64,7 @@
 		 * Removes an event handler
 		 *
 		 * @param {String} eventName event name
-		 * @param Function callback
+		 * @param {Function} callback
 		 */
 		off: function(eventName, callback) {
 			this.$el.off(eventName, callback);
@@ -335,11 +324,7 @@
 		 * @param {Object} params action params
 		 */
 		_makeActionLink: function(params) {
-			if (!this._fileActionTriggerTemplate) {
-				this._fileActionTriggerTemplate = Handlebars.compile(TEMPLATE_FILE_ACTION_TRIGGER);
-			}
-
-			return $(this._fileActionTriggerTemplate(params));
+			return $(OCA.Files.Templates['file_action_trigger'](params));
 		},
 
 		/**
@@ -386,6 +371,7 @@
 			}, false, context);
 
 			$el.addClass('permanent');
+
 		},
 
 		/**
@@ -558,7 +544,27 @@
 				}
 			});
 
-			this._renderMenuTrigger($tr, context);
+			function objectValues(obj) {
+				var res = [];
+				for (var i in obj) {
+					if (obj.hasOwnProperty(i)) {
+						res.push(obj[i]);
+					}
+				}
+				return res;
+			}
+			// polyfill
+			if (!Object.values) {
+				Object.values = objectValues;
+			}
+
+			var menuActions = Object.values(this.actions.all).filter(function (action) {
+				return action.type !== OCA.Files.FileActions.TYPE_INLINE;
+			});
+			// do not render the menu if nothing is in it
+			if (menuActions.length > 0) {
+				this._renderMenuTrigger($tr, context);
+			}
 
 			if (triggerEvent){
 				fileList.$fileList.trigger(jQuery.Event("fileActionsReady", {fileList: fileList, $files: $tr}));
@@ -642,20 +648,37 @@
 					if (permissions & OC.PERMISSION_UPDATE) {
 						actions = OC.dialogs.FILEPICKER_TYPE_COPY_MOVE;
 					}
-					OC.dialogs.filepicker(t('files', 'Target folder'), function(targetPath, type) {
+					var dialogDir = context.dir;
+					if (typeof context.fileList.dirInfo.dirLastCopiedTo !== 'undefined') {
+						dialogDir = context.fileList.dirInfo.dirLastCopiedTo;
+					}
+					OC.dialogs.filepicker(t('files', 'Choose target folder'), function(targetPath, type) {
 						if (type === OC.dialogs.FILEPICKER_TYPE_COPY) {
 							context.fileList.copy(filename, targetPath, false, context.dir);
 						}
 						if (type === OC.dialogs.FILEPICKER_TYPE_MOVE) {
 							context.fileList.move(filename, targetPath, false, context.dir);
 						}
-					}, false, "httpd/unix-directory", true, actions);
+						context.fileList.dirInfo.dirLastCopiedTo = targetPath; 
+					}, false, "httpd/unix-directory", true, actions, dialogDir);
 				}
 			});
 
-			this.register('dir', 'Open', OC.PERMISSION_READ, '', function (filename, context) {
-				var dir = context.$file.attr('data-path') || context.fileList.getCurrentDirectory();
-				context.fileList.changeDirectory(OC.joinPaths(dir, filename), true, false, parseInt(context.$file.attr('data-id'), 10));
+			this.registerAction({
+				name: 'Open',
+				mime: 'dir',
+				permissions: OC.PERMISSION_READ,
+				icon: '',
+				actionHandler: function (filename, context) {
+					var dir = context.$file.attr('data-path') || context.fileList.getCurrentDirectory();
+					if (OCA.Files.App && OCA.Files.App.getActiveView() !== 'files') {
+						OCA.Files.App.setActiveView('files', {silent: true});
+						OCA.Files.App.fileList.changeDirectory(OC.joinPaths(dir, filename), true, true);
+					} else {
+						context.fileList.changeDirectory(OC.joinPaths(dir, filename), true, false, parseInt(context.$file.attr('data-id'), 10));
+					}
+				},
+				displayName: t('files', 'Open')
 			});
 
 			this.registerAction({
@@ -692,21 +715,21 @@
 	OCA.Files.FileActions = FileActions;
 
 	/**
-	 * Replaces the download icon with a loading spinner and vice versa
+	 * Replaces the button icon with a loading spinner and vice versa
 	 * - also adds the class disabled to the passed in element
 	 *
-	 * @param {jQuery} $downloadButtonElement download fileaction
+	 * @param {jQuery} $buttonElement The button element
 	 * @param {boolean} showIt whether to show the spinner(true) or to hide it(false)
 	 */
-	OCA.Files.FileActions.updateFileActionSpinner = function($downloadButtonElement, showIt) {
-		var $icon = $downloadButtonElement.find('.icon');
+	OCA.Files.FileActions.updateFileActionSpinner = function($buttonElement, showIt) {
+		var $icon = $buttonElement.find('.icon');
 		if (showIt) {
 			var $loadingIcon = $('<span class="icon icon-loading-small"></span>');
 			$icon.after($loadingIcon);
 			$icon.addClass('hidden');
 		} else {
-			$downloadButtonElement.find('.icon-loading-small').remove();
-			$downloadButtonElement.find('.icon').removeClass('hidden');
+			$buttonElement.find('.icon-loading-small').remove();
+			$buttonElement.find('.icon').removeClass('hidden');
 		}
 	};
 

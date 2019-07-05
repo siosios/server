@@ -81,9 +81,11 @@ class Admin implements ISettings {
 			'slogan'          => $this->themingDefaults->getSlogan(),
 			'color'           => $this->themingDefaults->getColorPrimary(),
 			'uploadLogoRoute' => $this->urlGenerator->linkToRoute('theming.Theming.uploadImage'),
-			'canThemeIcons'   => $this->themingDefaults->shouldReplaceIcons(),
+			'canThemeIcons'   => $this->imageManager->shouldReplaceIcons(),
 			'iconDocs'        => $this->urlGenerator->linkToDocs('admin-theming-icons'),
 			'images'		  => $this->imageManager->getCustomImages(),
+			'imprintUrl'      => $this->themingDefaults->getImprintUrl(),
+			'privacyUrl'      => $this->themingDefaults->getPrivacyUrl(),
 		];
 
 		return new TemplateResponse('theming', 'settings-admin', $parameters, '');

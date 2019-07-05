@@ -1,8 +1,6 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Saved" : "შენახულია",
-    "Saving failed:" : "შენახვა ვერ მოხერხდა:",
     "File MIME type" : "ფაილის MIME სახეობა",
     "is" : "არის",
     "is not" : "არ არის",
@@ -40,6 +38,14 @@ OC.L10N.register(
     "User group membership" : "მომხმარებლის ჯგუფის წევრიანობა",
     "is member of" : "არის წევრი ჯგუფისა",
     "is not member of" : "არ არის წევრი ჯგუფისა",
+    "Short rule description" : "წესის მოკლე აღწერა",
+    "Add rule" : "წესის დამატება",
+    "Reset" : "საწყის მდოგმარეობაში დაბრუნება",
+    "Save" : "შენახვა",
+    "Saving…" : "მიმდინარეობს დამახსოვრება...",
+    "Saved" : "შენახულია",
+    "Saving failed:" : "შენახვა ვერ მოხერხდა:",
+    "Add rule group" : "ჯგუფის წესის დამატება",
     "The given operator is invalid" : "მოცემული ოპერატორი არაა სწორი",
     "The given regular expression is invalid" : "მოცემული რეგულარული გამოსახულება არაა სწორი",
     "The given file size is invalid" : "მოცემული ფაილის ზომა არაა სწორი",
@@ -58,15 +64,9 @@ OC.L10N.register(
     "Check %s does not exist" : "შეამოწმეთ %s არ არსებობს",
     "Check %s is invalid" : "შეამოწმეთ %s არასწორია",
     "Check #%s does not exist" : "შეამოწმეთ #%s არ არსებობს",
-    "Workflow" : "შრომითი პროცესები",
     "Files workflow engine" : "ფაილების სამუშაოს შესრულების ძრავა",
     "Open documentation" : "ღია დოკუმენტაცია",
-    "Add rule group" : "ჯგუფის წესის დამატება",
-    "Short rule description" : "წესის მოკლე აღწერა",
-    "Add rule" : "წესის დამატება",
-    "Reset" : "საწყის მდოგმარეობაში დაბრუნება",
-    "Save" : "შენახვა",
-    "Saving…" : "მიმდინარეობს დამახსოვრება...",
-    "Loading…" : "იტვირთება..."
+    "Loading…" : "იტვირთება...",
+    "Workflow" : "შრომითი პროცესები"
 },
-"nplurals=1; plural=0;");
+"nplurals=2; plural=(n!=1);");

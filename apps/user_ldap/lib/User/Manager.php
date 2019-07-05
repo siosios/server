@@ -45,7 +45,7 @@ use OCP\Notification\IManager as INotificationManager;
  * cache
  */
 class Manager {
-	/** @var IUserTools */
+	/** @var Access */
 	protected $access;
 
 	/** @var IConfig */
@@ -110,11 +110,11 @@ class Manager {
 	}
 
 	/**
-	 * @brief binds manager to an instance of IUserTools (implemented by
-	 * Access). It needs to be assigned first before the manager can be used.
-	 * @param IUserTools
+	 * Binds manager to an instance of Access.
+	 * It needs to be assigned first before the manager can be used.
+	 * @param Access
 	 */
-	public function setLdapAccess(IUserTools $access) {
+	public function setLdapAccess(Access $access) {
 		$this->access = $access;
 	}
 
@@ -163,24 +163,21 @@ class Manager {
 	/**
 	 * returns a list of attributes that will be processed further, e.g. quota,
 	 * email, displayname, or others.
+	 *
 	 * @param bool $minimal - optional, set to true to skip attributes with big
 	 * payload
 	 * @return string[]
 	 */
 	public function getAttributes($minimal = false) {
-		$attributes = array_merge(Access::UUID_ATTRIBUTES, ['dn', 'uid', 'samaccountname', 'memberof']);
-		$possible = array(
+		$baseAttributes = array_merge(Access::UUID_ATTRIBUTES, ['dn', 'uid', 'samaccountname', 'memberof']);
+		$attributes = [
 			$this->access->getConnection()->ldapExpertUUIDUserAttr,
 			$this->access->getConnection()->ldapQuotaAttribute,
 			$this->access->getConnection()->ldapEmailAttribute,
 			$this->access->getConnection()->ldapUserDisplayName,
 			$this->access->getConnection()->ldapUserDisplayName2,
-		);
-		foreach($possible as $attr) {
-			if(!is_null($attr)) {
-				$attributes[] = $attr;
-			}
-		}
+			$this->access->getConnection()->ldapExtStorageHomeAttribute,
+		];
 
 		$homeRule = $this->access->getConnection()->homeFolderNamingRule;
 		if(strpos($homeRule, 'attr:') === 0) {
@@ -190,11 +187,23 @@ class Manager {
 		if(!$minimal) {
 			// attributes that are not really important but may come with big
 			// payload.
-			$attributes = array_merge($attributes, array(
-				'jpegphoto',
-				'thumbnailphoto'
-			));
+			$attributes = array_merge(
+				$attributes,
+				$this->access->getConnection()->resolveRule('avatar')
+			);
 		}
+
+		$attributes = array_reduce($attributes,
+			function($list, $attribute) {
+				$attribute = strtolower(trim((string)$attribute));
+				if(!empty($attribute) && !in_array($attribute, $list)) {
+					$list[] = $attribute;
+				}
+
+				return $list;
+			},
+			$baseAttributes // hard-coded, lower-case, non-empty attributes
+		);
 
 		return $attributes;
 	}

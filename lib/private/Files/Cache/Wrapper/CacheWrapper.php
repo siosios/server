@@ -187,6 +187,12 @@ class CacheWrapper extends Cache {
 		$this->getCache()->move($source, $target);
 	}
 
+	protected function getMoveInfo($path) {
+		/** @var Cache $cache */
+		$cache = $this->getCache();
+		return $cache->getMoveInfo($path);
+	}
+
 	public function moveFromCache(ICache $sourceCache, $sourcePath, $targetPath) {
 		$this->getCache()->moveFromCache($sourceCache, $sourcePath, $targetPath);
 	}
@@ -252,9 +258,9 @@ class CacheWrapper extends Cache {
 	 * @param string|boolean $path
 	 * @param array $data (optional) meta data of the folder
 	 */
-	public function correctFolderSize($path, $data = null) {
+	public function correctFolderSize($path, $data = null, $isBackgroundScan = false) {
 		if ($this->getCache() instanceof Cache) {
-			$this->getCache()->correctFolderSize($path, $data);
+			$this->getCache()->correctFolderSize($path, $data, $isBackgroundScan);
 		}
 	}
 

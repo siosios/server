@@ -83,7 +83,7 @@ class OC_Files {
 		$type = \OC::$server->getMimeTypeDetector()->getSecureMimeType(\OC\Files\Filesystem::getMimeType($filename));
 		if ($fileSize > -1) {
 			if (!empty($rangeArray)) {
-			    header('HTTP/1.1 206 Partial Content', true);
+			    http_response_code(206);
 			    header('Accept-Ranges: bytes', true);
 			    if (count($rangeArray) > 1) {
 				$type = 'multipart/byteranges; boundary='.self::getBoundary();
@@ -198,18 +198,18 @@ class OC_Files {
 			OC::$server->getLogger()->logException($ex);
 			$l = \OC::$server->getL10N('core');
 			$hint = method_exists($ex, 'getHint') ? $ex->getHint() : '';
-			\OC_Template::printErrorPage($l->t('File is currently busy, please try again later'), $hint);
+			\OC_Template::printErrorPage($l->t('File is currently busy, please try again later'), $hint, 200);
 		} catch (\OCP\Files\ForbiddenException $ex) {
 			self::unlockAllTheFiles($dir, $files, $getType, $view, $filename);
 			OC::$server->getLogger()->logException($ex);
 			$l = \OC::$server->getL10N('core');
-			\OC_Template::printErrorPage($l->t('Can\'t read file'), $ex->getMessage());
+			\OC_Template::printErrorPage($l->t('Can\'t read file'), $ex->getMessage(), 200);
 		} catch (\Exception $ex) {
 			self::unlockAllTheFiles($dir, $files, $getType, $view, $filename);
 			OC::$server->getLogger()->logException($ex);
 			$l = \OC::$server->getL10N('core');
 			$hint = method_exists($ex, 'getHint') ? $ex->getHint() : '';
-			\OC_Template::printErrorPage($l->t('Can\'t read file'), $hint);
+			\OC_Template::printErrorPage($l->t('Can\'t read file'), $hint, 200);
 		}
 	}
 
@@ -286,12 +286,12 @@ class OC_Files {
 		if (\OC\Files\Filesystem::isReadable($filename)) {
 			self::sendHeaders($filename, $name, $rangeArray);
 		} elseif (!\OC\Files\Filesystem::file_exists($filename)) {
-			header("HTTP/1.1 404 Not Found");
+			http_response_code(404);
 			$tmpl = new OC_Template('', '404', 'guest');
 			$tmpl->printPage();
 			exit();
 		} else {
-			header("HTTP/1.1 403 Forbidden");
+			http_response_code(403);
 			die('403 Forbidden');
 		}
 		if (isset($params['head']) && $params['head']) {
@@ -321,7 +321,7 @@ class OC_Files {
 			    // file is unseekable
 			    header_remove('Accept-Ranges');
 			    header_remove('Content-Range');
-			    header("HTTP/1.1 200 OK");
+			    http_response_code(200);
 			    self::sendHeaders($filename, $name, array());
 			    $view->readfile($filename);
 			}
@@ -376,88 +376,6 @@ class OC_Files {
 				self::lockFiles($view, $dir, $contents);
 			}
 		}
-	}
-
-	/**
-	 * set the maximum upload size limit for apache hosts using .htaccess
-	 *
-	 * @param int $size file size in bytes
-	 * @param array $files override '.htaccess' and '.user.ini' locations
-	 * @return bool|int false on failure, size on success
-	 */
-	public static function setUploadLimit($size, $files = []) {
-		//don't allow user to break his config
-		$size = (int)$size;
-		if ($size < self::UPLOAD_MIN_LIMIT_BYTES) {
-			return false;
-		}
-		$size = OC_Helper::phpFileSize($size);
-
-		$phpValueKeys = array(
-			'upload_max_filesize',
-			'post_max_size'
-		);
-
-		// default locations if not overridden by $files
-		$files = array_merge([
-			'.htaccess' => OC::$SERVERROOT . '/.htaccess',
-			'.user.ini' => OC::$SERVERROOT . '/.user.ini'
-		], $files);
-
-		$updateFiles = [
-			$files['.htaccess'] => [
-				'pattern' => '/php_value %1$s (\S)*/',
-				'setting' => 'php_value %1$s %2$s'
-			],
-			$files['.user.ini'] => [
-				'pattern' => '/%1$s=(\S)*/',
-				'setting' => '%1$s=%2$s'
-			]
-		];
-
-		$success = true;
-
-		foreach ($updateFiles as $filename => $patternMap) {
-			// suppress warnings from fopen()
-			$handle = @fopen($filename, 'r+');
-			if (!$handle) {
-				\OCP\Util::writeLog('files',
-					'Can\'t write upload limit to ' . $filename . '. Please check the file permissions',
-					ILogger::WARN);
-				$success = false;
-				continue; // try to update as many files as possible
-			}
-
-			$content = '';
-			while (!feof($handle)) {
-				$content .= fread($handle, 1000);
-			}
-
-			foreach ($phpValueKeys as $key) {
-				$pattern = vsprintf($patternMap['pattern'], [$key]);
-				$setting = vsprintf($patternMap['setting'], [$key, $size]);
-				$hasReplaced = 0;
-				$newContent = preg_replace($pattern, $setting, $content, 2, $hasReplaced);
-				if ($newContent !== null) {
-					$content = $newContent;
-				}
-				if ($hasReplaced === 0) {
-					$content .= "\n" . $setting;
-				}
-			}
-
-			// write file back
-			ftruncate($handle, 0);
-			rewind($handle);
-			fwrite($handle, $content);
-
-			fclose($handle);
-		}
-
-		if ($success) {
-			return OC_Helper::computerFileSize($size);
-		}
-		return false;
 	}
 
 	/**

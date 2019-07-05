@@ -43,7 +43,7 @@ function preview(setting, value, serverCssUrl) {
 	var reloadStylesheets = function(cssFile) {
 		var queryString = '?reload=' + new Date().getTime();
 		var url = cssFile + queryString;
-		var old = $('link[href*="' + cssFile.replace("/","\/") + '"]');
+		var old = $('link[href*="' + cssFile + '"]');
 		var stylesheet = $("<link/>", {
 			rel: "stylesheet",
 			type: "text/css",
@@ -83,7 +83,9 @@ function hideUndoButton(setting, value) {
 		url: 'https://nextcloud.com',
 		color: '#0082c9',
 		logoMime: '',
-		backgroundMime: ''
+		backgroundMime: '',
+		imprintUrl: '',
+		privacyUrl: ''
 	};
 
 	if (value === themingDefaults[setting] || value === '') {
@@ -103,6 +105,10 @@ function hideUndoButton(setting, value) {
 
 $(document).ready(function () {
 	$('#theming [data-toggle="tooltip"]').tooltip();
+
+	// manually instantiate jscolor to work around new Function call which violates strict CSP
+	var colorElement = $('#theming-color')[0];
+	var jscolor = new window.jscolor(colorElement, {hash: true});
 
 	$('#theming .theme-undo').each(function() {
 		var setting = $(this).data('setting');
@@ -175,7 +181,7 @@ $(document).ready(function () {
 		var el = $(this);
 	});
 
-	$('#theming input[type=text]').change(function(e) {
+	function onChange(e) {
 		var el = $(this);
 		var setting = el.parent().find('div[data-setting]').data('setting');
 		var value = $(this).val();
@@ -186,14 +192,14 @@ $(document).ready(function () {
 			}
 		}
 		if(setting === 'name') {
-      if(checkName()){
-        $.when(el.focusout()).then(function() {
-          setThemingValue('name', value);
-        });
-        if (e.keyCode == 13) {
-          setThemingValue('name', value);
-        } 
-      }
+			if(checkName()){
+				$.when(el.focusout()).then(function() {
+					setThemingValue('name', value);
+				});
+				if (e.keyCode == 13) {
+					setThemingValue('name', value);
+				}
+			}
 		}
 
 		$.when(el.focusout()).then(function() {
@@ -202,7 +208,10 @@ $(document).ready(function () {
 		if (e.keyCode == 13) {
 			setThemingValue(setting, value);
 		}
-	});
+	};
+
+	$('#theming input[type="text"]').change(onChange);
+	$('#theming input[type="url"]').change(onChange);
 
 	$('.theme-undo').click(function (e) {
 		var setting = $(this).data('setting');

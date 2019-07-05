@@ -1,6 +1,7 @@
 <?php
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
+ * @copyright Copyright (c) 2018, Georg Ehrke
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Jakob Sack <mail@jakobsack.de>
@@ -11,6 +12,9 @@
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Vinicius Cubas Brand <vinicius@eita.org.br>
+ * @author Daniel Tygel <dtygel@eita.org.br>
  *
  * @license AGPL-3.0
  *
@@ -30,6 +34,10 @@
 
 namespace OCA\DAV\Connector\Sabre;
 
+use OCA\Circles\Exceptions\CircleDoesNotExistException;
+use OCP\App\IAppManager;
+use OCP\AppFramework\QueryException;
+use OCP\IConfig;
 use OCP\IGroup;
 use OCP\IGroupManager;
 use OCP\IUser;
@@ -37,7 +45,7 @@ use OCP\IUserManager;
 use OCP\IUserSession;
 use OCP\Share\IManager as IShareManager;
 use Sabre\DAV\Exception;
-use \Sabre\DAV\PropPatch;
+use Sabre\DAV\PropPatch;
 use Sabre\DAVACL\PrincipalBackend\BackendInterface;
 
 class Principal implements BackendInterface {
@@ -54,30 +62,44 @@ class Principal implements BackendInterface {
 	/** @var IUserSession */
 	private $userSession;
 
+	/** @var IConfig */
+	private $config;
+
+	/** @var IAppManager */
+	private $appManager;
+
 	/** @var string */
 	private $principalPrefix;
 
 	/** @var bool */
 	private $hasGroups;
 
+	/** @var bool */
+	private $hasCircles;
+
 	/**
 	 * @param IUserManager $userManager
 	 * @param IGroupManager $groupManager
 	 * @param IShareManager $shareManager
 	 * @param IUserSession $userSession
+	 * @param IConfig $config
 	 * @param string $principalPrefix
 	 */
 	public function __construct(IUserManager $userManager,
 								IGroupManager $groupManager,
 								IShareManager $shareManager,
 								IUserSession $userSession,
-								$principalPrefix = 'principals/users/') {
+								IConfig $config,
+								IAppManager $appManager,
+								string $principalPrefix = 'principals/users/') {
 		$this->userManager = $userManager;
 		$this->groupManager = $groupManager;
 		$this->shareManager = $shareManager;
 		$this->userSession = $userSession;
+		$this->config = $config;
+		$this->appManager = $appManager;
 		$this->principalPrefix = trim($principalPrefix, '/');
-		$this->hasGroups = ($principalPrefix === 'principals/users/');
+		$this->hasGroups = $this->hasCircles = ($principalPrefix === 'principals/users/');
 	}
 
 	/**
@@ -121,6 +143,12 @@ class Principal implements BackendInterface {
 
 			if ($user !== null) {
 				return $this->userToPrincipal($user);
+			}
+		} else if ($prefix === 'principals/circles') {
+			try {
+				return $this->circleToPrincipal($name);
+			} catch (QueryException $e) {
+				return null;
 			}
 		}
 		return null;
@@ -206,7 +234,8 @@ class Principal implements BackendInterface {
 		$results = [];
 
 		// If sharing is disabled, return the empty array
-		if (!$this->shareManager->shareApiEnabled()) {
+		$shareAPIEnabled = $this->shareManager->shareApiEnabled();
+		if (!$shareAPIEnabled) {
 			return [];
 		}
 
@@ -241,6 +270,33 @@ class Principal implements BackendInterface {
 					}, []);
 					break;
 
+				case '{DAV:}displayname':
+					$users = $this->userManager->searchDisplayName($value);
+
+					$results[] = array_reduce($users, function(array $carry, IUser $user) use ($restrictGroups) {
+						// is sharing restricted to groups only?
+						if ($restrictGroups !== false) {
+							$userGroups = $this->groupManager->getUserGroupIds($user);
+							if (count(array_intersect($userGroups, $restrictGroups)) === 0) {
+								return $carry;
+							}
+						}
+
+						$carry[] = $this->principalPrefix . '/' . $user->getUID();
+						return $carry;
+					}, []);
+					break;
+
+				case '{urn:ietf:params:xml:ns:caldav}calendar-user-address-set':
+					// If you add support for more search properties that qualify as a user-address,
+					// please also add them to the array below
+					$results[] = $this->searchUserPrincipals([
+						// In theory this should also search for principal:principals/users/...
+						// but that's used internally only anyway and i don't know of any client querying that
+						'{http://sabredav.org/ns}email-address' => $value,
+					], 'anyof');
+					break;
+
 				default:
 					$results[] = [];
 					break;
@@ -255,11 +311,11 @@ class Principal implements BackendInterface {
 
 		switch ($test) {
 			case 'anyof':
-				return array_unique(array_merge(...$results));
+				return array_values(array_unique(array_merge(...$results)));
 
 			case 'allof':
 			default:
-				return array_intersect(...$results);
+				return array_values(array_intersect(...$results));
 		}
 	}
 
@@ -289,8 +345,9 @@ class Principal implements BackendInterface {
 	 * @return string
 	 */
 	function findByUri($uri, $principalPrefix) {
-		// If sharing is disabled, return null as in user not found
-		if (!$this->shareManager->shareApiEnabled()) {
+		// If sharing is disabled, return the empty array
+		$shareAPIEnabled = $this->shareManager->shareApiEnabled();
+		if (!$shareAPIEnabled) {
 			return null;
 		}
 
@@ -324,6 +381,13 @@ class Principal implements BackendInterface {
 				return $this->principalPrefix . '/' . $user->getUID();
 			}
 		}
+		if (substr($uri, 0, 10) === 'principal:') {
+			$principal = substr($uri, 10);
+			$principal = $this->getPrincipalByPath($principal);
+			if ($principal !== null) {
+				return $principal['uri'];
+			}
+		}
 
 		return null;
 	}
@@ -338,6 +402,7 @@ class Principal implements BackendInterface {
 		$principal = [
 				'uri' => $this->principalPrefix . '/' . $userId,
 				'{DAV:}displayname' => is_null($displayName) ? $userId : $displayName,
+				'{urn:ietf:params:xml:ns:caldav}calendar-user-type' => 'INDIVIDUAL',
 		];
 
 		$email = $user->getEMailAddress();
@@ -350,6 +415,72 @@ class Principal implements BackendInterface {
 
 	public function getPrincipalPrefix() {
 		return $this->principalPrefix;
+	}
+
+	/**
+	 * @param string $circleUniqueId
+	 * @return array|null
+	 * @throws \OCP\AppFramework\QueryException
+	 * @suppress PhanUndeclaredClassMethod
+	 * @suppress PhanUndeclaredClassCatch
+	 */
+	protected function circleToPrincipal($circleUniqueId) {
+		if (!$this->appManager->isEnabledForUser('circles') || !class_exists('\OCA\Circles\Api\v1\Circles')) {
+			return null;
+		}
+
+		try {
+			$circle = \OCA\Circles\Api\v1\Circles::detailsCircle($circleUniqueId, true);
+		} catch(QueryException $ex) {
+			return null;
+		} catch(CircleDoesNotExistException $ex) {
+			return null;
+		}
+
+		if (!$circle) {
+			return null;
+		}
+
+		$principal = [
+			'uri' => 'principals/circles/' . $circleUniqueId,
+			'{DAV:}displayname' => $circle->getName(),
+		];
+
+		return $principal;
+	}
+
+	/**
+	 * Returns the list of circles a principal is a member of
+	 *
+	 * @param string $principal
+	 * @return array
+	 * @throws Exception
+	 * @throws \OCP\AppFramework\QueryException
+	 * @suppress PhanUndeclaredClassMethod
+	 */
+	public function getCircleMembership($principal):array {
+		if (!$this->appManager->isEnabledForUser('circles') || !class_exists('\OCA\Circles\Api\v1\Circles')) {
+			return [];
+		}
+
+		list($prefix, $name) = \Sabre\Uri\split($principal);
+		if ($this->hasCircles && $prefix === $this->principalPrefix) {
+			$user = $this->userManager->get($name);
+			if (!$user) {
+				throw new Exception('Principal not found');
+			}
+
+			$circles = \OCA\Circles\Api\v1\Circles::joinedCircles($name, true);
+
+			$circles = array_map(function($circle) {
+				/** @var \OCA\Circles\Model\Circle $circle */
+				return 'principals/circles/' . urlencode($circle->getUniqueId());
+			}, $circles);
+
+			return $circles;
+		}
+
+		return [];
 	}
 
 }

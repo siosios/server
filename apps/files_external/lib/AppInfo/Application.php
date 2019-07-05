@@ -29,6 +29,9 @@
 
 namespace OCA\Files_External\AppInfo;
 
+use OCA\Files_External\Config\UserPlaceholderHandler;
+use OCA\Files_External\Lib\Auth\PublicKey\RSAPrivateKey;
+use OCA\Files_External\Lib\Auth\SMB\KerberosAuth;
 use \OCP\AppFramework\App;
 use OCP\AppFramework\IAppContainer;
 use \OCA\Files_External\Service\BackendService;
@@ -65,7 +68,12 @@ use OCP\Files\Config\IUserMountCache;
  */
 class Application extends App implements IBackendProvider, IAuthMechanismProvider {
 
-	public function __construct(array $urlParams = array()) {
+	/**
+	 * Application constructor.
+	 *
+	 * @throws \OCP\AppFramework\QueryException
+	 */
+	public function __construct(array $urlParams = []) {
 		parent::__construct('files_external', $urlParams);
 
 		$container = $this->getContainer();
@@ -74,15 +82,20 @@ class Application extends App implements IBackendProvider, IAuthMechanismProvide
 			return $c->getServer()->query('UserMountCache');
 		});
 
+		/** @var BackendService $backendService */
 		$backendService = $container->query(BackendService::class);
 		$backendService->registerBackendProvider($this);
 		$backendService->registerAuthMechanismProvider($this);
+		$backendService->registerConfigHandler('user', function() use ($container) {
+			return $container->query(UserPlaceholderHandler::class);
+		});
 
 		// force-load auth mechanisms since some will register hooks
 		// TODO: obsolete these and use the TokenProvider to get the user's password from the session
 		$this->getAuthMechanisms();
 
-		// app developers: do NOT depend on this! it will disappear with oC 9.0!
+		// don't remove this, as app loading order might be a side effect and
+		// querying the service from the server not reliable
 		\OC::$server->getEventDispatcher()->dispatch(
 			'OCA\\Files_External::loadAdditionalBackends'
 		);
@@ -138,6 +151,7 @@ class Application extends App implements IBackendProvider, IAuthMechanismProvide
 
 			// AuthMechanism::SCHEME_PUBLICKEY mechanisms
 			$container->query(RSA::class),
+			$container->query(RSAPrivateKey::class),
 
 			// AuthMechanism::SCHEME_OPENSTACK mechanisms
 			$container->query(OpenStackV2::class),
@@ -146,6 +160,7 @@ class Application extends App implements IBackendProvider, IAuthMechanismProvide
 
 			// Specialized mechanisms
 			$container->query(AccessKey::class),
+			$container->query(KerberosAuth::class),
 		];
 	}
 

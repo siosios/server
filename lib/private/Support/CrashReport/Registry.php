@@ -23,6 +23,8 @@
 namespace OC\Support\CrashReport;
 
 use Exception;
+use OCP\Support\CrashReport\ICollectBreadcrumbs;
+use OCP\Support\CrashReport\IMessageReporter;
 use OCP\Support\CrashReport\IRegistry;
 use OCP\Support\CrashReport\IReporter;
 use Throwable;
@@ -37,8 +39,25 @@ class Registry implements IRegistry {
 	 *
 	 * @param IReporter $reporter
 	 */
-	public function register(IReporter $reporter) {
+	public function register(IReporter $reporter): void {
 		$this->reporters[] = $reporter;
+	}
+
+	/**
+	 * Delegate breadcrumb collection to all registered reporters
+	 *
+	 * @param string $message
+	 * @param string $category
+	 * @param array $context
+	 *
+	 * @since 15.0.0
+	 */
+	public function delegateBreadcrumb(string $message, string $category, array $context = []): void {
+		foreach ($this->reporters as $reporter) {
+			if ($reporter instanceof ICollectBreadcrumbs) {
+				$reporter->collect($message, $category, $context);
+			}
+		}
 	}
 
 	/**
@@ -47,10 +66,26 @@ class Registry implements IRegistry {
 	 * @param Exception|Throwable $exception
 	 * @param array $context
 	 */
-	public function delegateReport($exception, array $context = []) {
+	public function delegateReport($exception, array $context = []): void {
 		/** @var IReporter $reporter */
 		foreach ($this->reporters as $reporter) {
 			$reporter->report($exception, $context);
+		}
+	}
+
+	/**
+	 * Delegate a message to all reporters that implement IMessageReporter
+	 *
+	 * @param string $message
+	 * @param array $context
+	 *
+	 * @return void
+	 */
+	public function delegateMessage(string $message, array $context = []): void {
+		foreach ($this->reporters as $reporter) {
+			if ($reporter instanceof IMessageReporter) {
+				$reporter->reportMessage($message, $context);
+			}
 		}
 	}
 

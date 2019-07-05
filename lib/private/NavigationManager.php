@@ -100,7 +100,7 @@ class NavigationManager implements INavigationManager {
 		if(!isset($entry['type'])) {
 			$entry['type'] = 'link';
 		}
-		$this->entries[] = $entry;
+		$this->entries[$entry['id']] = $entry;
 	}
 
 	/**
@@ -133,7 +133,7 @@ class NavigationManager implements INavigationManager {
 	 * @return array
 	 */
 	private function proceedNavigation(array $list): array {
-		usort($list, function($a, $b) {
+		uasort($list, function($a, $b) {
 			if (isset($a['order']) && isset($b['order'])) {
 				return ($a['order'] < $b['order']) ? -1 : 1;
 			} else if (isset($a['order']) || isset($b['order'])) {
@@ -247,7 +247,7 @@ class NavigationManager implements INavigationManager {
 					'type' => 'settings',
 					'id' => 'core_users',
 					'order' => 4,
-					'href' => $this->urlGenerator->linkToRoute('settings_users'),
+					'href' => $this->urlGenerator->linkToRoute('settings.Users.usersList'),
 					'name' => $l->t('Users'),
 					'icon' => $this->urlGenerator->imagePath('settings', 'users.svg'),
 				]);
@@ -271,10 +271,10 @@ class NavigationManager implements INavigationManager {
 
 			// load plugins and collections from info.xml
 			$info = $this->appManager->getAppInfo($app);
-			if (empty($info['navigations'])) {
+			if (!isset($info['navigations']['navigation'])) {
 				continue;
 			}
-			foreach ($info['navigations'] as $nav) {
+			foreach ($info['navigations']['navigation'] as $key => $nav) {
 				if (!isset($nav['name'])) {
 					continue;
 				}
@@ -286,10 +286,10 @@ class NavigationManager implements INavigationManager {
 					continue;
 				}
 				$l = $this->l10nFac->get($app);
-				$id = isset($nav['id']) ? $nav['id'] : $app;
+				$id = $nav['id'] ?? $app . ($key === 0 ? '' : $key);
 				$order = isset($nav['order']) ? $nav['order'] : 100;
 				$type = isset($nav['type']) ? $nav['type'] : 'link';
-				$route = $this->urlGenerator->linkToRoute($nav['route']);
+				$route = $nav['route'] !== '' ? $this->urlGenerator->linkToRoute($nav['route']) : '';
 				$icon = isset($nav['icon']) ? $nav['icon'] : 'app.svg';
 				foreach ([$icon, "$app.svg"] as $i) {
 					try {

@@ -42,6 +42,7 @@ use OC\Template\JSCombiner;
 use OC\Template\JSConfigHelper;
 use OC\Template\SCSSCacher;
 use OCP\Defaults;
+use OC\AppFramework\Http\Request;
 
 class TemplateLayout extends \OC_Template {
 
@@ -61,20 +62,17 @@ class TemplateLayout extends \OC_Template {
 		// yes - should be injected ....
 		$this->config = \OC::$server->getConfig();
 
+		if(\OCP\Util::isIE()) {
+			\OC_Util::addStyle('ie');
+		}
 
 		// Decide which page we show
-		if($renderAs == 'user') {
+		if($renderAs === 'user') {
 			parent::__construct( 'core', 'layout.user' );
 			if(in_array(\OC_App::getCurrentApp(), ['settings','admin', 'help']) !== false) {
 				$this->assign('bodyid', 'body-settings');
 			}else{
 				$this->assign('bodyid', 'body-user');
-			}
-
-			// Code integrity notification
-			$integrityChecker = \OC::$server->getIntegrityCodeChecker();
-			if(\OC_User::isAdminUser(\OC_User::getUser()) && $integrityChecker->isCodeCheckEnforced() && !$integrityChecker->hasPassedCheck()) {
-				\OCP\Util::addScript('core', 'integritycheck-failed-notification');
 			}
 
 			// Add navigation entry
@@ -117,24 +115,36 @@ class TemplateLayout extends \OC_Template {
 				$this->assign('themingInvertMenu', false);
 			}
 
-		} else if ($renderAs == 'error') {
+		} else if ($renderAs === 'error') {
 			parent::__construct('core', 'layout.guest', '', false);
 			$this->assign('bodyid', 'body-login');
-		} else if ($renderAs == 'guest') {
+			$this->assign('user_displayname', '');
+			$this->assign('user_uid', '');
+		} else if ($renderAs === 'guest') {
 			parent::__construct('core', 'layout.guest');
+			\OC_Util::addStyle('guest');
 			$this->assign('bodyid', 'body-login');
-		} else if ($renderAs == 'public') {
+
+			$userDisplayName = \OC_User::getDisplayName();
+			$this->assign('user_displayname', $userDisplayName);
+			$this->assign('user_uid', \OC_User::getUser());
+		} else if ($renderAs === 'public') {
 			parent::__construct('core', 'layout.public');
 			$this->assign( 'appid', $appId );
 			$this->assign('bodyid', 'body-public');
+			$this->assign('showSimpleSignUpLink', $this->config->getSystemValue('simpleSignUpLink.shown', true) !== false);
 		} else {
 			parent::__construct('core', 'layout.base');
 
 		}
-		// Send the language to our layouts
+		// Send the language and the locale to our layouts
 		$lang = \OC::$server->getL10NFactory()->findLanguage();
+		$locale = \OC::$server->getL10NFactory()->findLocale($lang);
+		$localeLang = \OC::$server->getL10NFactory()->findLanguageFromLocale('lib', $locale);
+
 		$lang = str_replace('_', '-', $lang);
 		$this->assign('language', $lang);
+		$this->assign('locale', $locale);
 
 		if(\OC::$server->getSystemConfig()->getValue('installed', false)) {
 			if (empty(self::$versionHash)) {
@@ -152,7 +162,7 @@ class TemplateLayout extends \OC_Template {
 		if ($this->config->getSystemValue('installed', false) && $renderAs != 'error') {
 			if (\OC::$server->getContentSecurityPolicyNonceManager()->browserSupportsCspV3()) {
 				$jsConfigHelper = new JSConfigHelper(
-					\OC::$server->getL10N('lib'),
+					\OC::$server->getL10N('lib', $localeLang ?: $lang),
 					\OC::$server->query(Defaults::class),
 					\OC::$server->getAppManager(),
 					\OC::$server->getSession(),
@@ -186,7 +196,7 @@ class TemplateLayout extends \OC_Template {
 			&& !\OCP\Util::needUpgrade()
 			&& $pathInfo !== ''
 			&& !preg_match('/^\/login/', $pathInfo)
-			&& $renderAs !== 'error' && $renderAs !== 'guest'
+			&& $renderAs !== 'error'
 		) {
 			$cssFiles = self::findStylesheetFiles(\OC_Util::$styles);
 		} else {
@@ -206,9 +216,20 @@ class TemplateLayout extends \OC_Template {
 			if (substr($file, -strlen('print.css')) === 'print.css') {
 				$this->append( 'printcssfiles', $web.'/'.$file . $this->getVersionHashSuffix() );
 			} else {
-				$this->append( 'cssfiles', $web.'/'.$file . $this->getVersionHashSuffix($web, $file)  );
+				$suffix = $this->getVersionHashSuffix($web, $file);
+
+				if (strpos($file, '?v=') == false) {
+					$this->append( 'cssfiles', $web.'/'.$file . $suffix);
+				} else {
+					$this->append( 'cssfiles', $web.'/'.$file . '-' . substr($suffix, 3));
+				}
+
 			}
 		}
+
+		/** @var InitialStateService $initialState */
+		$initialState = \OC::$server->query(InitialStateService::class);
+		$this->assign('initialStates', $initialState->getInitialStates());
 	}
 
 	/**

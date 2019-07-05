@@ -8,6 +8,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  *
  * @license AGPL-3.0
  *
@@ -111,8 +112,6 @@ class AvatarController extends Controller {
 	}
 
 
-
-
 	/**
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
@@ -124,6 +123,7 @@ class AvatarController extends Controller {
 	 * @return JSONResponse|FileDisplayResponse
 	 */
 	public function getAvatar($userId, $size) {
+		// min/max size
 		if ($size > 2048) {
 			$size = 2048;
 		} elseif ($size <= 0) {
@@ -131,26 +131,21 @@ class AvatarController extends Controller {
 		}
 
 		try {
-			$avatar = $this->avatarManager->getAvatar($userId)->getFile($size);
-			$resp = new FileDisplayResponse($avatar,
-				Http::STATUS_OK,
-				['Content-Type' => $avatar->getMimeType()]);
+			$avatar = $this->avatarManager->getAvatar($userId);
+			$avatarFile = $avatar->getFile($size);
+			$resp = new FileDisplayResponse(
+				$avatarFile,
+				$avatar->isCustomAvatar() ? Http::STATUS_OK : Http::STATUS_CREATED,
+				['Content-Type' => $avatarFile->getMimeType()]
+			);
 		} catch (\Exception $e) {
 			$resp = new Http\Response();
 			$resp->setStatus(Http::STATUS_NOT_FOUND);
 			return $resp;
 		}
 
-		// Let cache this!
-		$resp->addHeader('Pragma', 'public');
 		// Cache for 30 minutes
 		$resp->cacheFor(1800);
-
-		$expires = new \DateTime();
-		$expires->setTimestamp($this->timeFactory->getTime());
-		$expires->add(new \DateInterval('PT30M'));
-		$resp->addHeader('Expires', $expires->format(\DateTime::RFC1123));
-
 		return $resp;
 	}
 

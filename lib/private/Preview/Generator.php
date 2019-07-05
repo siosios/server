@@ -35,6 +35,8 @@ use OCP\IConfig;
 use OCP\IImage;
 use OCP\IPreview;
 use OCP\Preview\IProvider;
+use OCP\Preview\IProviderV2;
+use OCP\Preview\IVersionedPreviewFile;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
@@ -89,6 +91,12 @@ class Generator {
 	 * @throws \InvalidArgumentException if the preview would be invalid (in case the original image is invalid)
 	 */
 	public function getPreview(File $file, $width = -1, $height = -1, $crop = false, $mode = IPreview::MODE_FILL, $mimeType = null) {
+		//Make sure that we can read the file
+		if (!$file->isReadable()) {
+			throw new NotFoundException('Cannot read file');
+		}
+
+
 		$this->eventDispatcher->dispatch(
 			IPreview::EVENT,
 			new GenericEvent($file,[
@@ -172,9 +180,13 @@ class Generator {
 				continue;
 			}
 
-			foreach ($providers as $provider) {
-				$provider = $this->helper->getProvider($provider);
-				if (!($provider instanceof IProvider)) {
+			foreach ($providers as $providerClosure) {
+				$provider = $this->helper->getProvider($providerClosure);
+				if (!($provider instanceof IProviderV2)) {
+					continue;
+				}
+
+				if (!$provider->isAvailable($file)) {
 					continue;
 				}
 
@@ -288,19 +300,23 @@ class Generator {
 
 		if ($height !== $maxHeight && $width !== $maxWidth) {
 			/*
-			 * Scale to the nearest power of two
+			 * Scale to the nearest power of four
 			 */
-			$pow2height = 2 ** ceil(log($height) / log(2));
-			$pow2width = 2 ** ceil(log($width) / log(2));
+			$pow4height = 4 ** ceil(log($height) / log(4));
+			$pow4width = 4 ** ceil(log($width) / log(4));
 
-			$ratioH = $height / $pow2height;
-			$ratioW = $width / $pow2width;
+			// Minimum size is 64
+			$pow4height = max($pow4height, 64);
+			$pow4width = max($pow4width, 64);
+
+			$ratioH = $height / $pow4height;
+			$ratioW = $width / $pow4width;
 
 			if ($ratioH < $ratioW) {
-				$width = $pow2width;
+				$width = $pow4width;
 				$height /= $ratioW;
 			} else {
-				$height = $pow2height;
+				$height = $pow4height;
 				$width /= $ratioH;
 			}
 		}

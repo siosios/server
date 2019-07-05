@@ -56,7 +56,7 @@ class File extends Node implements \OCP\Files\File {
 	}
 
 	/**
-	 * @param string $data
+	 * @param string|resource $data
 	 * @throws \OCP\Files\NotPermittedException
 	 * @throws \OCP\Files\GenericFileException
 	 */
@@ -141,5 +141,9 @@ class File extends Node implements \OCP\Files\File {
 	 */
 	public function getChecksum() {
 		return $this->getFileInfo()->getChecksum();
+	}
+
+	public function getExtension(): string {
+		return $this->getFileInfo()->getExtension();
 	}
 }

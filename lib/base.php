@@ -249,14 +249,19 @@ class OC {
 			if (self::$CLI) {
 				echo $l->t('Cannot write into "config" directory!')."\n";
 				echo $l->t('This can usually be fixed by giving the webserver write access to the config directory')."\n";
-				echo "\n";
 				echo $l->t('See %s', [ $urlGenerator->linkToDocs('admin-dir_permissions') ])."\n";
+				echo "\n";
+				echo $l->t('Or, if you prefer to keep config.php file read only, set the option "config_is_read_only" to true in it.')."\n";
+				echo $l->t('See %s', [ $urlGenerator->linkToDocs('admin-config') ])."\n";
 				exit;
 			} else {
 				OC_Template::printErrorPage(
 					$l->t('Cannot write into "config" directory!'),
 					$l->t('This can usually be fixed by giving the webserver write access to the config directory. See %s',
-					 [ $urlGenerator->linkToDocs('admin-dir_permissions') ])
+					[ $urlGenerator->linkToDocs('admin-dir_permissions') ]) . '. '
+					. $l->t('Or, if you prefer to keep config.php file read only, set the option "config_is_read_only" to true in it. See %s',
+					[ $urlGenerator->linkToDocs('admin-config') ] ),
+					503
 				);
 			}
 		}
@@ -280,15 +285,14 @@ class OC {
 
 	public static function checkMaintenanceMode() {
 		// Allow ajax update script to execute without being stopped
-		if (\OC::$server->getSystemConfig()->getValue('maintenance', false) && OC::$SUBURI != '/core/ajax/update.php') {
+		if (((bool) \OC::$server->getSystemConfig()->getValue('maintenance', false)) && OC::$SUBURI != '/core/ajax/update.php') {
 			// send http status 503
-			header('HTTP/1.1 503 Service Temporarily Unavailable');
-			header('Status: 503 Service Temporarily Unavailable');
+			http_response_code(503);
 			header('Retry-After: 120');
 
 			// render error page
 			$template = new OC_Template('', 'update.user', 'guest');
-			OC_Util::addScript('maintenance-check');
+			OC_Util::addScript('dist/maintenance');
 			OC_Util::addStyle('core', 'guest');
 			$template->printPage();
 			die();
@@ -308,7 +312,7 @@ class OC {
 			if ($apps->isInstalled('user_ldap')) {
 				$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
 
-				$result = $qb->selectAlias($qb->createFunction('COUNT(*)'), 'user_count')
+				$result = $qb->select($qb->func()->count('*', 'user_count'))
 					->from('ldap_user_mapping')
 					->execute();
 				$row = $result->fetch();
@@ -319,7 +323,7 @@ class OC {
 			if (!$tooBig && $apps->isInstalled('user_saml')) {
 				$qb = \OC::$server->getDatabaseConnection()->getQueryBuilder();
 
-				$result = $qb->selectAlias($qb->createFunction('COUNT(*)'), 'user_count')
+				$result = $qb->select($qb->func()->count('*', 'user_count'))
 					->from('user_saml_users')
 					->execute();
 				$row = $result->fetch();
@@ -339,8 +343,7 @@ class OC {
 
 		if ($disableWebUpdater || ($tooBig && !$ignoreTooBigWarning)) {
 			// send http status 503
-			header('HTTP/1.1 503 Service Temporarily Unavailable');
-			header('Status: 503 Service Temporarily Unavailable');
+			http_response_code(503);
 			header('Retry-After: 120');
 
 			// render error page
@@ -385,7 +388,7 @@ class OC {
 
 		if (!empty($incompatibleShippedApps)) {
 			$l = \OC::$server->getL10N('core');
-			$hint = $l->t('The files of the app %$1s were not replaced correctly. Make sure it is a version compatible with the server.', [implode(', ', $incompatibleShippedApps)]);
+			$hint = $l->t('The files of the app %1$s were not replaced correctly. Make sure it is a version compatible with the server.', [implode(', ', $incompatibleShippedApps)]);
 			throw new \OC\HintException('The files of the app ' . implode(', ', $incompatibleShippedApps) . ' were not replaced correctly. Make sure it is a version compatible with the server.', $hint);
 		}
 
@@ -429,8 +432,7 @@ class OC {
 		} catch (Exception $e) {
 			\OC::$server->getLogger()->logException($e, ['app' => 'base']);
 			//show the user a detailed error page
-			OC_Response::setStatus(OC_Response::STATUS_INTERNAL_SERVER_ERROR);
-			OC_Template::printExceptionErrorPage($e);
+			OC_Template::printExceptionErrorPage($e, 500);
 			die();
 		}
 
@@ -439,7 +441,7 @@ class OC {
 		// session timeout
 		if ($session->exists('LAST_ACTIVITY') && (time() - $session->get('LAST_ACTIVITY') > $sessionLifeTime)) {
 			if (isset($_COOKIE[session_name()])) {
-				setcookie(session_name(), null, -1, self::$WEBROOT ? : '/');
+				setcookie(session_name(), '', -1, self::$WEBROOT ? : '/');
 			}
 			\OC::$server->getUserSession()->logout();
 		}
@@ -452,20 +454,6 @@ class OC {
 	 */
 	private static function getSessionLifeTime() {
 		return \OC::$server->getConfig()->getSystemValue('session_lifetime', 60 * 60 * 24);
-	}
-
-	public static function loadAppClassPaths() {
-		foreach (OC_App::getEnabledApps() as $app) {
-			$appPath = OC_App::getAppPath($app);
-			if ($appPath === false) {
-				continue;
-			}
-
-			$file = $appPath . '/appinfo/classpath.php';
-			if (file_exists($file)) {
-				require_once $file;
-			}
-		}
 	}
 
 	/**
@@ -523,11 +511,18 @@ class OC {
 		// specifications. For those, have an automated opt-out. Since the protection
 		// for remote.php is applied in base.php as starting point we need to opt out
 		// here.
-		$incompatibleUserAgents = [
-			// OS X Finder
-			'/^WebDAVFS/',
-			'/^Microsoft-WebDAV-MiniRedir/',
-		];
+		$incompatibleUserAgents = \OC::$server->getConfig()->getSystemValue('csrf.optout');
+
+		// Fallback, if csrf.optout is unset
+		if (!is_array($incompatibleUserAgents)) {
+			$incompatibleUserAgents = [
+				// OS X Finder
+				'/^WebDAVFS/',
+				// Windows webdav drive
+				'/^Microsoft-WebDAV-MiniRedir/',
+			];
+		}
+
 		if($request->isUserAgent($incompatibleUserAgents)) {
 			return;
 		}
@@ -589,9 +584,7 @@ class OC {
 
 		} catch (\RuntimeException $e) {
 			if (!self::$CLI) {
-				$claimedProtocol = strtoupper($_SERVER['SERVER_PROTOCOL']);
-				$protocol = in_array($claimedProtocol, ['HTTP/1.0', 'HTTP/1.1', 'HTTP/2']) ? $claimedProtocol : 'HTTP/1.1';
-				header($protocol . ' ' . OC_Response::STATUS_SERVICE_UNAVAILABLE);
+				http_response_code(503);
 			}
 			// we can't use the template error page here, because this needs the
 			// DI container which isn't available yet
@@ -678,7 +671,7 @@ class OC {
 					}
 					exit(1);
 				} else {
-					OC_Response::setStatus(OC_Response::STATUS_SERVICE_UNAVAILABLE);
+					http_response_code(503);
 					OC_Util::addStyle('guest');
 					OC_Template::printGuestPage('', 'error', array('errors' => $errors));
 					exit;
@@ -723,6 +716,7 @@ class OC {
 		self::registerEncryptionWrapper();
 		self::registerEncryptionHooks();
 		self::registerAccountHooks();
+		self::registerResourceCollectionHooks();
 
 		// Make sure that the application class is not loaded before the database is setup
 		if ($systemConfig->getValue("installed", false)) {
@@ -739,11 +733,10 @@ class OC {
 		// Check whether the sample configuration has been copied
 		if($systemConfig->getValue('copied_sample_config', false)) {
 			$l = \OC::$server->getL10N('lib');
-			header('HTTP/1.1 503 Service Temporarily Unavailable');
-			header('Status: 503 Service Temporarily Unavailable');
 			OC_Template::printErrorPage(
 				$l->t('Sample configuration detected'),
-				$l->t('It has been detected that the sample configuration has been copied. This can break your installation and is unsupported. Please read the documentation before performing changes on config.php')
+				$l->t('It has been detected that the sample configuration has been copied. This can break your installation and is unsupported. Please read the documentation before performing changes on config.php'),
+				503
 			);
 			return;
 		}
@@ -768,16 +761,14 @@ class OC {
 			}
 
 			if(substr($request->getRequestUri(), -11) === '/status.php') {
-				OC_Response::setStatus(\OC_Response::STATUS_BAD_REQUEST);
-				header('Status: 400 Bad Request');
+				http_response_code(400);
 				header('Content-Type: application/json');
 				echo '{"error": "Trusted domain error.", "code": 15}';
 				exit();
 			}
 
 			if (!$isScssRequest) {
-				OC_Response::setStatus(\OC_Response::STATUS_BAD_REQUEST);
-				header('Status: 400 Bad Request');
+				http_response_code(400);
 
 				\OC::$server->getLogger()->info(
 					'Trusted domain error. "{remoteAddress}" tried to access using "{host}" as host.',
@@ -857,6 +848,10 @@ class OC {
 		\OCP\Util::connectHook('OC_User', 'changeUser', $hookHandler, 'changeUserHook');
 	}
 
+	private static function registerResourceCollectionHooks() {
+		\OC\Collaboration\Resources\Listener::register(\OC::$server->getEventDispatcher());
+	}
+
 	/**
 	 * register hooks for the filesystem
 	 */
@@ -901,9 +896,6 @@ class OC {
 
 		\OC::$server->getEventLogger()->start('handle_request', 'Handle request');
 		$systemConfig = \OC::$server->getSystemConfig();
-		// load all the classpaths from the enabled apps so they are available
-		// in the routing files of each app
-		OC::loadAppClassPaths();
 
 		// Check if Nextcloud is installed or in maintenance (update) mode
 		if (!$systemConfig->getValue('installed', false)) {
@@ -934,7 +926,7 @@ class OC {
 				if (function_exists('opcache_reset')) {
 					opcache_reset();
 				}
-				if (!$systemConfig->getValue('maintenance', false)) {
+				if (!((bool) $systemConfig->getValue('maintenance', false))) {
 					self::printUpgradePage($systemConfig);
 					exit();
 				}
@@ -962,7 +954,7 @@ class OC {
 
 		// Load minimum set of apps
 		if (!\OCP\Util::needUpgrade()
-			&& !$systemConfig->getValue('maintenance', false)) {
+			&& !((bool) $systemConfig->getValue('maintenance', false))) {
 			// For logged-in users: Load everything
 			if(\OC::$server->getUserSession()->isLoggedIn()) {
 				OC_App::loadApps();
@@ -975,7 +967,7 @@ class OC {
 
 		if (!self::$CLI) {
 			try {
-				if (!$systemConfig->getValue('maintenance', false) && !\OCP\Util::needUpgrade()) {
+				if (!((bool) $systemConfig->getValue('maintenance', false)) && !\OCP\Util::needUpgrade()) {
 					OC_App::loadApps(array('filesystem', 'logging'));
 					OC_App::loadApps();
 				}
@@ -985,7 +977,7 @@ class OC {
 			} catch (Symfony\Component\Routing\Exception\ResourceNotFoundException $e) {
 				//header('HTTP/1.0 404 Not Found');
 			} catch (Symfony\Component\Routing\Exception\MethodNotAllowedException $e) {
-				OC_Response::setStatus(405);
+				http_response_code(405);
 				return;
 			}
 		}
@@ -995,8 +987,7 @@ class OC {
 			// not allowed any more to prevent people
 			// mounting this root directly.
 			// Users need to mount remote.php/webdav instead.
-			header('HTTP/1.1 405 Method Not Allowed');
-			header('Status: 405 Method Not Allowed');
+			http_response_code(405);
 			return;
 		}
 

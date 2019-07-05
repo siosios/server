@@ -49,8 +49,10 @@ return [
 	//       to `exclude_analysis_directory_list`.
 	'exclude_analysis_directory_list' => [
 		'3rdparty',
+		'apps/accessibility/composer',
 		'apps/admin_audit/composer',
 		'apps/admin_audit/tests',
+		'apps/cloud_federation_api/composer',
 		'apps/comments/composer',
 		'apps/comments/tests',
 		'apps/dav/composer',
@@ -128,7 +130,7 @@ return [
 
 	// The number of processes to fork off during the analysis
 	// phase.
-	'processes' => 10,
+	'processes' => 5,
 
 	// Backwards Compatibility Checking. This is slow
 	// and expensive, but you should consider running
@@ -143,6 +145,12 @@ return [
 	// to true only when you wish you had more issues
 	// to fix in your code base.
 	'quick_mode' => false,
+
+	// If true, check to make sure the return type declared
+	// in the doc-block (if any) matches the return type
+	// declared in the method signature. This process is
+	// slow.
+	'check_docblock_signature_param_type_match' => true,
 
 	// If enabled, check all methods that override a
 	// parent method to make sure its signature is

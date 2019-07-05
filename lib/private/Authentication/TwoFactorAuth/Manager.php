@@ -1,5 +1,6 @@
 <?php
-declare(strict_types=1);
+
+declare(strict_types = 1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
@@ -26,17 +27,19 @@ declare(strict_types=1);
 
 namespace OC\Authentication\TwoFactorAuth;
 
+use function array_diff;
+use function array_filter;
 use BadMethodCallException;
 use Exception;
-use OC;
-use OC\App\AppManager;
-use OC_App;
+use OC\Authentication\Exceptions\ExpiredTokenException;
 use OC\Authentication\Exceptions\InvalidTokenException;
 use OC\Authentication\Token\IProvider as TokenProvider;
 use OCP\Activity\IManager;
-use OCP\AppFramework\QueryException;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\Authentication\TwoFactorAuth\IActivatableAtLogin;
+use OCP\Authentication\TwoFactorAuth\ILoginSetupProvider;
 use OCP\Authentication\TwoFactorAuth\IProvider;
+use OCP\Authentication\TwoFactorAuth\IRegistry;
 use OCP\IConfig;
 use OCP\ILogger;
 use OCP\ISession;
@@ -48,12 +51,17 @@ class Manager {
 
 	const SESSION_UID_KEY = 'two_factor_auth_uid';
 	const SESSION_UID_DONE = 'two_factor_auth_passed';
-	const BACKUP_CODES_APP_ID = 'twofactor_backupcodes';
-	const BACKUP_CODES_PROVIDER_ID = 'backup_codes';
 	const REMEMBER_LOGIN = 'two_factor_remember_login';
+	const BACKUP_CODES_PROVIDER_ID = 'backup_codes';
 
-	/** @var AppManager */
-	private $appManager;
+	/** @var ProviderLoader */
+	private $providerLoader;
+
+	/** @var IRegistry */
+	private $providerRegistry;
+
+	/** @var MandatoryTwoFactor */
+	private $mandatoryTwoFactor;
 
 	/** @var ISession */
 	private $session;
@@ -76,25 +84,15 @@ class Manager {
 	/** @var EventDispatcherInterface */
 	private $dispatcher;
 
-	/**
-	 * @param AppManager $appManager
-	 * @param ISession $session
-	 * @param IConfig $config
-	 * @param IManager $activityManager
-	 * @param ILogger $logger
-	 * @param TokenProvider $tokenProvider
-	 * @param ITimeFactory $timeFactory
-	 * @param EventDispatcherInterface $eventDispatcher
-	 */
-	public function __construct(AppManager $appManager,
-								ISession $session,
-								IConfig $config,
-								IManager $activityManager,
-								ILogger $logger,
-								TokenProvider $tokenProvider,
-								ITimeFactory $timeFactory,
-								EventDispatcherInterface $eventDispatcher) {
-		$this->appManager = $appManager;
+	public function __construct(ProviderLoader $providerLoader,
+								IRegistry $providerRegistry,
+								MandatoryTwoFactor $mandatoryTwoFactor,
+								ISession $session, IConfig $config,
+								IManager $activityManager, ILogger $logger, TokenProvider $tokenProvider,
+								ITimeFactory $timeFactory, EventDispatcherInterface $eventDispatcher) {
+		$this->providerLoader = $providerLoader;
+		$this->providerRegistry = $providerRegistry;
+		$this->mandatoryTwoFactor = $mandatoryTwoFactor;
 		$this->session = $session;
 		$this->config = $config;
 		$this->activityManager = $activityManager;
@@ -111,26 +109,18 @@ class Manager {
 	 * @return boolean
 	 */
 	public function isTwoFactorAuthenticated(IUser $user): bool {
-		$twoFactorEnabled = ((int) $this->config->getUserValue($user->getUID(), 'core', 'two_factor_auth_disabled', 0)) === 0;
-		return $twoFactorEnabled && \count($this->getProviders($user)) > 0;
-	}
+		if ($this->mandatoryTwoFactor->isEnforcedFor($user)) {
+			return true;
+		}
 
-	/**
-	 * Disable 2FA checks for the given user
-	 *
-	 * @param IUser $user
-	 */
-	public function disableTwoFactorAuthentication(IUser $user) {
-		$this->config->setUserValue($user->getUID(), 'core', 'two_factor_auth_disabled', 1);
-	}
+		$providerStates = $this->providerRegistry->getProviderStates($user);
+		$providers = $this->providerLoader->getProviders($user);
+		$fixedStates = $this->fixMissingProviderStates($providerStates, $providers, $user);
+		$enabled = array_filter($fixedStates);
+		$providerIds = array_keys($enabled);
+		$providerIdsWithoutBackupCodes = array_diff($providerIds, [self::BACKUP_CODES_PROVIDER_ID]);
 
-	/**
-	 * Enable all 2FA checks for the given user
-	 *
-	 * @param IUser $user
-	 */
-	public function enableTwoFactorAuthentication(IUser $user) {
-		$this->config->deleteUserValue($user->getUID(), 'core', 'two_factor_auth_disabled');
+		return !empty($providerIdsWithoutBackupCodes);
 	}
 
 	/**
@@ -141,71 +131,108 @@ class Manager {
 	 * @return IProvider|null
 	 */
 	public function getProvider(IUser $user, string $challengeProviderId) {
-		$providers = $this->getProviders($user, true);
+		$providers = $this->getProviderSet($user)->getProviders();
 		return $providers[$challengeProviderId] ?? null;
 	}
 
 	/**
 	 * @param IUser $user
-	 * @return IProvider|null the backup provider, if enabled for the given user
+	 * @return IActivatableAtLogin[]
+	 * @throws Exception
 	 */
-	public function getBackupProvider(IUser $user) {
-		$providers = $this->getProviders($user, true);
-		if (!isset($providers[self::BACKUP_CODES_PROVIDER_ID])) {
-			return null;
+	public function getLoginSetupProviders(IUser $user): array {
+		$providers = $this->providerLoader->getProviders($user);
+		return array_filter($providers, function(IProvider $provider) {
+			return ($provider instanceof IActivatableAtLogin);
+		});
+	}
+
+	/**
+	 * Check if the persistant mapping of enabled/disabled state of each available
+	 * provider is missing an entry and add it to the registry in that case.
+	 *
+	 * @todo remove in Nextcloud 17 as by then all providers should have been updated
+	 *
+	 * @param string[] $providerStates
+	 * @param IProvider[] $providers
+	 * @param IUser $user
+	 * @return string[] the updated $providerStates variable
+	 */
+	private function fixMissingProviderStates(array $providerStates,
+		array $providers, IUser $user): array {
+
+		foreach ($providers as $provider) {
+			if (isset($providerStates[$provider->getId()])) {
+				// All good
+				continue;
+			}
+
+			$enabled = $provider->isTwoFactorAuthEnabledForUser($user);
+			if ($enabled) {
+				$this->providerRegistry->enableProviderFor($provider, $user);
+			} else {
+				$this->providerRegistry->disableProviderFor($provider, $user);
+			}
+			$providerStates[$provider->getId()] = $enabled;
 		}
-		return $providers[self::BACKUP_CODES_PROVIDER_ID];
+
+		return $providerStates;
+	}
+
+	/**
+	 * @param array $states
+	 * @param IProvider $providers
+	 */
+	private function isProviderMissing(array $states, array $providers): bool {
+		$indexed = [];
+		foreach ($providers as $provider) {
+			$indexed[$provider->getId()] = $provider;
+		}
+
+		$missing = [];
+		foreach ($states as $providerId => $enabled) {
+			if (!$enabled) {
+				// Don't care
+				continue;
+			}
+
+			if (!isset($indexed[$providerId])) {
+				$missing[] = $providerId;
+				$this->logger->alert("two-factor auth provider '$providerId' failed to load",
+					[
+					'app' => 'core',
+				]);
+			}
+		}
+
+		if (!empty($missing)) {
+			// There was at least one provider missing
+			$this->logger->alert(count($missing) . " two-factor auth providers failed to load", ['app' => 'core']);
+
+			return true;
+		}
+
+		// If we reach this, there was not a single provider missing
+		return false;
 	}
 
 	/**
 	 * Get the list of 2FA providers for the given user
 	 *
 	 * @param IUser $user
-	 * @param bool $includeBackupApp
-	 * @return IProvider[]
 	 * @throws Exception
 	 */
-	public function getProviders(IUser $user, bool $includeBackupApp = false): array {
-		$allApps = $this->appManager->getEnabledAppsForUser($user);
-		$providers = [];
+	public function getProviderSet(IUser $user): ProviderSet {
+		$providerStates = $this->providerRegistry->getProviderStates($user);
+		$providers = $this->providerLoader->getProviders($user);
 
-		foreach ($allApps as $appId) {
-			if (!$includeBackupApp && $appId === self::BACKUP_CODES_APP_ID) {
-				continue;
-			}
+		$fixedStates = $this->fixMissingProviderStates($providerStates, $providers, $user);
+		$isProviderMissing = $this->isProviderMissing($fixedStates, $providers);
 
-			$info = $this->appManager->getAppInfo($appId);
-			if (isset($info['two-factor-providers'])) {
-				/** @var string[] $providerClasses */
-				$providerClasses = $info['two-factor-providers'];
-				foreach ($providerClasses as $class) {
-					try {
-						$this->loadTwoFactorApp($appId);
-						$provider = OC::$server->query($class);
-						$providers[$provider->getId()] = $provider;
-					} catch (QueryException $exc) {
-						// Provider class can not be resolved
-						throw new Exception("Could not load two-factor auth provider $class");
-					}
-				}
-			}
-		}
-
-		return array_filter($providers, function ($provider) use ($user) {
-			/* @var $provider IProvider */
-			return $provider->isTwoFactorAuthEnabledForUser($user);
+		$enabled = array_filter($providers, function (IProvider $provider) use ($fixedStates) {
+			return $fixedStates[$provider->getId()];
 		});
-	}
-
-	/**
-	 * Load an app by ID if it has not been loaded yet
-	 *
-	 * @param string $appId
-	 */
-	protected function loadTwoFactorApp(string $appId) {
-		if (!OC_App::isAppLoaded($appId)) {
-			OC_App::loadApp($appId);
-		}
+		return new ProviderSet($enabled, $isProviderMissing);
 	}
 
 	/**
@@ -272,7 +299,7 @@ class Manager {
 		try {
 			$this->activityManager->publish($activity);
 		} catch (BadMethodCallException $e) {
-			$this->logger->warning('could not publish backup code creation activity', ['app' => 'core']);
+			$this->logger->warning('could not publish activity', ['app' => 'core']);
 			$this->logger->logException($e, ['app' => 'core']);
 		}
 	}
@@ -350,6 +377,14 @@ class Manager {
 		$id = $this->session->getId();
 		$token = $this->tokenProvider->getToken($id);
 		$this->config->setUserValue($user->getUID(), 'login_token_2fa', $token->getId(), $this->timeFactory->getTime());
+	}
+
+	public function clearTwoFactorPending(string $userId) {
+		$tokensNeeding2FA = $this->config->getUserKeys($userId, 'login_token_2fa');
+
+		foreach ($tokensNeeding2FA as $tokenId) {
+			$this->tokenProvider->invalidateTokenById($userId, $tokenId);
+		}
 	}
 
 }

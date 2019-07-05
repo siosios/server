@@ -67,12 +67,18 @@ class Backend {
 	 * @param string[] $add
 	 * @param string[] $remove
 	 */
-	public function updateShares($shareable, $add, $remove) {
+	public function updateShares(IShareable $shareable, array $add, array $remove) {
 		foreach($add as $element) {
-			$this->shareWith($shareable, $element);
+			$principal = $this->principalBackend->findByUri($element['href'], '');
+			if ($principal !== '') {
+				$this->shareWith($shareable, $element);
+			}
 		}
 		foreach($remove as $element) {
-			$this->unshare($shareable, $element);
+			$principal = $this->principalBackend->findByUri($element, '');
+			if ($principal !== '') {
+				$this->unshare($shareable, $element);
+			}
 		}
 	}
 
@@ -93,7 +99,7 @@ class Backend {
 		}
 
 		$principal = explode('/', $parts[1], 3);
-		if (count($principal) !== 3 || $principal[0] !== 'principals' || !in_array($principal[1], ['users', 'groups'], true)) {
+		if (count($principal) !== 3 || $principal[0] !== 'principals' || !in_array($principal[1], ['users', 'groups', 'circles'], true)) {
 			// Invalid principal
 			return;
 		}

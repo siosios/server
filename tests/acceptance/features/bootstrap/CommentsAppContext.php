@@ -31,8 +31,8 @@ class CommentsAppContext implements Context, ActorAwareInterface {
 	 */
 	public static function newCommentField() {
 		return Locator::forThe()->css("div.newCommentRow .message")->
-				descendantOf(FilesAppContext::currentSectionDetailsView())->
-				describedAs("New comment field in current section details view in Files app");
+				descendantOf(FilesAppContext::detailsView())->
+				describedAs("New comment field in details view in Files app");
 	}
 
 	/**
@@ -40,8 +40,8 @@ class CommentsAppContext implements Context, ActorAwareInterface {
 	 */
 	public static function submitNewCommentButton() {
 		return Locator::forThe()->css("div.newCommentRow .submit")->
-				descendantOf(FilesAppContext::currentSectionDetailsView())->
-				describedAs("Submit new comment button in current section details view in Files app");
+				descendantOf(FilesAppContext::detailsView())->
+				describedAs("Submit new comment button in details view in Files app");
 	}
 
 	/**
@@ -49,8 +49,8 @@ class CommentsAppContext implements Context, ActorAwareInterface {
 	 */
 	public static function commentList() {
 		return Locator::forThe()->css("ul.comments")->
-				descendantOf(FilesAppContext::currentSectionDetailsView())->
-				describedAs("Comment list in current section details view in Files app");
+				descendantOf(FilesAppContext::detailsView())->
+				describedAs("Comment list in details view in Files app");
 	}
 
 	/**
@@ -59,7 +59,16 @@ class CommentsAppContext implements Context, ActorAwareInterface {
 	public static function commentWithText($text) {
 		return Locator::forThe()->xpath("//div[normalize-space() = '$text']/ancestor::li")->
 				descendantOf(self::commentList())->
-				describedAs("Comment with text \"$text\" in current section details view in Files app");
+				describedAs("Comment with text \"$text\" in details view in Files app");
+	}
+
+	/**
+	 * @return Locator
+	 */
+	public static function emptyContent() {
+		return Locator::forThe()->css(".emptycontent")->
+				descendantOf(FilesAppContext::detailsView())->
+				describedAs("Empty content in details view in Files app");
 	}
 
 	/**
@@ -71,10 +80,33 @@ class CommentsAppContext implements Context, ActorAwareInterface {
 	}
 
 	/**
+	 * @Then /^I see that there are no comments$/
+	 */
+	public function iSeeThatThereAreNoComments() {
+		if (!WaitFor::elementToBeEventuallyShown(
+				$this->actor,
+				self::emptyContent(),
+				$timeout = 10 * $this->actor->getFindTimeoutMultiplier())) {
+			PHPUnit_Framework_Assert::fail("The no comments message is not visible yet after $timeout seconds");
+		}
+	}
+
+	/**
 	 * @Then /^I see a comment with "([^"]*)" as message$/
 	 */
 	public function iSeeACommentWithAsMessage($commentText) {
 		PHPUnit_Framework_Assert::assertTrue(
 				$this->actor->find(self::commentWithText($commentText), 10)->isVisible());
+	}
+
+	/**
+	 * @Then /^I see that there is no comment with "([^"]*)" as message$/
+	 */
+	public function iSeeThatThereIsNoCommentWithAsMessage($commentText) {
+		try {
+			PHPUnit_Framework_Assert::assertFalse(
+					$this->actor->find(self::commentWithText($commentText))->isVisible());
+		} catch (NoSuchElementException $exception) {
+		}
 	}
 }

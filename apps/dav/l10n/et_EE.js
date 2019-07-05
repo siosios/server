@@ -43,10 +43,7 @@ OC.L10N.register(
     "Contact birthdays" : "Kontaktide sünnipäevad",
     "Invitation canceled" : "Kutse on tühistatud",
     "Hello %s," : "Tere %s,",
-    "The meeting »%s« with %s was canceled." : "Koosolek »%s« osaleja(te)ga %s tühistati.",
     "Invitation updated" : "Kutse uuendatud",
-    "The meeting »%s« with %s was updated." : "Koosolek »%s« osaleja(te)ga %s uuendati.",
-    "%s invited you to »%s«" : "%s kutsus sind »%s«",
     "When:" : "Millal:",
     "Where:" : "Kus:",
     "Description:" : "Kirjeldus:",
@@ -55,8 +52,10 @@ OC.L10N.register(
     "Technical details" : "Tehnilised detailid",
     "Remote Address: %s" : "Kaugaadress: %s",
     "Request ID: %s" : "Päringu ID: %s",
-    "CalDAV server" : "CalDAV server",
     "Send invitations to attendees" : "Saada osalejatele kutsed",
+    "The meeting »%s« with %s was canceled." : "Koosolek »%s« osaleja(te)ga %s tühistati.",
+    "The meeting »%s« with %s was updated." : "Koosolek »%s« osaleja(te)ga %s uuendati.",
+    "%s invited you to »%s«" : "%s kutsus sind »%s«",
     "Please make sure to properly set up the email settings above." : "Veendu, et e-posti seaded oleksid eespool õigesti seadistatud."
 },
 "nplurals=2; plural=(n != 1);");

@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2018 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Johannes Ernst <jernst@indiecomputing.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -26,6 +27,7 @@ use OC\Log\Errorlog;
 use OC\Log\File;
 use OC\Log\LogFactory;
 use OC\Log\Syslog;
+use OC\Log\Systemdlog;
 use OC\SystemConfig;
 use OCP\IConfig;
 use OCP\IServerContainer;
@@ -81,10 +83,10 @@ class LogFactoryTest extends TestCase {
 		$datadir = \OC::$SERVERROOT.'/data';
 		$defaultLog = $datadir . '/nextcloud.log';
 
-		$this->systemConfig->expects($this->exactly(2))
+		$this->systemConfig->expects($this->exactly(3))
 			->method('getValue')
-			->withConsecutive(['datadirectory', $datadir], ['logfile', $defaultLog])
-			->willReturnOnConsecutiveCalls($datadir, $defaultLog);
+			->withConsecutive(['datadirectory', $datadir], ['logfile', $defaultLog], ['logfilemode', 0640])
+			->willReturnOnConsecutiveCalls($datadir, $defaultLog, 0640);
 
 		$log = $this->factory->get($type);
 		$this->assertInstanceOf(File::class, $log);
@@ -111,10 +113,10 @@ class LogFactoryTest extends TestCase {
 		$datadir = \OC::$SERVERROOT.'/data';
 		$defaultLog = $datadir . '/nextcloud.log';
 
-		$this->systemConfig->expects($this->exactly(2))
+		$this->systemConfig->expects($this->exactly(3))
 			->method('getValue')
-			->withConsecutive(['datadirectory', $datadir], ['logfile', $defaultLog])
-			->willReturnOnConsecutiveCalls($datadir, $path);
+			->withConsecutive(['datadirectory', $datadir], ['logfile', $defaultLog], ['logfilemode', 0640])
+			->willReturnOnConsecutiveCalls($datadir, $path, 0640);
 
 		$log = $this->factory->get('file');
 		$this->assertInstanceOf(File::class, $log);
@@ -140,5 +142,18 @@ class LogFactoryTest extends TestCase {
 
 		$log = $this->factory->get('syslog');
 		$this->assertInstanceOf(Syslog::class, $log);
+	}
+
+	/**
+	 * @throws \OCP\AppFramework\QueryException
+	 */
+	public function testSystemdLog() {
+		$this->c->expects($this->once())
+			->method('resolve')
+			->with(Systemdlog::class)
+			->willReturn($this->createMock(Systemdlog::class));
+
+		$log = $this->factory->get('systemd');
+		$this->assertInstanceOf(Systemdlog::class, $log);
 	}
 }

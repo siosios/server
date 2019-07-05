@@ -93,44 +93,52 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 
 	/**
 	 * checks whether the user is allowed to change his avatar in Nextcloud
+	 *
 	 * @param string $uid the Nextcloud user name
 	 * @return boolean either the user can or cannot
+	 * @throws \Exception
 	 */
 	public function canChangeAvatar($uid) {
 		if ($this->userPluginManager->implementsActions(Backend::PROVIDE_AVATAR)) {
 			return $this->userPluginManager->canChangeAvatar($uid);
 		}
 
+		if(!$this->implementsActions(Backend::PROVIDE_AVATAR)) {
+			return true;
+		}
+
 		$user = $this->access->userManager->get($uid);
 		if(!$user instanceof User) {
 			return false;
 		}
-		if($user->getAvatarImage() === false) {
+		$imageData = $user->getAvatarImage();
+		if($imageData === false) {
 			return true;
 		}
-
-		return false;
+		return !$user->updateAvatar(true);
 	}
 
 	/**
-	 * returns the username for the given login name, if available
+	 * Return the username for the given login name, if available
 	 *
 	 * @param string $loginName
 	 * @return string|false
+	 * @throws \Exception
 	 */
 	public function loginName2UserName($loginName) {
-		$cacheKey = 'loginName2UserName-'.$loginName;
+		$cacheKey = 'loginName2UserName-' . $loginName;
 		$username = $this->access->connection->getFromCache($cacheKey);
-		if(!is_null($username)) {
+
+		if ($username !== null) {
 			return $username;
 		}
 
 		try {
 			$ldapRecord = $this->getLDAPUserByLoginName($loginName);
 			$user = $this->access->userManager->get($ldapRecord['dn'][0]);
-			if($user instanceof OfflineUser) {
+			if ($user === null || $user instanceof OfflineUser) {
 				// this path is not really possible, however get() is documented
-				// to return User or OfflineUser so we are very defensive here.
+				// to return User, OfflineUser or null so we are very defensive here.
 				$this->access->connection->writeToCache($cacheKey, false);
 				return false;
 			}
@@ -182,9 +190,7 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 		try {
 			$ldapRecord = $this->getLDAPUserByLoginName($uid);
 		} catch(NotOnLDAP $e) {
-			if($this->ocConfig->getSystemValue('loglevel', ILogger::WARN) === ILogger::DEBUG) {
-				\OC::$server->getLogger()->logException($e, ['app' => 'user_ldap']);
-			}
+			\OC::$server->getLogger()->logException($e, ['app' => 'user_ldap', 'level' => ILogger::DEBUG]);
 			return false;
 		}
 		$dn = $ldapRecord['dn'][0];
@@ -312,11 +318,6 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 		$dn = $user->getDN();
 		//check if user really still exists by reading its entry
 		if(!is_array($this->access->readAttribute($dn, '', $this->access->connection->ldapUserFilter))) {
-			$lcr = $this->access->connection->getConnectionResource();
-			if(is_null($lcr)) {
-				throw new \Exception('No LDAP Connection to server ' . $this->access->connection->ldapHost);
-			}
-
 			try {
 				$uuid = $this->access->getUserMapper()->getUUIDByDN($dn);
 				if (!$uuid) {
@@ -324,7 +325,7 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 				}
 				$newDn = $this->access->getUserDnByUuid($uuid);
 				//check if renamed user is still valid by reapplying the ldap filter
-				if (!is_array($this->access->readAttribute($newDn, '', $this->access->connection->ldapUserFilter))) {
+				if ($newDn === $dn || !is_array($this->access->readAttribute($newDn, '', $this->access->connection->ldapUserFilter))) {
 					return false;
 				}
 				$this->access->getUserMapper()->setDNbyUUID($newDn, $uuid);
@@ -370,9 +371,6 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 
 		$result = $this->userExistsOnLDAP($user);
 		$this->access->connection->writeToCache('userExists'.$uid, $result);
-		if($result === true) {
-			$user->update();
-		}
 		return $result;
 	}
 
@@ -384,18 +382,21 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 	*/
 	public function deleteUser($uid) {
 		if ($this->userPluginManager->canDeleteUser()) {
-			return $this->userPluginManager->deleteUser($uid);
+			$status = $this->userPluginManager->deleteUser($uid);
+			if($status === false) {
+				return false;
+			}
 		}
 
 		$marked = $this->ocConfig->getUserValue($uid, 'user_ldap', 'isDeleted', 0);
 		if((int)$marked === 0) {
 			\OC::$server->getLogger()->notice(
 				'User '.$uid . ' is not marked as deleted, not cleaning up.',
-				array('app' => 'user_ldap'));
+				['app' => 'user_ldap']);
 			return false;
 		}
 		\OC::$server->getLogger()->info('Cleaning up after user ' . $uid,
-			array('app' => 'user_ldap'));
+			['app' => 'user_ldap']);
 
 		$this->access->getUserMapper()->unmap($uid); // we don't emit unassign signals here, since it is implicit to delete signals fired from core
 		$this->access->userManager->invalidate($uid);
@@ -508,7 +509,9 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 	 */
 	public function setDisplayName($uid, $displayName) {
 		if ($this->userPluginManager->implementsActions(Backend::SET_DISPLAYNAME)) {
-			return $this->userPluginManager->setDisplayName($uid, $displayName);
+			$this->userPluginManager->setDisplayName($uid, $displayName);
+			$this->access->cacheUserDisplayName($uid, $displayName);
+			return $displayName;
 		}
 		return false;
 	}
@@ -548,7 +551,7 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 		return (bool)((Backend::CHECK_PASSWORD
 			| Backend::GET_HOME
 			| Backend::GET_DISPLAYNAME
-			| Backend::PROVIDE_AVATAR
+			| (($this->access->connection->ldapUserAvatarRule !== 'none') ? Backend::PROVIDE_AVATAR : 0)
 			| Backend::COUNT_USERS
 			| (((int)$this->access->connection->turnOnPasswordChange === 1)? Backend::SET_PASSWORD :0)
 			| $this->userPluginManager->getImplementedActions())
@@ -615,11 +618,38 @@ class User_LDAP extends BackendUtility implements \OCP\IUserBackend, \OCP\UserIn
 	 * create new user
 	 * @param string $username username of the new user
 	 * @param string $password password of the new user
-	 * @return bool was the user created?
+	 * @throws \UnexpectedValueException
+	 * @return bool
 	 */
 	public function createUser($username, $password) {
 		if ($this->userPluginManager->implementsActions(Backend::CREATE_USER)) {
-			return $this->userPluginManager->createUser($username, $password);
+			if ($dn = $this->userPluginManager->createUser($username, $password)) {
+				if (is_string($dn)) {
+					// the NC user creation work flow requires a know user id up front
+					$uuid = $this->access->getUUID($dn, true);
+					if(is_string($uuid)) {
+						$this->access->mapAndAnnounceIfApplicable(
+							$this->access->getUserMapper(),
+							$dn,
+							$username,
+							$uuid,
+							true
+						);
+						$this->access->cacheUserExists($username);
+					} else {
+						\OC::$server->getLogger()->warning(
+							'Failed to map created LDAP user with userid {userid}, because UUID could not be determined',
+							[
+								'app' => 'user_ldap',
+								'userid' => $username,
+							]
+						);
+					}
+				} else {
+					throw new \UnexpectedValueException("LDAP Plugin: Method createUser changed to return the user DN instead of boolean.");
+				}
+			}
+			return (bool) $dn;
 		}
 		return false;
 	}

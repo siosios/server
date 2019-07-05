@@ -1,4 +1,5 @@
 <?php
+declare (strict_types = 1);
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
@@ -36,7 +37,7 @@ interface INotification {
 	 * @throws \InvalidArgumentException if the app id is invalid
 	 * @since 9.0.0
 	 */
-	public function setApp($app);
+	public function setApp(string $app);
 
 	/**
 	 * @return string
@@ -50,7 +51,7 @@ interface INotification {
 	 * @throws \InvalidArgumentException if the user id is invalid
 	 * @since 9.0.0
 	 */
-	public function setUser($user);
+	public function setUser(string $user);
 
 	/**
 	 * @return string
@@ -79,7 +80,7 @@ interface INotification {
 	 * @throws \InvalidArgumentException if the object type or id is invalid
 	 * @since 9.0.0
 	 */
-	public function setObject($type, $id);
+	public function setObject(string $type, $id);
 
 	/**
 	 * @return string
@@ -100,7 +101,7 @@ interface INotification {
 	 * @throws \InvalidArgumentException if the subject or parameters are invalid
 	 * @since 9.0.0
 	 */
-	public function setSubject($subject, array $parameters = []);
+	public function setSubject(string $subject, array $parameters = []);
 
 	/**
 	 * @return string
@@ -115,12 +116,23 @@ interface INotification {
 	public function getSubjectParameters();
 
 	/**
+	 * Set a parsed subject
+	 *
+	 * HTML is not allowed in the parsed subject and will be escaped
+	 * automatically by the clients. You can use the RichObjectString system
+	 * provided by the Nextcloud server to highlight important parameters via
+	 * the setRichSubject method, but make sure, that a plain text message is
+	 * always set via setParsedSubject, to support clients which can not handle
+	 * rich strings.
+	 *
+	 * See https://github.com/nextcloud/server/issues/1706 for more information.
+	 *
 	 * @param string $subject
 	 * @return $this
 	 * @throws \InvalidArgumentException if the subject is invalid
 	 * @since 9.0.0
 	 */
-	public function setParsedSubject($subject);
+	public function setParsedSubject(string $subject);
 
 	/**
 	 * @return string
@@ -129,13 +141,23 @@ interface INotification {
 	public function getParsedSubject();
 
 	/**
+	 * Set a RichObjectString subject
+	 *
+	 * HTML is not allowed in the rich subject and will be escaped automatically
+	 * by the clients, but you can use the RichObjectString system provided by
+	 * the Nextcloud server to highlight important parameters.
+	 * Also make sure, that a plain text subject is always set via
+	 * setParsedSubject, to support clients which can not handle rich strings.
+	 *
+	 * See https://github.com/nextcloud/server/issues/1706 for more information.
+	 *
 	 * @param string $subject
 	 * @param array $parameters
 	 * @return $this
 	 * @throws \InvalidArgumentException if the subject or parameters are invalid
 	 * @since 11.0.0
 	 */
-	public function setRichSubject($subject, array $parameters = []);
+	public function setRichSubject(string $subject, array $parameters = []);
 
 	/**
 	 * @return string
@@ -156,7 +178,7 @@ interface INotification {
 	 * @throws \InvalidArgumentException if the message or parameters are invalid
 	 * @since 9.0.0
 	 */
-	public function setMessage($message, array $parameters = []);
+	public function setMessage(string $message, array $parameters = []);
 
 	/**
 	 * @return string
@@ -171,12 +193,23 @@ interface INotification {
 	public function getMessageParameters();
 
 	/**
+	 * Set a parsed message
+	 *
+	 * HTML is not allowed in the parsed message and will be escaped
+	 * automatically by the clients. You can use the RichObjectString system
+	 * provided by the Nextcloud server to highlight important parameters via
+	 * the setRichMessage method, but make sure, that a plain text message is
+	 * always set via setParsedMessage, to support clients which can not handle
+	 * rich strings.
+	 *
+	 * See https://github.com/nextcloud/server/issues/1706 for more information.
+	 *
 	 * @param string $message
 	 * @return $this
 	 * @throws \InvalidArgumentException if the message is invalid
 	 * @since 9.0.0
 	 */
-	public function setParsedMessage($message);
+	public function setParsedMessage(string $message);
 
 	/**
 	 * @return string
@@ -185,13 +218,23 @@ interface INotification {
 	public function getParsedMessage();
 
 	/**
+	 * Set a RichObjectString message
+	 *
+	 * HTML is not allowed in the rich message and will be escaped automatically
+	 * by the clients, but you can use the RichObjectString system provided by
+	 * the Nextcloud server to highlight important parameters.
+	 * Also make sure, that a plain text message is always set via
+	 * setParsedMessage, to support clients which can not handle rich strings.
+	 *
+	 * See https://github.com/nextcloud/server/issues/1706 for more information.
+	 *
 	 * @param string $message
 	 * @param array $parameters
 	 * @return $this
 	 * @throws \InvalidArgumentException if the message or parameters are invalid
 	 * @since 11.0.0
 	 */
-	public function setRichMessage($message, array $parameters = []);
+	public function setRichMessage(string $message, array $parameters = []);
 
 	/**
 	 * @return string
@@ -211,7 +254,7 @@ interface INotification {
 	 * @throws \InvalidArgumentException if the link is invalid
 	 * @since 9.0.0
 	 */
-	public function setLink($link);
+	public function setLink(string $link);
 
 	/**
 	 * @return string
@@ -225,7 +268,7 @@ interface INotification {
 	 * @throws \InvalidArgumentException if the icon is invalid
 	 * @since 11.0.0
 	 */
-	public function setIcon($icon);
+	public function setIcon(string $icon);
 
 	/**
 	 * @return string

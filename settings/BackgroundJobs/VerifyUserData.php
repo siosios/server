@@ -63,6 +63,9 @@ class VerifyUserData extends Job {
 	/** @var string */
 	private $lookupServerUrl;
 
+	/** @var IConfig */
+	private $config;
+
 	/**
 	 * VerifyUserData constructor.
 	 *
@@ -85,6 +88,7 @@ class VerifyUserData extends Job {
 
 		$lookupServerUrl = $config->getSystemValue('lookup_server', 'https://lookup.nextcloud.com');
 		$this->lookupServerUrl = rtrim($lookupServerUrl, '/');
+		$this->config = $config;
 	}
 
 	/**
@@ -182,12 +186,17 @@ class VerifyUserData extends Job {
 	 * @return bool true if we could check the verification code, otherwise false
 	 */
 	protected function verifyViaLookupServer(array $argument, $dataType) {
+		if(empty($this->lookupServerUrl) ||
+			$this->config->getAppValue('files_sharing', 'lookupServerUploadEnabled', 'yes') !== 'yes' ||
+			$this->config->getSystemValue('has_internet_connection', true) === false) {
+			return false;
+		}
 
 		$user = $this->userManager->get($argument['uid']);
 
 		// we don't check a valid user -> give up
 		if ($user === null) {
-			$this->logger->error($argument['uid'] . ' doesn\'t exist, can\'t verify user data.');
+			$this->logger->info($argument['uid'] . ' doesn\'t exist, can\'t verify user data.');
 			return true;
 		}
 
@@ -198,7 +207,7 @@ class VerifyUserData extends Job {
 		$lookupServerData = $this->queryLookupServer($cloudId);
 
 		// for some reasons we couldn't read any data from the lookup server, try again later
-		if (empty($lookupServerData)) {
+		if (empty($lookupServerData) || empty($lookupServerData[$dataType])) {
 			return false;
 		}
 

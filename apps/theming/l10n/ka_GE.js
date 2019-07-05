@@ -20,8 +20,6 @@ OC.L10N.register(
     "Theming makes it possible to easily customize the look and feel of your instance and supported clients. This will be visible for all users." : "ვიზუალური თემები საშუალებას გაძლევთ თქვენს ინსტანციას და მხარდაჭერილ კლიენტებს მარტივად გაუწიოთ გამოსახულებას პერსონალიზაცია. ეს გამოჩნდება ყველა მომხმარებელთან.",
     "Name" : "სახელი",
     "Reset to default" : "საწყის მდგომარეობაში დაბრუნება",
-    "Web address" : "ვებ-მისამართი",
-    "Web address https://…" : "ვებ მისამართ https://…",
     "Slogan" : "ლოზუნგი",
     "Color" : "ფერი",
     "Logo" : "ლოგო",
@@ -29,12 +27,6 @@ OC.L10N.register(
     "Login image" : "ლოგინის სურათი",
     "Upload new login background" : "ლოგინის ახალი ფონის ატვირთვა",
     "Remove background image" : "ფონური სურათის მოშორება",
-    "Install the Imagemagick PHP extension with support for SVG images to automatically generate favicons based on the uploaded logo and color." : "SVG სურთების მხარდაჭერის მქონე Imagemagick PHP გაფართოების დაყენება ფავიკონებს  ატვირთული ლოგოსა და ფერის მიხევით დააგენერირებს ავტომატურად.",
-    "You are already using a custom theme" : "თქვენ პერზონალიზირებულ ვიზუალურ თემას უკვე იყენებთ",
-    "reset to default" : "დაბრუნება საწყისზე",
-    "There is no error, the file uploaded with success" : "ეს არაა შეცდომა, ფაილი წარმატებით აიტვირთა",
-    "The uploaded file was only partially uploaded" : "ფაილი აიტვირთა მხოლოდ ნაწილობრივ",
-    "Failed to write file to disk." : "ფაილი დისკზე ვერ ჩაიწერა.",
-    "A PHP extension stopped the file upload." : "PHP გაფართოებამ შეაჩერა ფაილის ატვირთვა."
+    "Install the Imagemagick PHP extension with support for SVG images to automatically generate favicons based on the uploaded logo and color." : "SVG სურთების მხარდაჭერის მქონე Imagemagick PHP გაფართოების დაყენება ფავიკონებს  ატვირთული ლოგოსა და ფერის მიხევით დააგენერირებს ავტომატურად."
 },
-"nplurals=1; plural=0;");
+"nplurals=2; plural=(n!=1);");

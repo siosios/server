@@ -155,7 +155,13 @@ class ContactsStore implements IContactsStore {
 			}
 
 			if ($ownGroupsOnly && $entry->getProperty('isLocalSystemBook') === true) {
-				$contactGroups = $this->groupManager->getUserGroupIds($this->userManager->get($entry->getProperty('UID')));
+				$uid = $this->userManager->get($entry->getProperty('UID'));
+
+				if ($uid === NULL) {
+					return false;
+				}
+
+				$contactGroups = $this->groupManager->getUserGroupIds($uid);
 				if (count(array_intersect($contactGroups, $selfGroups)) === 0) {
 					// no groups in common, so shouldn't see the contact
 					return false;
@@ -200,7 +206,8 @@ class ContactsStore implements IContactsStore {
 				}
 			}
 			if ($shareType === 0 || $shareType === 6) {
-				if ($contact['UID'] === $shareWith && $contact['isLocalSystemBook'] === true) {
+				$isLocal = $contact['isLocalSystemBook'] ?? false;
+				if ($contact['UID'] === $shareWith && $isLocal === true) {
 					$match = $contact;
 					break;
 				}

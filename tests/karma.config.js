@@ -1,23 +1,23 @@
 /**
-* ownCloud
-*
-* @author Vincent Petry
-* @copyright 2014 Vincent Petry <pvince81@owncloud.com>
-*
-* This library is free software; you can redistribute it and/or
-* modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
-* License as published by the Free Software Foundation; either
-* version 3 of the License, or any later version.
-*
-* This library is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU AFFERO GENERAL PUBLIC LICENSE for more details.
-*
-* You should have received a copy of the GNU Affero General Public
-* License along with this library.  If not, see <http://www.gnu.org/licenses/>.
-*
-*/
+ * ownCloud
+ *
+ * @author Vincent Petry
+ * @copyright 2014 Vincent Petry <pvince81@owncloud.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU AFFERO GENERAL PUBLIC LICENSE for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 /**
  * This node module is run by the karma executable to specify its configuration.
@@ -35,7 +35,6 @@
 
 /* jshint node: true */
 module.exports = function(config) {
-
 	function findApps() {
 		/*
 		var fs = require('fs');
@@ -46,6 +45,8 @@ module.exports = function(config) {
 		return [
 			'files',
 			'files_trashbin',
+			'files_versions',
+			'systemtags',
 			{
 				name: 'files_sharing',
 				srcFiles: [
@@ -53,11 +54,10 @@ module.exports = function(config) {
 					// up with the global namespace/classes/state
 					'apps/files_sharing/js/app.js',
 					'apps/files_sharing/js/sharedfilelist.js',
-					'apps/files_sharing/js/share.js',
-					'apps/files_sharing/js/sharebreadcrumbview.js',
+					'apps/files_sharing/js/dist/additionalScripts.js',
 					'apps/files_sharing/js/public.js',
-					'apps/files_sharing/js/sharetabview.js',
-					'apps/files_sharing/js/files_drop.js'
+					'apps/files_sharing/js/files_drop.js',
+					'apps/files_sharing/js/templates.js',
 				],
 				testFiles: ['apps/files_sharing/tests/js/*.js']
 			},
@@ -67,6 +67,7 @@ module.exports = function(config) {
 					// only test these files, others are not ready and mess
 					// up with the global namespace/classes/state
 					'apps/files_external/js/app.js',
+					'apps/files_external/js/templates.js',
 					'apps/files_external/js/mountsfilelist.js',
 					'apps/files_external/js/settings.js',
 					'apps/files_external/js/statusmanager.js'
@@ -74,53 +75,16 @@ module.exports = function(config) {
 				testFiles: ['apps/files_external/tests/js/*.js']
 			},
 			{
-				name: 'files_versions',
-				srcFiles: [
-					// need to enforce loading order...
-					'apps/files_versions/js/versionmodel.js',
-					'apps/files_versions/js/versioncollection.js',
-					'apps/files_versions/js/versionstabview.js'
-				],
-				testFiles: ['apps/files_versions/tests/js/**/*.js']
-			},
-			{
 				name: 'comments',
 				srcFiles: [
-					// need to enforce loading order...
-					'apps/comments/js/app.js',
-					'apps/comments/js/vendor/Caret.js/dist/jquery.caret.min.js',
-					'apps/comments/js/vendor/At.js/dist/js/jquery.atwho.min.js',
-					'apps/comments/js/commentmodel.js',
-					'apps/comments/js/commentcollection.js',
-					'apps/comments/js/commentsummarymodel.js',
-					'apps/comments/js/commentsmodifymenu.js',
-					'apps/comments/js/commentstabview.js',
-					'apps/comments/js/filesplugin.js'
+					'apps/comments/js/comments.js'
 				],
 				testFiles: ['apps/comments/tests/js/**/*.js']
 			},
 			{
-				name: 'systemtags',
-				srcFiles: [
-					// need to enforce loading order...
-					'apps/systemtags/js/app.js',
-					'apps/systemtags/js/systemtagsinfoview.js',
-					'apps/systemtags/js/systemtagsinfoviewtoggleview.js',
-					'apps/systemtags/js/systemtagsfilelist.js',
-					'apps/systemtags/js/filesplugin.js'
-				],
-				testFiles: ['apps/systemtags/tests/js/**/*.js']
-			},
-			{
 				name: 'settings',
 				srcFiles: [
-					'settings/js/apps.js',
-					'settings/js/users/deleteHandler.js',
-					'core/vendor/marked/marked.min.js'
-				],
-				testFiles: [
-					'settings/tests/js/appsSpec.js',
-					'settings/tests/js/users/deleteHandlerSpec.js'
+					'settings/js/apps.js'
 				]
 			}
 		];
@@ -130,14 +94,16 @@ module.exports = function(config) {
 	// it is useful to disable coverage for debugging
 	// because the coverage preprocessor will wrap the JS files somehow
 	var enableCoverage = !parseInt(process.env.NOCOVERAGE, 10);
-	console.log('Coverage preprocessor: ', enableCoverage?'enabled':'disabled');
+	console.log(
+		'Coverage preprocessor: ',
+		enableCoverage ? 'enabled' : 'disabled'
+	);
 
 	// default apps to test when none is specified (TODO: read from filesystem ?)
 	var appsToTest = process.env.KARMA_TESTSUITE;
-    if (appsToTest) {
+	if (appsToTest) {
 		appsToTest = appsToTest.split(' ');
-	}
-	else {
+	} else {
 		appsToTest = ['core'].concat(findApps());
 	}
 
@@ -148,7 +114,6 @@ module.exports = function(config) {
 	// note that the loading order is important that's why they
 	// are specified in a separate file
 	var corePath = 'core/js/';
-	var vendorPath = 'core/vendor/';
 	var coreModule = require('../' + corePath + 'core.json');
 	var testCore = false;
 	var files = [];
@@ -162,24 +127,20 @@ module.exports = function(config) {
 		testCore = true;
 	}
 
+	files.push(corePath + 'tests/html-domparser.js');
+	files.push('core/js/dist/main.js');
 	// core mocks
 	files.push(corePath + 'tests/specHelper.js');
 
 	var srcFile, i;
-	// add vendor library files
-	for ( i = 0; i < coreModule.vendor.length; i++ ) {
-		srcFile = vendorPath + coreModule.vendor[i];
-		files.push(srcFile);
-	}
-
 	// add core library files
-	for ( i = 0; i < coreModule.libraries.length; i++ ) {
+	for (i = 0; i < coreModule.libraries.length; i++) {
 		srcFile = corePath + coreModule.libraries[i];
 		files.push(srcFile);
 	}
 
 	// add core modules files
-	for ( i = 0; i < coreModule.modules.length; i++ ) {
+	for (i = 0; i < coreModule.modules.length; i++) {
 		srcFile = corePath + coreModule.modules[i];
 		files.push(srcFile);
 		if (enableCoverage) {
@@ -197,7 +158,7 @@ module.exports = function(config) {
 
 	function addApp(app) {
 		// if only a string was specified, expand to structure
-		if (typeof(app) === 'string') {
+		if (typeof app === 'string') {
 			app = {
 				srcFiles: 'apps/' + app + '/js/**/*.js',
 				testFiles: 'apps/' + app + '/tests/js/**/*.js'
@@ -217,23 +178,47 @@ module.exports = function(config) {
 	}
 
 	// add source files for apps to test
-	for ( i = 0; i < appsToTest.length; i++ ) {
+	for (i = 0; i < appsToTest.length; i++) {
 		addApp(appsToTest[i]);
 	}
 
 	// serve images to avoid warnings
-	files.push({pattern: 'core/img/**/*', watched: false, included: false, served: true});
-	files.push({pattern: 'core/css/images/*', watched: false, included: false, served: true});
+	files.push({
+		pattern: 'core/img/**/*',
+		watched: false,
+		included: false,
+		served: true
+	});
+	files.push({
+		pattern: 'core/css/images/*',
+		watched: false,
+		included: false,
+		served: true
+	});
 
 	// include core CSS
-	files.push({pattern: 'core/css/*.css', watched: true, included: true, served: true});
-	files.push({pattern: 'tests/css/*.css', watched: true, included: true, served: true});
+	files.push({
+		pattern: 'core/css/*.css',
+		watched: true,
+		included: true,
+		served: true
+	});
+	files.push({
+		pattern: 'tests/css/*.css',
+		watched: true,
+		included: true,
+		served: true
+	});
 
 	// Allow fonts
-	files.push({pattern: 'core/fonts/*', watched: false, included: false, served: true});
+	files.push({
+		pattern: 'core/fonts/*',
+		watched: false,
+		included: false,
+		served: true
+	});
 
 	config.set({
-
 		// base path, that will be used to resolve files and exclude
 		basePath: '..',
 
@@ -244,9 +229,7 @@ module.exports = function(config) {
 		files: files,
 
 		// list of files to exclude
-		exclude: [
-
-		],
+		exclude: [],
 
 		proxies: {
 			// prevent warnings for images
@@ -271,7 +254,7 @@ module.exports = function(config) {
 		preprocessors: preprocessors,
 
 		coverageReporter: {
-			dir:'tests/karma-coverage',
+			dir: 'tests/karma-coverage',
 			reporters: [
 				{ type: 'html' },
 				{ type: 'cobertura' },
@@ -281,7 +264,6 @@ module.exports = function(config) {
 
 		// enable / disable colors in the output (reporters and logs)
 		colors: true,
-
 
 		// level of logging
 		// possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
@@ -298,7 +280,24 @@ module.exports = function(config) {
 		// - Safari (only Mac; has to be installed with `npm install karma-safari-launcher`)
 		// - PhantomJS
 		// - IE (only Windows; has to be installed with `npm install karma-ie-launcher`)
+		// use PhantomJS_debug for extra local debug
 		browsers: ['PhantomJS'],
+
+		plugins: [
+			'karma-phantomjs-launcher',
+			'karma-coverage',
+			'karma-jasmine',
+			'karma-jasmine-sinon',
+			'karma-viewport',
+			'karma-junit-reporter'
+		],
+		// you can define custom flags
+		customLaunchers: {
+			PhantomJS_debug: {
+				base: 'PhantomJS',
+				debug: true
+			}
+		},
 
 		// If browser does not capture in given timeout [ms], kill it
 		captureTimeout: 60000,
@@ -306,5 +305,5 @@ module.exports = function(config) {
 		// Continuous Integration mode
 		// if true, it capture browsers, run tests and exit
 		singleRun: false
-  });
+	});
 };

@@ -261,7 +261,7 @@ class SyncService {
 	/**
 	 * @param IUser $user
 	 */
-	public function updateUser($user) {
+	public function updateUser(IUser $user) {
 		$systemAddressBook = $this->getLocalSystemAddressBook();
 		$addressBookId = $systemAddressBook['id'];
 		$converter = new Converter($this->accountManager);
@@ -270,18 +270,22 @@ class SyncService {
 
 		$cardId = "$name:$userId.vcf";
 		$card = $this->backend->getCard($addressBookId, $cardId);
-		if ($card === false) {
-			$vCard = $converter->createCardFromUser($user);
-			if ($vCard !== null) {
-				$this->backend->createCard($addressBookId, $cardId, $vCard->serialize());
+		if ($user->isEnabled()) {
+			if ($card === false) {
+				$vCard = $converter->createCardFromUser($user);
+				if ($vCard !== null) {
+					$this->backend->createCard($addressBookId, $cardId, $vCard->serialize());
+				}
+			} else {
+				$vCard = $converter->createCardFromUser($user);
+				if (is_null($vCard)) {
+					$this->backend->deleteCard($addressBookId, $cardId);
+				} else {
+					$this->backend->updateCard($addressBookId, $cardId, $vCard->serialize());
+				}
 			}
 		} else {
-			$vCard = $converter->createCardFromUser($user);
-			if (is_null($vCard)) {
-				$this->backend->deleteCard($addressBookId, $cardId);
-			} else {
-				$this->backend->updateCard($addressBookId, $cardId, $vCard->serialize());
-			}
+			$this->backend->deleteCard($addressBookId, $cardId);
 		}
 	}
 
@@ -315,7 +319,7 @@ class SyncService {
 
 	public function syncInstance(\Closure $progressCallback = null) {
 		$systemAddressBook = $this->getLocalSystemAddressBook();
-		$this->userManager->callForAllUsers(function($user) use ($systemAddressBook, $progressCallback) {
+		$this->userManager->callForSeenUsers(function($user) use ($systemAddressBook, $progressCallback) {
 			$this->updateUser($user);
 			if (!is_null($progressCallback)) {
 				$progressCallback();

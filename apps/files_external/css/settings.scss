@@ -1,13 +1,15 @@
-#global_credentials {
-	padding: 0 30px;
-}
-
 #files_external {
 	margin-bottom: 0px;
 }
 
 #externalStorage {
 	margin: 15px 0 20px 0;
+}
+
+#externalStorage td {
+	& > input, & > select {
+		width: 100%;
+	}
 }
 
 #externalStorage td.status {
@@ -24,8 +26,12 @@
 	border-radius: 50%;
 	cursor: pointer;
 }
-
-td.mountPoint, td.backend { width:160px; }
+#externalStorage {
+	td.mountPoint, td.backend, td.authentication, td.configuration {
+		min-width: 160px;
+		width: 15%;
+	}
+}
 #externalStorage td>img { padding-top:7px; opacity: 0.5; }
 #externalStorage td>img:hover { padding-top:7px; cursor:pointer; opacity: 1; }
 #addMountPoint>td { border:none; }
@@ -90,6 +96,10 @@ td.mountPoint, td.backend { width:160px; }
 	top: 3px;
 }
 
+#externalStorage .select2-container.applicableUsers {
+	width: 100% !important;
+}
+
 #userMountingBackends {
 	padding-left: 25px;
 }
@@ -126,5 +136,5 @@ td.mountPoint, td.backend { width:160px; }
 }
 
 .nav-icon-external-storage {
-	background-image: url('../img/app-dark.svg?v=1');
+	@include icon-color('app-dark', 'files_external', $color-black);
 }

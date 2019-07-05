@@ -93,7 +93,7 @@ class Calendar extends Base {
 		if ($this->activityManager->getRequirePNG()) {
 			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar-dark.png')));
 		} else {
-			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar-dark.svg')));
+			$event->setIcon($this->url->getAbsoluteURL($this->url->imagePath('core', 'places/calendar.svg')));
 		}
 
 		if ($event->getSubject() === self::SUBJECT_ADD) {
@@ -176,6 +176,8 @@ class Calendar extends Base {
 				case self::SUBJECT_DELETE . '_self':
 				case self::SUBJECT_UPDATE:
 				case self::SUBJECT_UPDATE . '_self':
+				case self::SUBJECT_PUBLISH . '_self':
+				case self::SUBJECT_UNPUBLISH . '_self':
 				case self::SUBJECT_SHARE_USER:
 				case self::SUBJECT_UNSHARE_USER:
 				case self::SUBJECT_UNSHARE_USER . '_self':

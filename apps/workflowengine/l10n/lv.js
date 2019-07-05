@@ -1,8 +1,6 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Saved" : "Saglabāts",
-    "Saving failed:" : "Saglabāšana neizdevās:",
     "File MIME type" : "Datnes MIME tips",
     "is" : "ir",
     "is not" : "nav",
@@ -40,6 +38,16 @@ OC.L10N.register(
     "User group membership" : "Lietotāju grupas piederība",
     "is member of" : "ir biedrs",
     "is not member of" : "nav biedrs",
+    "Short rule description" : "Īss kārtulas apraksts",
+    "Add rule" : "Pievienot kārtulu",
+    "Reset" : "Atiestatīt",
+    "Save" : "Saglabāt",
+    "Saving…" : "Saglabā...",
+    "Group list is empty" : "Grupu saraksts ir tukšš",
+    "Unable to retrieve the group list" : "Nevarēja saņemt grupu sarakstu",
+    "Saved" : "Saglabāts",
+    "Saving failed:" : "Saglabāšana neizdevās:",
+    "Add rule group" : "Pievienot kārtulu grupas",
     "The given operator is invalid" : "Norādītais operators ir nederīgs",
     "The given regular expression is invalid" : "Norādītā regulārā izteiksme nav derīga.",
     "The given file size is invalid" : "Norādītais faila formāts nav derīgs",
@@ -58,14 +66,8 @@ OC.L10N.register(
     "Check %s does not exist" : "Pārbaude %s nepastāv",
     "Check %s is invalid" : "Pārbaude %s ir nederīga",
     "Check #%s does not exist" : "Pārbaude #%s nepastāv",
-    "Workflow" : "Darbplūsma",
     "Open documentation" : "Atvērt dokumentāciju",
-    "Add rule group" : "Pievienot kārtulu grupas",
-    "Short rule description" : "Īss kārtulas apraksts",
-    "Add rule" : "Pievienot kārtulu",
-    "Reset" : "Atiestatīt",
-    "Save" : "Saglabāt",
-    "Saving…" : "Saglabā...",
-    "Loading…" : "Ielādē …"
+    "Loading…" : "Ielādē …",
+    "Workflow" : "Darbplūsma"
 },
 "nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);");

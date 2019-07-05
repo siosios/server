@@ -39,13 +39,9 @@ class GenerateFromSchemaFileCommand extends GenerateCommand {
 	/** @var IConfig */
 	protected $config;
 
-	/** @var IAppManager */
-	protected $appManager;
-
 	public function __construct(IConfig $config, IAppManager $appManager, IDBConnection $connection) {
-		parent::__construct($connection);
+		parent::__construct($connection, $appManager);
 		$this->config = $config;
-		$this->appManager = $appManager;
 	}
 
 
@@ -131,7 +127,11 @@ EOT
 				}
 				$default = $column->getDefault();
 				if ($default !== null) {
-					$default = is_numeric($default) ? $default : "'$default'";
+					if (is_string($default)) {
+						$default = "'$default'";
+					} else if (is_bool($default)) {
+						$default = ($default === true) ? 'true' : 'false';
+					}
 					$content .= str_replace('{{default}}', $default, <<<'EOT'
 				'default' => {{default}},
 

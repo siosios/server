@@ -41,6 +41,7 @@ use OCP\ICache;
 use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IL10N;
+use OCP\INavigationManager;
 use OCP\IURLGenerator;
 use Test\TestCase;
 
@@ -67,6 +68,8 @@ class ThemingDefaultsTest extends TestCase {
 	private $appManager;
 	/** @var ImageManager|\PHPUnit_Framework_MockObject_MockObject */
 	private $imageManager;
+	/** @var INavigationManager|\PHPUnit_Framework_MockObject_MockObject */
+	private $navigationManager;
 
 	public function setUp() {
 		parent::setUp();
@@ -78,6 +81,7 @@ class ThemingDefaultsTest extends TestCase {
 		$this->util = $this->createMock(Util::class);
 		$this->imageManager = $this->createMock(ImageManager::class);
 		$this->appManager = $this->createMock(IAppManager::class);
+		$this->navigationManager = $this->createMock(INavigationManager::class);
 		$this->defaults = new \OC_Defaults();
 		$this->urlGenerator
 			->expects($this->any())
@@ -90,7 +94,8 @@ class ThemingDefaultsTest extends TestCase {
 			$this->cacheFactory,
 			$this->util,
 			$this->imageManager,
-			$this->appManager
+			$this->appManager,
+			$this->navigationManager
 		);
 	}
 
@@ -195,6 +200,41 @@ class ThemingDefaultsTest extends TestCase {
 		$this->assertEquals('https://example.com/', $this->template->getBaseUrl());
 	}
 
+	public function legalUrlProvider() {
+		return [
+			[ '' ],
+			[ 'https://example.com/legal.html']
+		];
+	}
+
+	/**
+	 * @param $imprintUrl
+	 * @dataProvider legalUrlProvider
+	 */
+	public function testGetImprintURL($imprintUrl) {
+		$this->config
+			->expects($this->once())
+			->method('getAppValue')
+			->with('theming', 'imprintUrl', '')
+			->willReturn($imprintUrl);
+
+		$this->assertEquals($imprintUrl, $this->template->getImprintUrl());
+	}
+
+	/**
+	 * @param $privacyUrl
+	 * @dataProvider legalUrlProvider
+	 */
+	public function testGetPrivacyURL($privacyUrl) {
+		$this->config
+			->expects($this->once())
+			->method('getAppValue')
+			->with('theming', 'privacyUrl', '')
+			->willReturn($privacyUrl);
+
+		$this->assertEquals($privacyUrl, $this->template->getPrivacyUrl());
+	}
+
 	public function testGetSloganWithDefault() {
 		$this->config
 			->expects($this->once())
@@ -217,28 +257,159 @@ class ThemingDefaultsTest extends TestCase {
 
 	public function testGetShortFooter() {
 		$this->config
-			->expects($this->exactly(3))
+			->expects($this->exactly(5))
 			->method('getAppValue')
 			->willReturnMap([
 				['theming', 'url', $this->defaults->getBaseUrl(), 'url'],
 				['theming', 'name', 'Nextcloud', 'Name'],
 				['theming', 'slogan', $this->defaults->getSlogan(), 'Slogan'],
+				['theming', 'imprintUrl', '', ''],
+				['theming', 'privacyUrl', '', ''],
 			]);
 
-		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener">Name</a> – Slogan', $this->template->getShortFooter());
+		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener" class="entity-name">Name</a> – Slogan', $this->template->getShortFooter());
+	}
+
+	public function testGetShortFooterEmptyUrl() {
+		$this->navigationManager->expects($this->once())->method('getAll')->with(INavigationManager::TYPE_GUEST)->willReturn([]);
+		$this->config
+			->expects($this->exactly(5))
+			->method('getAppValue')
+			->willReturnMap([
+				['theming', 'url', $this->defaults->getBaseUrl(), ''],
+				['theming', 'name', 'Nextcloud', 'Name'],
+				['theming', 'slogan', $this->defaults->getSlogan(), 'Slogan'],
+				['theming', 'imprintUrl', '', ''],
+				['theming', 'privacyUrl', '', ''],
+			]);
+
+		$this->assertEquals('<span class="entity-name">Name</span> – Slogan', $this->template->getShortFooter());
 	}
 
 	public function testGetShortFooterEmptySlogan() {
+		$this->navigationManager->expects($this->once())->method('getAll')->with(INavigationManager::TYPE_GUEST)->willReturn([]);
 		$this->config
-			->expects($this->exactly(3))
+			->expects($this->exactly(5))
 			->method('getAppValue')
 			->willReturnMap([
 				['theming', 'url', $this->defaults->getBaseUrl(), 'url'],
 				['theming', 'name', 'Nextcloud', 'Name'],
 				['theming', 'slogan', $this->defaults->getSlogan(), ''],
+				['theming', 'imprintUrl', '', ''],
+				['theming', 'privacyUrl', '', ''],
 			]);
 
-		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener">Name</a>', $this->template->getShortFooter());
+		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener" class="entity-name">Name</a>', $this->template->getShortFooter());
+	}
+
+	public function testGetShortFooterImprint() {
+		$this->navigationManager->expects($this->once())->method('getAll')->with(INavigationManager::TYPE_GUEST)->willReturn([]);
+		$this->config
+			->expects($this->exactly(5))
+			->method('getAppValue')
+			->willReturnMap([
+				['theming', 'url', $this->defaults->getBaseUrl(), 'url'],
+				['theming', 'name', 'Nextcloud', 'Name'],
+				['theming', 'slogan', $this->defaults->getSlogan(), 'Slogan'],
+				['theming', 'imprintUrl', '', 'https://example.com/imprint'],
+				['theming', 'privacyUrl', '', ''],
+			]);
+
+		$this->l10n
+			->expects($this->any())
+			->method('t')
+			->willReturnArgument(0);
+
+		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener" class="entity-name">Name</a> – Slogan<br/><a href="https://example.com/imprint" class="legal" target="_blank" rel="noreferrer noopener">Legal notice</a>', $this->template->getShortFooter());
+	}
+
+	public function testGetShortFooterPrivacy() {
+		$this->navigationManager->expects($this->once())->method('getAll')->with(INavigationManager::TYPE_GUEST)->willReturn([]);
+		$this->config
+			->expects($this->exactly(5))
+			->method('getAppValue')
+			->willReturnMap([
+				['theming', 'url', $this->defaults->getBaseUrl(), 'url'],
+				['theming', 'name', 'Nextcloud', 'Name'],
+				['theming', 'slogan', $this->defaults->getSlogan(), 'Slogan'],
+				['theming', 'imprintUrl', '', ''],
+				['theming', 'privacyUrl', '', 'https://example.com/privacy'],
+			]);
+
+		$this->l10n
+			->expects($this->any())
+			->method('t')
+			->willReturnArgument(0);
+
+		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener" class="entity-name">Name</a> – Slogan<br/><a href="https://example.com/privacy" class="legal" target="_blank" rel="noreferrer noopener">Privacy policy</a>', $this->template->getShortFooter());
+	}
+
+	public function testGetShortFooterAllLegalLinks() {
+		$this->navigationManager->expects($this->once())->method('getAll')->with(INavigationManager::TYPE_GUEST)->willReturn([]);
+		$this->config
+			->expects($this->exactly(5))
+			->method('getAppValue')
+			->willReturnMap([
+				['theming', 'url', $this->defaults->getBaseUrl(), 'url'],
+				['theming', 'name', 'Nextcloud', 'Name'],
+				['theming', 'slogan', $this->defaults->getSlogan(), 'Slogan'],
+				['theming', 'imprintUrl', '', 'https://example.com/imprint'],
+				['theming', 'privacyUrl', '', 'https://example.com/privacy'],
+			]);
+
+		$this->l10n
+			->expects($this->any())
+			->method('t')
+			->willReturnArgument(0);
+
+		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener" class="entity-name">Name</a> – Slogan<br/><a href="https://example.com/imprint" class="legal" target="_blank" rel="noreferrer noopener">Legal notice</a> · <a href="https://example.com/privacy" class="legal" target="_blank" rel="noreferrer noopener">Privacy policy</a>', $this->template->getShortFooter());
+	}
+
+	public function invalidLegalUrlProvider() {
+		return [
+			['example.com/legal'],  # missing scheme
+			['https:///legal'],     # missing host
+		];
+	}
+
+	/**
+	 * @param $invalidImprintUrl
+	 * @dataProvider invalidLegalUrlProvider
+	 */
+	public function testGetShortFooterInvalidImprint($invalidImprintUrl) {
+		$this->navigationManager->expects($this->once())->method('getAll')->with(INavigationManager::TYPE_GUEST)->willReturn([]);
+		$this->config
+			->expects($this->exactly(5))
+			->method('getAppValue')
+			->willReturnMap([
+				['theming', 'url', $this->defaults->getBaseUrl(), 'url'],
+				['theming', 'name', 'Nextcloud', 'Name'],
+				['theming', 'slogan', $this->defaults->getSlogan(), 'Slogan'],
+				['theming', 'imprintUrl', '', $invalidImprintUrl],
+				['theming', 'privacyUrl', '', ''],
+			]);
+
+		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener" class="entity-name">Name</a> – Slogan', $this->template->getShortFooter());
+	}
+
+	/**
+	 * @param $invalidPrivacyUrl
+	 * @dataProvider invalidLegalUrlProvider
+	 */
+	public function testGetShortFooterInvalidPrivacy($invalidPrivacyUrl) {
+		$this->navigationManager->expects($this->once())->method('getAll')->with(INavigationManager::TYPE_GUEST)->willReturn([]);
+		$this->config
+			->expects($this->exactly(5))
+			->method('getAppValue')
+			->willReturnMap([
+				['theming', 'url', $this->defaults->getBaseUrl(), 'url'],
+				['theming', 'name', 'Nextcloud', 'Name'],
+				['theming', 'slogan', $this->defaults->getSlogan(), 'Slogan'],
+				['theming', 'imprintUrl', '', ''],
+				['theming', 'privacyUrl', '', $invalidPrivacyUrl],
+			]);
+
+		$this->assertEquals('<a href="url" target="_blank" rel="noreferrer noopener" class="entity-name">Name</a> – Slogan', $this->template->getShortFooter());
 	}
 
 	public function testgetColorPrimaryWithDefault() {
@@ -434,11 +605,11 @@ class ThemingDefaultsTest extends TestCase {
 	}
 
 	public function testGetLogoDefaultWithSvg() {
-		$this->getLogoHelper('logo.svg', true);
+		$this->getLogoHelper('logo/logo.svg', true);
 	}
 
 	public function testGetLogoDefaultWithoutSvg() {
-		$this->getLogoHelper('logo.png', false);
+		$this->getLogoHelper('logo/logo.png', false);
 	}
 
 	public function testGetLogoCustom() {
@@ -460,7 +631,7 @@ class ThemingDefaultsTest extends TestCase {
 		$this->urlGenerator->expects($this->once())
 			->method('linkToRoute')
 			->with('theming.Theming.getImage')
-			->willReturn('custom-logo');
+			->willReturn('custom-logo?v=0');
 		$this->assertEquals('custom-logo' . '?v=0', $this->template->getLogo());
 	}
 
@@ -501,8 +672,8 @@ class ThemingDefaultsTest extends TestCase {
 			'theming-cachebuster' => '\'0\'',
 			'theming-logo-mime' => '\'jpeg\'',
 			'theming-background-mime' => '\'jpeg\'',
-			'image-logo' => "'custom-logo?v=0'",
-			'image-login-background' => "'custom-background?v=0'",
+			'image-logo' => "url('custom-logo?v=0')",
+			'image-login-background' => "url('custom-background?v=0')",
 			'color-primary' => $this->defaults->getColorPrimary(),
 			'color-primary-text' => '#ffffff',
 			'image-login-plain' => 'false',
@@ -510,7 +681,8 @@ class ThemingDefaultsTest extends TestCase {
 			'theming-logoheader-mime' => '\'jpeg\'',
 			'theming-favicon-mime' => '\'jpeg\'',
 			'image-logoheader' => '\'custom-logoheader?v=0\'',
-			'image-favicon' => '\'custom-favicon?v=0\''
+			'image-favicon' => '\'custom-favicon?v=0\'',
+			'has-legal-links' => 'false'
 		];
 		$this->assertEquals($expected, $this->template->getScssVariables());
 	}

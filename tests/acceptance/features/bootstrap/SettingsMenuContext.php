@@ -31,8 +31,17 @@ class SettingsMenuContext implements Context, ActorAwareInterface {
 	/**
 	 * @return Locator
 	 */
-	public static function settingsMenuButton() {
+	public static function settingsSectionInHeader() {
 		return Locator::forThe()->xpath("//*[@id = 'header']//*[@id = 'settings']")->
+				describedAs("Settings menu section in the header");
+	}
+
+	/**
+	 * @return Locator
+	 */
+	public static function settingsMenuButton() {
+		return Locator::forThe()->id("expand")->
+				descendantOf(self::settingsSectionInHeader())->
 				describedAs("Settings menu button");
 	}
 
@@ -40,7 +49,8 @@ class SettingsMenuContext implements Context, ActorAwareInterface {
 	 * @return Locator
 	 */
 	public static function settingsMenu() {
-		return Locator::forThe()->id("expanddiv")->descendantOf(self::settingsMenuButton())->
+		return Locator::forThe()->id("expanddiv")->
+				descendantOf(self::settingsSectionInHeader())->
 				describedAs("Settings menu");
 	}
 
@@ -49,6 +59,13 @@ class SettingsMenuContext implements Context, ActorAwareInterface {
 	 */
 	public static function usersMenuItem() {
 		return self::menuItemFor("Users");
+	}
+
+	/**
+	 * @return Locator
+	 */
+	public static function usersAppsItem() {
+		return self::menuItemFor("Apps");
 	}
 
 	/**
@@ -72,8 +89,17 @@ class SettingsMenuContext implements Context, ActorAwareInterface {
 	 * @return Locator
 	 */
 	private static function settingsPanelFor($itemText) {
-		return Locator::forThe()->xpath("//div[@id = 'app-navigation']//ul//li[@class = 'settings-caption' and normalize-space() = '$itemText']")->
+		return Locator::forThe()->xpath("//div[@id = 'app-navigation']//ul//li[@class = 'app-navigation-caption' and normalize-space() = '$itemText']")->
 		describedAs($itemText . " item in Settings panel");
+	}
+
+	/**
+	 * @param string $itemText
+	 * @return Locator
+	 */
+	private static function settingsPanelEntryFor($itemText) {
+		return Locator::forThe()->xpath("//div[@id = 'app-navigation']//ul//li[normalize-space() = '$itemText']")->
+		describedAs($itemText . " entry in Settings panel");
 	}
 
 	/**
@@ -98,6 +124,15 @@ class SettingsMenuContext implements Context, ActorAwareInterface {
 		$this->iOpenTheSettingsMenu();
 
 		$this->actor->find(self::usersMenuItem(), 2)->click();
+	}
+
+	/**
+	 * @When I open the Apps management
+	 */
+	public function iOpenTheAppsManagement() {
+		$this->iOpenTheSettingsMenu();
+
+		$this->actor->find(self::usersAppsItem(), 2)->click();
 	}
 
 	/**
@@ -159,6 +194,15 @@ class SettingsMenuContext implements Context, ActorAwareInterface {
 	public function iSeeThatTheItemSettingsPanelIsShown($itemText) {
 		PHPUnit_Framework_Assert::assertTrue(
 			$this->actor->find(self::settingsPanelFor($itemText), 10)->isVisible()
+		);
+	}
+
+	/**
+	 * @Then I see that the :itemText entry in the settings panel is shown
+	 */
+	public function iSeeThatTheItemEntryInTheSettingsPanelIsShown($itemText) {
+		PHPUnit_Framework_Assert::assertTrue(
+			$this->actor->find(self::settingsPanelEntryFor($itemText), 10)->isVisible()
 		);
 	}
 

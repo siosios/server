@@ -33,13 +33,13 @@
 
 namespace OCA\Theming;
 
-
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
 use OCP\Files\NotFoundException;
 use OCP\ICacheFactory;
 use OCP\IConfig;
 use OCP\IL10N;
+use OCP\INavigationManager;
 use OCP\IURLGenerator;
 
 class ThemingDefaults extends \OC_Defaults {
@@ -58,6 +58,9 @@ class ThemingDefaults extends \OC_Defaults {
 	private $util;
 	/** @var IAppManager */
 	private $appManager;
+	/** @var INavigationManager */
+	private $navigationManager;
+
 	/** @var string */
 	private $name;
 	/** @var string */
@@ -95,7 +98,8 @@ class ThemingDefaults extends \OC_Defaults {
 								ICacheFactory $cacheFactory,
 								Util $util,
 								ImageManager $imageManager,
-								IAppManager $appManager
+								IAppManager $appManager,
+								INavigationManager $navigationManager
 	) {
 		parent::__construct();
 		$this->config = $config;
@@ -105,6 +109,7 @@ class ThemingDefaults extends \OC_Defaults {
 		$this->cacheFactory = $cacheFactory;
 		$this->util = $util;
 		$this->appManager = $appManager;
+		$this->navigationManager = $navigationManager;
 
 		$this->name = parent::getName();
 		$this->title = parent::getTitle();
@@ -141,11 +146,58 @@ class ThemingDefaults extends \OC_Defaults {
 		return \OCP\Util::sanitizeHTML($this->config->getAppValue('theming', 'slogan', $this->slogan));
 	}
 
+	public function getImprintUrl() {
+		return (string)$this->config->getAppValue('theming', 'imprintUrl', '');
+	}
+
+	public function getPrivacyUrl() {
+		return (string)$this->config->getAppValue('theming', 'privacyUrl', '');
+	}
+
 	public function getShortFooter() {
 		$slogan = $this->getSlogan();
-		$footer = '<a href="'. $this->getBaseUrl() . '" target="_blank"' .
-			' rel="noreferrer noopener">' .$this->getEntity() . '</a>'.
-			($slogan !== '' ? ' – ' . $slogan : '');
+		$baseUrl = $this->getBaseUrl();
+		if ($baseUrl !== '') {
+			$footer = '<a href="' . $baseUrl . '" target="_blank"' .
+				' rel="noreferrer noopener" class="entity-name">' . $this->getEntity() . '</a>';
+		} else {
+			$footer = '<span class="entity-name">' .$this->getEntity() . '</span>';
+		}
+		$footer .= ($slogan !== '' ? ' – ' . $slogan : '');
+
+		$links = [
+			[
+				'text' => $this->l->t('Legal notice'),
+				'url' => (string)$this->getImprintUrl()
+			],
+			[
+				'text' => $this->l->t('Privacy policy'),
+				'url' => (string)$this->getPrivacyUrl()
+			],
+		];
+
+		$navigation = $this->navigationManager->getAll(INavigationManager::TYPE_GUEST);
+		$guestNavigation = array_map(function($nav) {
+			return [
+				'text' => $nav['name'],
+				'url' => $nav['href']
+			];
+		}, $navigation);
+		$links = array_merge($links, $guestNavigation);
+
+		$legalLinks = ''; $divider = '';
+		foreach($links as $link) {
+			if($link['url'] !== ''
+				&& filter_var($link['url'], FILTER_VALIDATE_URL)
+			) {
+				$legalLinks .= $divider . '<a href="' . $link['url'] . '" class="legal" target="_blank"' .
+					' rel="noreferrer noopener">' . $link['text'] . '</a>';
+				$divider = ' · ';
+			}
+		}
+		if($legalLinks !== '' ) {
+			$footer .= '<br/>' . $legalLinks;
+		}
 
 		return $footer;
 	}
@@ -170,7 +222,7 @@ class ThemingDefaults extends \OC_Defaults {
 
 		$logoExists = true;
 		try {
-			$this->imageManager->getImage('logo');
+			$this->imageManager->getImage('logo', $useSvg);
 		} catch (\Exception $e) {
 			$logoExists = false;
 		}
@@ -179,14 +231,14 @@ class ThemingDefaults extends \OC_Defaults {
 
 		if(!$logo || !$logoExists) {
 			if($useSvg) {
-				$logo = $this->urlGenerator->imagePath('core', 'logo.svg');
+				$logo = $this->urlGenerator->imagePath('core', 'logo/logo.svg');
 			} else {
-				$logo = $this->urlGenerator->imagePath('core', 'logo.png');
+				$logo = $this->urlGenerator->imagePath('core', 'logo/logo.png');
 			}
 			return $logo . '?v=' . $cacheBusterCounter;
 		}
 
-		return $this->urlGenerator->linkToRoute('theming.Theming.getImage', [ 'key' => 'logo' ]) . '?v=' . $cacheBusterCounter;
+		return $this->urlGenerator->linkToRoute('theming.Theming.getImage', [ 'key' => 'logo', 'useSvg' => $useSvg, 'v' => $cacheBusterCounter ]);
 	}
 
 	/**
@@ -237,10 +289,10 @@ class ThemingDefaults extends \OC_Defaults {
 			'theming-favicon-mime' => "'" . $this->config->getAppValue('theming', 'faviconMime') . "'"
 		];
 
-		$variables['image-logo'] = "'".$this->imageManager->getImageUrl('logo')."'";
+		$variables['image-logo'] = "url('".$this->imageManager->getImageUrl('logo')."')";
 		$variables['image-logoheader'] = "'".$this->imageManager->getImageUrl('logoheader')."'";
 		$variables['image-favicon'] = "'".$this->imageManager->getImageUrl('favicon')."'";
-		$variables['image-login-background'] = "'".$this->imageManager->getImageUrl('background')."'";
+		$variables['image-login-background'] = "url('".$this->imageManager->getImageUrl('background')."')";
 		$variables['image-login-plain'] = 'false';
 
 		if ($this->config->getAppValue('theming', 'color', null) !== null) {
@@ -252,6 +304,12 @@ class ThemingDefaults extends \OC_Defaults {
 		if ($this->config->getAppValue('theming', 'backgroundMime', null) === 'backgroundColor') {
 			$variables['image-login-plain'] = 'true';
 		}
+
+		$variables['has-legal-links'] = 'false';
+		if($this->getImprintUrl() !== '' || $this->getPrivacyUrl() !== '') {
+			$variables['has-legal-links'] = 'true';
+		}
+
 		$cache->set('getScssVariables', $variables);
 		return $variables;
 	}
@@ -265,7 +323,7 @@ class ThemingDefaults extends \OC_Defaults {
 	 * @return bool|string false if image should not replaced, otherwise the location of the image
 	 */
 	public function replaceImagePath($app, $image) {
-		if($app==='') {
+		if ($app === '' || $app === 'files_sharing') {
 			$app = 'core';
 		}
 		$cacheBusterValue = $this->config->getAppValue('theming', 'cachebuster', '0');
@@ -276,10 +334,10 @@ class ThemingDefaults extends \OC_Defaults {
 			$customFavicon = null;
 		}
 
-		if ($image === 'favicon.ico' && ($customFavicon !== null || $this->shouldReplaceIcons())) {
+		if ($image === 'favicon.ico' && ($customFavicon !== null || $this->imageManager->shouldReplaceIcons())) {
 			return $this->urlGenerator->linkToRoute('theming.Icon.getFavicon', ['app' => $app]) . '?v=' . $cacheBusterValue;
 		}
-		if ($image === 'favicon-touch.png' && ($customFavicon !== null || $this->shouldReplaceIcons())) {
+		if ($image === 'favicon-touch.png' && ($customFavicon !== null || $this->imageManager->shouldReplaceIcons())) {
 			return $this->urlGenerator->linkToRoute('theming.Icon.getTouchIcon', ['app' => $app]) . '?v=' . $cacheBusterValue;
 		}
 		if ($image === 'manifest.json') {
@@ -291,30 +349,10 @@ class ThemingDefaults extends \OC_Defaults {
 			} catch (AppPathNotFoundException $e) {}
 			return $this->urlGenerator->linkToRoute('theming.Theming.getManifest') . '?v=' . $cacheBusterValue;
 		}
+		if (strpos($image, 'filetypes/') === 0 && file_exists(\OC::$SERVERROOT . '/core/img/' . $image )) {
+			return $this->urlGenerator->linkToRoute('theming.Icon.getThemedIcon', ['app' => $app, 'image' => $image]);
+		}
 		return false;
-	}
-
-	/**
-	 * Check if Imagemagick is enabled and if SVG is supported
-	 * otherwise we can't render custom icons
-	 *
-	 * @return bool
-	 */
-	public function shouldReplaceIcons() {
-		$cache = $this->cacheFactory->createDistributed('theming-' . $this->urlGenerator->getBaseUrl());
-		if($value = $cache->get('shouldReplaceIcons')) {
-			return (bool)$value;
-		}
-		$value = false;
-		if(extension_loaded('imagick')) {
-			$checkImagick = new \Imagick();
-			if (count($checkImagick->queryFormats('SVG')) >= 1) {
-				$value = true;
-			}
-			$checkImagick->clear();
-		}
-		$cache->set('shouldReplaceIcons', $value);
-		return $value;
 	}
 
 	/**

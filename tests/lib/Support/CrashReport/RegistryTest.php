@@ -26,6 +26,8 @@ namespace Test\Support\CrashReport;
 
 use Exception;
 use OC\Support\CrashReport\Registry;
+use OCP\Support\CrashReport\ICollectBreadcrumbs;
+use OCP\Support\CrashReport\IMessageReporter;
 use OCP\Support\CrashReport\IReporter;
 use Test\TestCase;
 
@@ -50,6 +52,20 @@ class RegistryTest extends TestCase {
 		$this->addToAssertionCount(1);
 	}
 
+	public function testDelegateBreadcrumbCollection() {
+		$reporter1 = $this->createMock(IReporter::class);
+		$reporter2 = $this->createMock(ICollectBreadcrumbs::class);
+		$message = 'hello';
+		$category = 'log';
+		$reporter2->expects($this->once())
+			->method('collect')
+			->with($message, $category);
+
+		$this->registry->register($reporter1);
+		$this->registry->register($reporter2);
+		$this->registry->delegateBreadcrumb($message, $category);
+	}
+
 	public function testDelegateToAll() {
 		$reporter1 = $this->createMock(IReporter::class);
 		$reporter2 = $this->createMock(IReporter::class);
@@ -64,6 +80,19 @@ class RegistryTest extends TestCase {
 		$this->registry->register($reporter1);
 		$this->registry->register($reporter2);
 		$this->registry->delegateReport($exception);
+	}
+
+	public function testDelegateMessage() {
+		$reporter1 = $this->createMock(IReporter::class);
+		$reporter2 = $this->createMock(IMessageReporter::class);
+		$message = 'hello';
+		$reporter2->expects($this->once())
+			->method('reportMessage')
+			->with($message, []);
+
+		$this->registry->register($reporter1);
+		$this->registry->register($reporter2);
+		$this->registry->delegateMessage($message);
 	}
 
 }

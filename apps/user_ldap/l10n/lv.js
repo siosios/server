@@ -48,7 +48,6 @@ OC.L10N.register(
     "Other Attributes:" : "Citi atribūti:",
     "Test Loginname" : "Pārbaudiet lietotājvārdu",
     "Verify settings" : "Pārbaudīt iestatījumus",
-    "1. Server" : "1. Serveris",
     "%s. Server:" : "%s. Serveris:",
     "Host" : "Resursdators",
     "Port" : "Ports",
@@ -103,8 +102,6 @@ OC.L10N.register(
     "Internal Username" : "Iekšējais lietotājvārds",
     "Override UUID detection" : "Ignorēt UUID noteikšanu",
     "UUID Attribute for Users:" : "UUID atribūti lietotājiem:",
-    "UUID Attribute for Groups:" : "UUID atribūti grupām:",
-    " entries available within the provided Base DN" : "ieraksti pieejami ar nosacījumu DN bāzē",
-    "LDAP" : "LDAP"
+    "UUID Attribute for Groups:" : "UUID atribūti grupām:"
 },
 "nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);");

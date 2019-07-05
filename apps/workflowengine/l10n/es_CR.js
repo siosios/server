@@ -1,8 +1,6 @@
 OC.L10N.register(
     "workflowengine",
     {
-    "Saved" : "Guardado",
-    "Saving failed:" : "Falla al guardar:",
     "File MIME type" : "Tipo MIME del archivo",
     "is" : "es",
     "is not" : "no es",
@@ -40,6 +38,16 @@ OC.L10N.register(
     "User group membership" : "Membresia al grupo de usuarios",
     "is member of" : "es miembro de",
     "is not member of" : "no es miembro de",
+    "Short rule description" : "Descripción corta de la regla",
+    "Add rule" : "Agregar regla",
+    "Reset" : "Restablecer",
+    "Save" : "Guardar",
+    "Saving…" : "Guardando...",
+    "Group list is empty" : "La lista de grupos esta vacía",
+    "Unable to retrieve the group list" : "No fue posible recuperar la lista del gurpo",
+    "Saved" : "Guardado",
+    "Saving failed:" : "Falla al guardar:",
+    "Add rule group" : "Agregar regla de grupo",
     "The given operator is invalid" : "El operador indicado es inválido",
     "The given regular expression is invalid" : "La expresión regular indicada es inválida",
     "The given file size is invalid" : "El tamaño de archivo indicado es inválido",
@@ -58,14 +66,9 @@ OC.L10N.register(
     "Check %s does not exist" : "La validación %s no existe",
     "Check %s is invalid" : "La validación %s no es inválida",
     "Check #%s does not exist" : "La validación #%s no existe",
-    "Workflow" : "Flujo de trabajo",
+    "Files workflow engine" : "Motor de flujo de trabajo de archivos",
     "Open documentation" : "Abrir la documentación",
-    "Add rule group" : "Agregar regla de grupo",
-    "Short rule description" : "Descripción corta de la regla",
-    "Add rule" : "Agregar regla",
-    "Reset" : "Restablecer",
-    "Save" : "Guardar",
-    "Saving…" : "Guardando...",
-    "Loading…" : "Cargando..."
+    "Loading…" : "Cargando...",
+    "Workflow" : "Flujo de trabajo"
 },
 "nplurals=2; plural=(n != 1);");

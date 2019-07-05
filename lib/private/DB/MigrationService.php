@@ -23,7 +23,14 @@
 
 namespace OC\DB;
 
+use Doctrine\DBAL\Platforms\OraclePlatform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Schema\Index;
+use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaException;
+use Doctrine\DBAL\Schema\Sequence;
+use Doctrine\DBAL\Schema\Table;
+use OC\App\InfoParser;
 use OC\IntegrityCheck\Helpers\AppLocator;
 use OC\Migration\SimpleOutput;
 use OCP\AppFramework\App;
@@ -45,6 +52,8 @@ class MigrationService {
 	private $connection;
 	/** @var string */
 	private $appName;
+	/** @var bool */
+	private $checkOracle;
 
 	/**
 	 * MigrationService constructor.
@@ -66,6 +75,7 @@ class MigrationService {
 		if ($appName === 'core') {
 			$this->migrationsPath = \OC::$SERVERROOT . '/core/Migrations';
 			$this->migrationsNamespace = 'OC\\Core\\Migrations';
+			$this->checkOracle = true;
 		} else {
 			if (null === $appLocator) {
 				$appLocator = new AppLocator();
@@ -74,6 +84,21 @@ class MigrationService {
 			$namespace = App::buildAppNamespace($appName);
 			$this->migrationsPath = "$appPath/lib/Migration";
 			$this->migrationsNamespace = $namespace . '\\Migration';
+
+			$infoParser = new InfoParser();
+			$info = $infoParser->parse($appPath . '/appinfo/info.xml');
+			if (!isset($info['dependencies']['database'])) {
+				$this->checkOracle = true;
+			} else {
+				$this->checkOracle = false;
+				foreach ($info['dependencies']['database'] as $database) {
+					if (\is_string($database) && $database === 'oci') {
+						$this->checkOracle = true;
+					} else if (\is_array($database) && isset($database['@value']) && $database['@value'] === 'oci') {
+						$this->checkOracle = true;
+					}
+				}
+			}
 		}
 	}
 
@@ -376,25 +401,48 @@ class MigrationService {
 	 * Applies all not yet applied versions up to $to
 	 *
 	 * @param string $to
+	 * @param bool $schemaOnly
 	 * @throws \InvalidArgumentException
 	 */
-	public function migrate($to = 'latest') {
+	public function migrate($to = 'latest', $schemaOnly = false) {
 		// read known migrations
 		$toBeExecuted = $this->getMigrationsToExecute($to);
 		foreach ($toBeExecuted as $version) {
-			$this->executeStep($version);
+			$this->executeStep($version, $schemaOnly);
 		}
 	}
 
 	/**
+	 * Get the human readable descriptions for the migration steps to run
+	 *
+	 * @param string $to
+	 * @return string[] [$name => $description]
+	 */
+	public function describeMigrationStep($to = 'latest') {
+		$toBeExecuted = $this->getMigrationsToExecute($to);
+		$description = [];
+		foreach ($toBeExecuted as $version) {
+			$migration = $this->createInstance($version);
+			if ($migration->name()) {
+				$description[$migration->name()] = $migration->description();
+			}
+		}
+		return $description;
+	}
+
+	/**
 	 * @param string $version
-	 * @return mixed
+	 * @return IMigrationStep
 	 * @throws \InvalidArgumentException
 	 */
 	protected function createInstance($version) {
 		$class = $this->getClass($version);
 		try {
 			$s = \OC::$server->query($class);
+
+			if (!$s instanceof IMigrationStep) {
+				throw new \InvalidArgumentException('Not a valid migration');
+			}
 		} catch (QueryException $e) {
 			if (class_exists($class)) {
 				$s = new $class();
@@ -410,32 +458,106 @@ class MigrationService {
 	 * Executes one explicit version
 	 *
 	 * @param string $version
+	 * @param bool $schemaOnly
 	 * @throws \InvalidArgumentException
 	 */
-	public function executeStep($version) {
+	public function executeStep($version, $schemaOnly = false) {
 		$instance = $this->createInstance($version);
-		if (!$instance instanceof IMigrationStep) {
-			throw new \InvalidArgumentException('Not a valid migration');
-		}
 
-		$instance->preSchemaChange($this->output, function() {
-			return new SchemaWrapper($this->connection);
-		}, ['tablePrefix' => $this->connection->getPrefix()]);
+		if (!$schemaOnly) {
+			$instance->preSchemaChange($this->output, function() {
+				return new SchemaWrapper($this->connection);
+			}, ['tablePrefix' => $this->connection->getPrefix()]);
+		}
 
 		$toSchema = $instance->changeSchema($this->output, function() {
 			return new SchemaWrapper($this->connection);
 		}, ['tablePrefix' => $this->connection->getPrefix()]);
 
 		if ($toSchema instanceof SchemaWrapper) {
-			$this->connection->migrateToSchema($toSchema->getWrappedSchema());
+			$targetSchema = $toSchema->getWrappedSchema();
+			if ($this->checkOracle) {
+				$sourceSchema = $this->connection->createSchema();
+				$this->ensureOracleIdentifierLengthLimit($sourceSchema, $targetSchema, strlen($this->connection->getPrefix()));
+			}
+			$this->connection->migrateToSchema($targetSchema);
 			$toSchema->performDropTableCalls();
 		}
 
-		$instance->postSchemaChange($this->output, function() {
-			return new SchemaWrapper($this->connection);
-		}, ['tablePrefix' => $this->connection->getPrefix()]);
+		if (!$schemaOnly) {
+			$instance->postSchemaChange($this->output, function() {
+				return new SchemaWrapper($this->connection);
+			}, ['tablePrefix' => $this->connection->getPrefix()]);
+		}
 
 		$this->markAsExecuted($version);
+	}
+
+	public function ensureOracleIdentifierLengthLimit(Schema $sourceSchema, Schema $targetSchema, int $prefixLength) {
+		$sequences = $targetSchema->getSequences();
+
+		foreach ($targetSchema->getTables() as $table) {
+			try {
+				$sourceTable = $sourceSchema->getTable($table->getName());
+			} catch (SchemaException $e) {
+				if (\strlen($table->getName()) - $prefixLength > 27) {
+					throw new \InvalidArgumentException('Table name "'  . $table->getName() . '" is too long.');
+				}
+				$sourceTable = null;
+			}
+
+			foreach ($table->getColumns() as $thing) {
+				if ((!$sourceTable instanceof Table || !$sourceTable->hasColumn($thing->getName())) && \strlen($thing->getName()) > 30) {
+					throw new \InvalidArgumentException('Column name "'  . $table->getName() . '"."' . $thing->getName() . '" is too long.');
+				}
+			}
+
+			foreach ($table->getIndexes() as $thing) {
+				if ((!$sourceTable instanceof Table || !$sourceTable->hasIndex($thing->getName())) && \strlen($thing->getName()) > 30) {
+					throw new \InvalidArgumentException('Index name "'  . $table->getName() . '"."' . $thing->getName() . '" is too long.');
+				}
+			}
+
+			foreach ($table->getForeignKeys() as $thing) {
+				if ((!$sourceTable instanceof Table || !$sourceTable->hasForeignKey($thing->getName())) && \strlen($thing->getName()) > 30) {
+					throw new \InvalidArgumentException('Foreign key name "'  . $table->getName() . '"."' . $thing->getName() . '" is too long.');
+				}
+			}
+
+			$primaryKey = $table->getPrimaryKey();
+			if ($primaryKey instanceof Index && (!$sourceTable instanceof Table || !$sourceTable->hasPrimaryKey())) {
+				$indexName = strtolower($primaryKey->getName());
+				$isUsingDefaultName = $indexName === 'primary';
+
+				if ($this->connection->getDatabasePlatform() instanceof PostgreSqlPlatform) {
+					$defaultName = $table->getName() . '_pkey';
+					$isUsingDefaultName = strtolower($defaultName) === $indexName;
+
+					if ($isUsingDefaultName) {
+						$sequenceName = $table->getName() . '_' . implode('_', $primaryKey->getColumns()) . '_seq';
+						$sequences = array_filter($sequences, function(Sequence $sequence) use ($sequenceName) {
+							return $sequence->getName() !== $sequenceName;
+						});
+					}
+				} else if ($this->connection->getDatabasePlatform() instanceof OraclePlatform) {
+					$defaultName = $table->getName() . '_seq';
+					$isUsingDefaultName = strtolower($defaultName) === $indexName;
+				}
+
+				if (!$isUsingDefaultName && \strlen($indexName) > 30) {
+					throw new \InvalidArgumentException('Primary index name  on "'  . $table->getName() . '" is too long.');
+				}
+				if ($isUsingDefaultName && \strlen($table->getName()) - $prefixLength > 23) {
+					throw new \InvalidArgumentException('Primary index name  on "'  . $table->getName() . '" is too long.');
+				}
+			}
+		}
+
+		foreach ($sequences as $sequence) {
+			if (!$sourceSchema->hasSequence($sequence->getName()) && \strlen($sequence->getName()) > 30) {
+				throw new \InvalidArgumentException('Sequence name "'  . $sequence->getName() . '" is too long.');
+			}
+		}
 	}
 
 	private function ensureMigrationsAreLoaded() {

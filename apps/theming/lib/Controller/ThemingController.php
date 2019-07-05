@@ -66,8 +66,6 @@ class ThemingController extends Controller {
 	private $themingDefaults;
 	/** @var Util */
 	private $util;
-	/** @var ITimeFactory */
-	private $timeFactory;
 	/** @var IL10N */
 	private $l10n;
 	/** @var IConfig */
@@ -93,7 +91,6 @@ class ThemingController extends Controller {
 	 * @param IConfig $config
 	 * @param ThemingDefaults $themingDefaults
 	 * @param Util $util
-	 * @param ITimeFactory $timeFactory
 	 * @param IL10N $l
 	 * @param ITempManager $tempManager
 	 * @param IAppData $appData
@@ -108,7 +105,6 @@ class ThemingController extends Controller {
 		IConfig $config,
 		ThemingDefaults $themingDefaults,
 		Util $util,
-		ITimeFactory $timeFactory,
 		IL10N $l,
 		ITempManager $tempManager,
 		IAppData $appData,
@@ -121,7 +117,6 @@ class ThemingController extends Controller {
 
 		$this->themingDefaults = $themingDefaults;
 		$this->util = $util;
-		$this->timeFactory = $timeFactory;
 		$this->l10n = $l;
 		$this->config = $config;
 		$this->tempManager = $tempManager;
@@ -161,6 +156,26 @@ class ThemingController extends Controller {
 					]);
 				}
 				break;
+			case 'imprintUrl':
+				if (strlen($value) > 500) {
+					return new DataResponse([
+						'data' => [
+							'message' => $this->l10n->t('The given legal notice address is too long'),
+						],
+						'status' => 'error'
+					]);
+				}
+				break;
+			case 'privacyUrl':
+				if (strlen($value) > 500) {
+					return new DataResponse([
+						'data' => [
+							'message' => $this->l10n->t('The given privacy policy address is too long'),
+						],
+						'status' => 'error'
+					]);
+				}
+				break;
 			case 'slogan':
 				if (strlen($value) > 500) {
 					return new DataResponse([
@@ -186,14 +201,14 @@ class ThemingController extends Controller {
 		$this->themingDefaults->set($setting, $value);
 
 		// reprocess server scss for preview
-		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/server.scss', 'core');
+		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/css-variables.scss', 'core');
 
 		return new DataResponse(
 			[
 				'data' =>
 					[
 						'message' => $this->l10n->t('Saved'),
-						'serverCssUrl' => $this->urlGenerator->linkTo('', $this->scssCacher->getCachedSCSS('core', '/core/css/server.scss'))
+						'serverCssUrl' => $this->urlGenerator->linkTo('', $this->scssCacher->getCachedSCSS('core', '/core/css/css-variables.scss'))
 					],
 				'status' => 'success'
 			]
@@ -247,9 +262,12 @@ class ThemingController extends Controller {
 			$folder = $this->appData->newFolder('images');
 		}
 
+		$this->imageManager->delete($key);
+
 		$target = $folder->newFile($key);
-		$supportedFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'text/svg'];
-		if (!in_array($image['type'], $supportedFormats)) {
+		$supportedFormats = $this->getSupportedUploadImageFormats($key);
+		$detectedMimeType = mime_content_type($image['tmp_name']);
+		if (!in_array($image['type'], $supportedFormats) || !in_array($detectedMimeType, $supportedFormats)) {
 			return new DataResponse(
 				[
 					'data' => [
@@ -284,7 +302,7 @@ class ThemingController extends Controller {
 
 		$this->themingDefaults->set($key.'Mime', $image['type']);
 
-		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/server.scss', 'core');
+		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/css-variables.scss', 'core');
 
 		return new DataResponse(
 			[
@@ -293,11 +311,29 @@ class ThemingController extends Controller {
 						'name' => $name,
 						'url' => $this->imageManager->getImageUrl($key),
 						'message' => $this->l10n->t('Saved'),
-						'serverCssUrl' => $this->urlGenerator->linkTo('', $this->scssCacher->getCachedSCSS('core', '/core/css/server.scss'))
+						'serverCssUrl' => $this->urlGenerator->linkTo('', $this->scssCacher->getCachedSCSS('core', '/core/css/css-variables.scss'))
 					],
 				'status' => 'success'
 			]
 		);
+	}
+
+	/**
+	 * Returns a list of supported mime types for image uploads.
+	 * "favicon" images are only allowed to be SVG when imagemagick with SVG support is available.
+	 *
+	 * @param string $key The image key, e.g. "favicon"
+	 * @return array
+	 */
+	private function getSupportedUploadImageFormats(string $key): array {
+		$supportedFormats = ['image/jpeg', 'image/png', 'image/gif',];
+
+		if ($key !== 'favicon' || $this->imageManager->shouldReplaceIcons() === true) {
+			$supportedFormats[] = 'image/svg+xml';
+			$supportedFormats[] = 'image/svg';
+		}
+
+		return $supportedFormats;
 	}
 
 	/**
@@ -310,7 +346,7 @@ class ThemingController extends Controller {
 	public function undo(string $setting): DataResponse {
 		$value = $this->themingDefaults->undo($setting);
 		// reprocess server scss for preview
-		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/server.scss', 'core');
+		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/css-variables.scss', 'core');
 
 		if (strpos($setting, 'Mime') !== -1) {
 			$imageKey = str_replace('Mime', '', $setting);
@@ -323,7 +359,7 @@ class ThemingController extends Controller {
 					[
 						'value' => $value,
 						'message' => $this->l10n->t('Saved'),
-						'serverCssUrl' => $this->urlGenerator->linkTo('', $this->scssCacher->getCachedSCSS('core', '/core/css/server.scss'))
+						'serverCssUrl' => $this->urlGenerator->linkTo('', $this->scssCacher->getCachedSCSS('core', '/core/css/css-variables.scss'))
 					],
 				'status' => 'success'
 			]
@@ -335,30 +371,33 @@ class ThemingController extends Controller {
 	 * @NoCSRFRequired
 	 *
 	 * @param string $key
+	 * @param bool $useSvg
 	 * @return FileDisplayResponse|NotFoundResponse
-	 * @throws \Exception
+	 * @throws NotPermittedException
 	 */
-	public function getImage(string $key) {
+	public function getImage(string $key, bool $useSvg = true) {
 		try {
-			$file = $this->imageManager->getImage($key);
+			$file = $this->imageManager->getImage($key, $useSvg);
 		} catch (NotFoundException $e) {
 			return new NotFoundResponse();
 		}
 
 		$response = new FileDisplayResponse($file);
 		$response->cacheFor(3600);
-		$expires = new \DateTime();
-		$expires->setTimestamp($this->timeFactory->getTime());
-		$expires->add(new \DateInterval('PT24H'));
-		$response->addHeader('Expires', $expires->format(\DateTime::RFC2822));
-		$response->addHeader('Pragma', 'cache');
 		$response->addHeader('Content-Type', $this->config->getAppValue($this->appName, $key . 'Mime', ''));
+		$response->addHeader('Content-Disposition', 'attachment; filename="' . $key . '"');
+		if (!$useSvg) {
+			$response->addHeader('Content-Type', 'image/png');
+		} else {
+			$response->addHeader('Content-Type', $this->config->getAppValue($this->appName, $key . 'Mime', ''));
+		}
 		return $response;
 	}
 
 	/**
 	 * @NoCSRFRequired
 	 * @PublicPage
+	 * @NoSameSiteCookieRequired
 	 *
 	 * @return FileDisplayResponse|NotFoundResponse
 	 * @throws NotPermittedException
@@ -381,11 +420,6 @@ class ThemingController extends Controller {
 			$cssFile = $this->scssCacher->getCachedCSS('theming', 'theming.css');
 			$response = new FileDisplayResponse($cssFile, Http::STATUS_OK, ['Content-Type' => 'text/css']);
 			$response->cacheFor(86400);
-			$expires = new \DateTime();
-			$expires->setTimestamp($this->timeFactory->getTime());
-			$expires->add(new \DateInterval('PT24H'));
-			$response->addHeader('Expires', $expires->format(\DateTime::RFC1123));
-			$response->addHeader('Pragma', 'cache');
 			return $response;
 		} catch (NotFoundException $e) {
 			return new NotFoundResponse();
@@ -395,6 +429,7 @@ class ThemingController extends Controller {
 	/**
 	 * @NoCSRFRequired
 	 * @PublicPage
+	 * @NoSameSiteCookieRequired
 	 *
 	 * @return DataDownloadResponse
 	 */
@@ -406,13 +441,13 @@ class ThemingController extends Controller {
 		url: ' . json_encode($this->themingDefaults->getBaseUrl()) . ',
 		slogan: ' . json_encode($this->themingDefaults->getSlogan()) . ',
 		color: ' . json_encode($this->themingDefaults->getColorPrimary()) . ',
+		imprintUrl: ' . json_encode($this->themingDefaults->getImprintUrl()) . ',
+		privacyUrl: ' . json_encode($this->themingDefaults->getPrivacyUrl()) . ',
 		inverted: ' . json_encode($this->util->invertTextColor($this->themingDefaults->getColorPrimary())) . ',
 		cacheBuster: ' . json_encode($cacheBusterValue) . '
 	};
 })();';
 		$response = new DataDownloadResponse($responseJS, 'javascript', 'text/javascript');
-		$response->addHeader('Expires', date(\DateTime::RFC2822, $this->timeFactory->getTime()));
-		$response->addHeader('Pragma', 'cache');
 		$response->cacheFor(3600);
 		return $response;
 	}
@@ -446,8 +481,6 @@ class ThemingController extends Controller {
 			'display' => 'standalone'
 		];
 		$response = new Http\JSONResponse($responseJS);
-		$response->addHeader('Expires', date(\DateTime::RFC2822, $this->timeFactory->getTime()));
-		$response->addHeader('Pragma', 'cache');
 		$response->cacheFor(3600);
 		return $response;
 	}

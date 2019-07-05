@@ -206,7 +206,7 @@ class DAV extends Common {
 		try {
 			$response = $this->client->propFind(
 				$this->encodePath($path),
-				['{DAV:}href'],
+				['{DAV:}getetag'],
 				1
 			);
 			if ($response === false) {
@@ -726,7 +726,11 @@ class DAV extends Common {
 			return null;
 		}
 		if (isset($response['{DAV:}getetag'])) {
-			return trim($response['{DAV:}getetag'], '"');
+			$etag = trim($response['{DAV:}getetag'], '"');
+			if (strlen($etag) > 40) {
+				$etag = md5($etag);
+			}
+			return $etag;
 		}
 		return parent::getEtag($path);
 	}
@@ -827,7 +831,7 @@ class DAV extends Common {
 	 * which might be temporary
 	 */
 	protected function convertException(Exception $e, $path = '') {
-		\OC::$server->getLogger()->logException($e, ['app' => 'files_external']);
+		\OC::$server->getLogger()->logException($e, ['app' => 'files_external', 'level' => ILogger::DEBUG]);
 		if ($e instanceof ClientHttpException) {
 			if ($e->getHttpStatus() === Http::STATUS_LOCKED) {
 				throw new \OCP\Lock\LockedException($path);

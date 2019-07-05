@@ -25,61 +25,63 @@
  */
 namespace OC\Preview;
 
+use OCP\IImage;
 use OCP\ILogger;
+use OCP\Files\File;
 
-abstract class Office extends Provider {
+abstract class Office extends ProviderV2 {
 	private $cmd;
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public function getThumbnail($path, $maxX, $maxY, $scalingup, $fileview) {
+	public function getThumbnail(File $file, int $maxX, int $maxY): ?IImage {
 		$this->initCmd();
 		if (is_null($this->cmd)) {
-			return false;
+			return null;
 		}
 
-		$absPath = $fileview->toTmpFile($path);
+		$absPath = $this->getLocalFile($file);
 
 		$tmpDir = \OC::$server->getTempManager()->getTempBaseDir();
 
-		$defaultParameters = ' -env:UserInstallation=file://' . escapeshellarg($tmpDir . '/owncloud-' . \OC_Util::getInstanceId() . '/') . ' --headless --nologo --nofirststartwizard --invisible --norestore --convert-to pdf --outdir ';
+		$defaultParameters = ' -env:UserInstallation=file://' . escapeshellarg($tmpDir . '/owncloud-' . \OC_Util::getInstanceId() . '/') . ' --headless --nologo --nofirststartwizard --invisible --norestore --convert-to png --outdir ';
 		$clParameters = \OC::$server->getConfig()->getSystemValue('preview_office_cl_parameters', $defaultParameters);
 
 		$exec = $this->cmd . $clParameters . escapeshellarg($tmpDir) . ' ' . escapeshellarg($absPath);
 
 		shell_exec($exec);
 
-		//create imagick object from pdf
-		$pdfPreview = null;
+		//create imagick object from png
+		$pngPreview = null;
 		try {
 			list($dirname, , , $filename) = array_values(pathinfo($absPath));
-			$pdfPreview = $dirname . '/' . $filename . '.pdf';
+			$pngPreview = $dirname . '/' . $filename . '.png';
 
-			$pdf = new \imagick($pdfPreview . '[0]');
-			$pdf->setImageFormat('jpg');
+			$png = new \imagick($pngPreview . '[0]');
+			$png->setImageFormat('jpg');
 		} catch (\Exception $e) {
-			unlink($absPath);
-			unlink($pdfPreview);
+			$this->cleanTmpFiles();
+			unlink($pngPreview);
 			\OC::$server->getLogger()->logException($e, [
 				'level' => ILogger::ERROR,
 				'app' => 'core',
 			]);
-			return false;
+			return null;
 		}
 
 		$image = new \OC_Image();
-		$image->loadFromData($pdf);
+		$image->loadFromData($png);
 
-		unlink($absPath);
-		unlink($pdfPreview);
+		$this->cleanTmpFiles();
+		unlink($pngPreview);
 
 		if ($image->valid()) {
 			$image->scaleDownToFit($maxX, $maxY);
 
 			return $image;
 		}
-		return false;
+		return null;
 
 	}
 

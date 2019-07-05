@@ -38,7 +38,6 @@ $mail_smtpsecure = [
 ];
 
 $mail_smtpmode = [
-	['php', 'PHP'],
 	['smtp', 'SMTP'],
 ];
 if ($_['sendmail_is_available']) {
@@ -47,6 +46,11 @@ if ($_['sendmail_is_available']) {
 if ($_['mail_smtpmode'] === 'qmail') {
 	$mail_smtpmode[] = ['qmail', 'qmail'];
 }
+
+$mail_sendmailmode = [
+	'smtp' => 'smtp (-bs)',
+	'pipe' => 'pipe (-t)'
+];
 
 ?>
 
@@ -85,6 +89,15 @@ if ($_['mail_smtpmode'] === 'qmail') {
 					<option value="<?php p($secure)?>" <?php p($selected) ?>><?php p($name) ?></option>
 				<?php endforeach;?>
 			</select>
+
+			<label id="mail_sendmailmode_label" for="mail_sendmailmode" class="<?= $_['mail_smtpmode'] !== 'sendmail' ? 'hidden' : '' ?>">
+				<?php p($l->t('Sendmail mode')); ?>
+			</label>
+			<select name="mail_sendmailmode" id="mail_sendmailmode" class="<?= $_['mail_smtpmode'] !== 'sendmail' ? 'hidden' : '' ?>">
+				<?php foreach ($mail_sendmailmode as $sendmailmodeValue => $sendmailmodeLabel): ?>
+					<option value="<?php p($sendmailmodeValue)?>" <?= $sendmailmodeValue === $_['mail_sendmailmode'] ? 'selected="selected"' : '' ?>><?php p($sendmailmodeLabel) ?></option>
+				<?php endforeach;?>
+			</select>
 		</p>
 
 		<p>
@@ -97,7 +110,7 @@ if ($_['mail_smtpmode'] === 'qmail') {
 
 		<p id="setting_smtpauth" <?php if ($_['mail_smtpmode'] !== 'smtp') print_unescaped(' class="hidden"'); ?>>
 			<label for="mail_smtpauthtype"><?php p($l->t('Authentication method')); ?></label>
-			<select name="mail_smtpauthtype" id="mail_smtpauthtype'>
+			<select name="mail_smtpauthtype" id="mail_smtpauthtype">
 				<?php foreach ($mail_smtpauthtype as $authtype => $name):
 					$selected = '';
 					if ($authtype == $_['mail_smtpauthtype']):

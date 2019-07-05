@@ -26,7 +26,8 @@
  *
  */
 use GuzzleHttp\Client;
-use GuzzleHttp\Message\ResponseInterface;
+use PHPUnit\Framework\Assert;
+use Psr\Http\Message\ResponseInterface;
 
 require __DIR__ . '/../../vendor/autoload.php';
 
@@ -41,10 +42,13 @@ trait Sharing {
 	/** @var SimpleXMLElement */
 	private $lastShareData = null;
 
+	/** @var SimpleXMLElement[] */
+	private $storedShareData = [];
+
 	/** @var int */
 	private $savedShareId = null;
 
-	/** @var \Psr\Http\Message\ResponseInterface */
+	/** @var ResponseInterface */
 	private $response;
 
 	/**
@@ -82,6 +86,20 @@ trait Sharing {
 		}
 
 		$this->lastShareData = simplexml_load_string($this->response->getBody());
+	}
+
+	/**
+	 * @When /^save the last share data as "([^"]*)"$/
+	 */
+	public function saveLastShareData($name) {
+		$this->storedShareData[$name] = $this->lastShareData;
+	}
+
+	/**
+	 * @When /^restore the last share data from "([^"]*)"$/
+	 */
+	public function restoreLastShareData($name) {
+		 $this->lastShareData = $this->storedShareData[$name];
 	}
 
 	/**
@@ -132,7 +150,7 @@ trait Sharing {
 
 		$client = new Client();
 		$this->response = $client->get($url, $options);
-		PHPUnit_Framework_Assert::assertEquals(200, $this->response->getStatusCode());
+		Assert::assertEquals(200, $this->response->getStatusCode());
 
 		$buf = '';
 		$body = $this->response->getBody();
@@ -144,7 +162,7 @@ trait Sharing {
 
 		if ($mimeType !== null) {
 			$finfo = new finfo;
-			PHPUnit_Framework_Assert::assertEquals($mimeType, $finfo->buffer($buf, FILEINFO_MIME_TYPE));
+			Assert::assertEquals($mimeType, $finfo->buffer($buf, FILEINFO_MIME_TYPE));
 		}
 	}
 
@@ -164,7 +182,7 @@ trait Sharing {
 		$date = date('Y-m-d', strtotime("+3 days"));
 		$options['form_params'] = ['expireDate' => $date];
 		$this->response = $this->response = $client->request("PUT", $fullUrl, $options);
-		PHPUnit_Framework_Assert::assertEquals(200, $this->response->getStatusCode());
+		Assert::assertEquals(200, $this->response->getStatusCode());
 	}
 
 	/**
@@ -201,7 +219,7 @@ trait Sharing {
 			$this->response = $ex->getResponse();
 		}
 
-		PHPUnit_Framework_Assert::assertEquals(200, $this->response->getStatusCode());
+		Assert::assertEquals(200, $this->response->getStatusCode());
 	}
 
 	public function createShare($user,
@@ -303,7 +321,7 @@ trait Sharing {
 	 * @param string $filename
 	 */
 	public function checkSharedFileInResponse($filename){
-		PHPUnit_Framework_Assert::assertEquals(True, $this->isFieldInResponse('file_target', "/$filename"));
+		Assert::assertEquals(True, $this->isFieldInResponse('file_target', "/$filename"));
 	}
 
 	/**
@@ -312,7 +330,7 @@ trait Sharing {
 	 * @param string $filename
 	 */
 	public function checkSharedFileNotInResponse($filename){
-		PHPUnit_Framework_Assert::assertEquals(False, $this->isFieldInResponse('file_target', "/$filename"));
+		Assert::assertEquals(False, $this->isFieldInResponse('file_target', "/$filename"));
 	}
 
 	/**
@@ -321,7 +339,7 @@ trait Sharing {
 	 * @param string $user
 	 */
 	public function checkSharedUserInResponse($user){
-		PHPUnit_Framework_Assert::assertEquals(True, $this->isFieldInResponse('share_with', "$user"));
+		Assert::assertEquals(True, $this->isFieldInResponse('share_with', "$user"));
 	}
 
 	/**
@@ -330,7 +348,7 @@ trait Sharing {
 	 * @param string $user
 	 */
 	public function checkSharedUserNotInResponse($user){
-		PHPUnit_Framework_Assert::assertEquals(False, $this->isFieldInResponse('share_with', "$user"));
+		Assert::assertEquals(False, $this->isFieldInResponse('share_with', "$user"));
 	}
 
 	public function isUserOrGroupInSharedData($userOrGroup, $permissions = null){
@@ -369,7 +387,7 @@ trait Sharing {
 			$this->createShare($user1, $filepath, 0, $user2, null, null, $permissions);
 		}
 		$this->response = $client->get($fullUrl, $options);
-		PHPUnit_Framework_Assert::assertEquals(True, $this->isUserOrGroupInSharedData($user2, $permissions));
+		Assert::assertEquals(True, $this->isUserOrGroupInSharedData($user2, $permissions));
 	}
 
 	/**
@@ -398,7 +416,7 @@ trait Sharing {
 			$this->createShare($user, $filepath, 1, $group, null, null, $permissions);
 		}
 		$this->response = $client->get($fullUrl, $options);
-		PHPUnit_Framework_Assert::assertEquals(True, $this->isUserOrGroupInSharedData($group, $permissions));
+		Assert::assertEquals(True, $this->isUserOrGroupInSharedData($group, $permissions));
 	}
 
 	/**
@@ -425,7 +443,7 @@ trait Sharing {
 	public function checkingLastShareIDIsIncluded(){
 		$share_id = $this->lastShareData->data[0]->id;
 		if (!$this->isFieldInResponse('id', $share_id)){
-			PHPUnit_Framework_Assert::fail("Share id $share_id not found in response");
+			Assert::fail("Share id $share_id not found in response");
 		}
 	}
 
@@ -435,7 +453,7 @@ trait Sharing {
 	public function checkingLastShareIDIsNotIncluded(){
 		$share_id = $this->lastShareData->data[0]->id;
 		if ($this->isFieldInResponse('id', $share_id)){
-			PHPUnit_Framework_Assert::fail("Share id $share_id has been found in response");
+			Assert::fail("Share id $share_id has been found in response");
 		}
 	}
 
@@ -457,7 +475,7 @@ trait Sharing {
 					$value = str_replace("LOCAL", substr($this->localBaseUrl, 0, -4), $value);
 				}
 				if (!$this->isFieldInResponse($field, $value)){
-					PHPUnit_Framework_Assert::fail("$field" . " doesn't have value " . "$value");
+					Assert::fail("$field" . " doesn't have value " . "$value");
 				}
 			}
 		}
@@ -528,26 +546,54 @@ trait Sharing {
 	}
 
 	/**
-	 * @Then The following headers should be set
-	 * @param \Behat\Gherkin\Node\TableNode $table
-	 * @throws \Exception
+	 * @When /^getting sharees for$/
+	 * @param \Behat\Gherkin\Node\TableNode $body
 	 */
-	public function theFollowingHeadersShouldBeSet(\Behat\Gherkin\Node\TableNode $table) {
-		foreach($table->getTable() as $header) {
-			$headerName = $header[0];
-			$expectedHeaderValue = $header[1];
-			$returnedHeader = $this->response->getHeader($headerName)[0];
-			if($returnedHeader !== $expectedHeaderValue) {
-				throw new \Exception(
-					sprintf(
-						"Expected value '%s' for header '%s', got '%s'",
-						$expectedHeaderValue,
-						$headerName,
-						$returnedHeader
-					)
-				);
+	public function whenGettingShareesFor($body) {
+		$url = '/apps/files_sharing/api/v1/sharees';
+		if ($body instanceof \Behat\Gherkin\Node\TableNode) {
+			$parameters = [];
+			foreach ($body->getRowsHash() as $key => $value) {
+				$parameters[] = $key . '=' . $value;
+			}
+			if (!empty($parameters)) {
+				$url .= '?' . implode('&', $parameters);
 			}
 		}
+
+		$this->sendingTo('GET', $url);
+	}
+
+	/**
+	 * @Then /^"([^"]*)" sharees returned (are|is empty)$/
+	 * @param string $shareeType
+	 * @param string $isEmpty
+	 * @param \Behat\Gherkin\Node\TableNode|null $shareesList
+	 */
+	public function thenListOfSharees($shareeType, $isEmpty, $shareesList = null) {
+		if ($isEmpty !== 'is empty') {
+			$sharees = $shareesList->getRows();
+			$respondedArray = $this->getArrayOfShareesResponded($this->response, $shareeType);
+			Assert::assertEquals($sharees, $respondedArray);
+		} else {
+			$respondedArray = $this->getArrayOfShareesResponded($this->response, $shareeType);
+			Assert::assertEmpty($respondedArray);
+		}
+	}
+
+	public function getArrayOfShareesResponded(ResponseInterface $response, $shareeType) {
+		$elements = simplexml_load_string($response->getBody())->data;
+		$elements = json_decode(json_encode($elements), 1);
+		if (strpos($shareeType, 'exact ') === 0) {
+			$elements = $elements['exact'];
+			$shareeType = substr($shareeType, 6);
+		}
+
+		$sharees = [];
+		foreach ($elements[$shareeType] as $element) {
+			$sharees[] = [$element['label'], $element['value']['shareType'], $element['value']['shareWith']];
+		}
+		return $sharees;
 	}
 }
 

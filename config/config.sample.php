@@ -179,6 +179,29 @@ $CONFIG = array(
 'force_language' => 'en',
 
 /**
+ * This sets the default locale on your Nextcloud server, using ISO_639
+ * language codes such as ``en`` for English, ``de`` for German, and ``fr`` for
+ * French, and ISO-3166 country codes such as ``GB``, ``US``, ``CA``, as defined
+ * in RFC 5646. It overrides automatic locale detection on public pages like
+ * login or shared items. User's locale preferences configured under "personal
+ * -> locale" override this setting after they have logged in.
+ *
+ * Defaults to ``en``
+ */
+'default_locale' => 'en_US',
+
+/**
+ * With this setting a locale can be forced for all users. If a locale is
+ * forced, the users are also unable to change their locale in the personal
+ * settings. If users shall be unable to change their locale, but users have
+ * different languages, this value can be set to ``true`` instead of a locale
+ * code.
+ *
+ * Defaults to ``false``
+ */
+'force_locale' => 'en_US',
+
+/**
  * Set the default app to open on login. Use the app names as they appear in the
  * URL after clicking them in the Apps menu, such as documents, calendar, and
  * gallery. You can use a comma-separated list of app names, so if the first
@@ -202,8 +225,8 @@ $CONFIG = array(
 'allow_user_to_change_display_name' => true,
 
 /**
- * Lifetime of the remember login cookie, which is set when the user clicks
- * the ``remember`` checkbox on the login screen.
+ * Lifetime of the remember login cookie. This should be larger than the
+ * session_lifetime. If it is set to 0 remember me is disabled.
  *
  * Defaults to ``60*60*24*15`` seconds (15 days)
  */
@@ -255,18 +278,6 @@ $CONFIG = array(
 'skeletondirectory' => '/path/to/nextcloud/core/skeleton',
 
 /**
- * The ``user_backends`` app (which needs to be enabled first) allows you to
- * configure alternate authentication backends. Supported backends are:
- * IMAP (OC_User_IMAP), SMB (OC_User_SMB), and FTP (OC_User_FTP).
- */
-'user_backends' => array(
-	array(
-		'class' => 'OC_User_IMAP',
-		'arguments' => array('{imap.gmail.com:993/imap/ssl}INBOX')
-	)
-),
-
-/**
  * If your user backend does not allow password resets (e.g. when it's a
  * read-only user backend like LDAP), you can specify a custom link, where the
  * user is redirected to, when clicking the "reset password" link after a failed
@@ -305,14 +316,9 @@ $CONFIG = array(
 'mail_smtpdebug' => false,
 
 /**
- * Which mode to use for sending mail: ``sendmail``, ``smtp``, ``qmail`` or
- * ``php``.
+ * Which mode to use for sending mail: ``sendmail``, ``smtp`` or ``qmail``.
  *
  * If you are using local or remote SMTP, set this to ``smtp``.
- *
- * If you are using PHP mail you must have an installed and working email system
- * on the server. The program used to send email is defined in the ``php.ini``
- * file.
  *
  * For the ``sendmail`` option you need an installed and working email system on
  * the server, with ``/usr/sbin/sendmail`` installed on your Unix system.
@@ -320,9 +326,9 @@ $CONFIG = array(
  * For ``qmail`` the binary is /var/qmail/bin/sendmail, and it must be installed
  * on your Unix system.
  *
- * Defaults to ``php``
+ * Defaults to ``smtp``
  */
-'mail_smtpmode' => 'php',
+'mail_smtpmode' => 'smtp',
 
 /**
  * This depends on ``mail_smtpmode``. Specify the IP address of your mail
@@ -402,6 +408,26 @@ $CONFIG = array(
  * allows to only send plain text emails.
  */
 'mail_send_plaintext_only' => false,
+
+/**
+ * This depends on ``mail_smtpmode``. Array of additional streams options that
+ * will be passed to underlying Swift mailer implementation.
+ * Defaults to an empty array.
+ */
+'mail_smtpstreamoptions' => array(),
+
+/**
+ * Which mode is used for sendmail/qmail: ``smtp`` or ``pipe``.
+ *
+ * For ``smtp`` the sendmail binary is started with the parameter ``-bs``:
+ *   - Use the SMTP protocol on standard input and output.
+ *
+ * For ``pipe`` the binary is started with the parameters ``-t``:
+ *   - Read message from STDIN and extract recipients.
+ *
+ * Defaults to ``smtp``
+ */
+'mail_sendmailmode' => 'smtp',
 
 /**
  * Proxy Configurations
@@ -639,6 +665,26 @@ $CONFIG = array(
 'has_internet_connection' => true,
 
 /**
+ * Which domains to request to determine the availability of an Internet
+ * connection. If none of these hosts are reachable, the administration panel
+ * will show a warning. Set to an empty list to not do any such checks (warning
+ * will still be shown).
+ *
+ * Defaults to the following domains:
+ *
+ *  - www.nextcloud.com
+ *  - www.startpage.com
+ *  - www.eff.org
+ *  - www.edri.org
+ */
+'connectivity_check_domains' => array(
+	'www.nextcloud.com',
+	'www.startpage.com',
+	'www.eff.org',
+	'www.edri.org'
+),
+
+/**
  * Allows Nextcloud to verify a working .well-known URL redirects. This is done
  * by attempting to make a request from JS to
  * https://your-domain.com/.well-known/caldav/
@@ -687,22 +733,35 @@ $CONFIG = array(
  */
 
 /**
- * By default the Nextcloud logs are sent to the ``nextcloud.log`` file in the
- * default Nextcloud data directory.
- * If syslogging is desired, set this parameter to ``syslog``.
- * Setting this parameter to ``errorlog`` will use the PHP error_log function
- * for logging.
+ * This parameter determines where the Nextcloud logs are sent.
+ * ``file``: the logs are written to file ``nextcloud.log`` in the default
+ * Nextcloud data directory. The log file can be changed with parameter
+ * ``logfile``.
+ * ``syslog``: the logs are sent to the system log. This requires a syslog daemon
+ * to be active.
+ * ``errorlog``: the logs are sent to the PHP ``error_log`` function.
+ * ``systemd``: the logs are sent to the Systemd journal. This requires a system
+ * that runs Systemd and the Systemd journal. The PHP extension ``systemd``
+ * must be installed and active.
  *
  * Defaults to ``file``
  */
 'log_type' => 'file',
 
 /**
- * Log file path for the Nextcloud logging type.
+ * Name of the file to which the Nextcloud logs are written if parameter
+ * ``log_type`` is set to ``file``.
  *
  * Defaults to ``[datadirectory]/nextcloud.log``
  */
 'logfile' => '/var/log/nextcloud.log',
+
+/**
+ * Log file mode for the Nextcloud loggin type in octal notation.
+ *
+ * Defaults to 0640 (writeable by user, readable by group).
+ */
+'logfilemode' => 0640,
 
 /**
  * Loglevel to start logging at. Valid values are: 0 = Debug, 1 = Info, 2 =
@@ -715,7 +774,9 @@ $CONFIG = array(
 /**
  * If you maintain different instances and aggregate the logs, you may want
  * to distinguish between them. ``syslog_tag`` can be set per instance
- * with a unique id. Only available if ``log_type`` is set to ``syslog``.
+ * with a unique id. Only available if ``log_type`` is set to ``syslog`` or
+ * ``systemd``.
+ *
  * The default value is ``Nextcloud``.
  */
 'syslog_tag' => 'Nextcloud',
@@ -785,11 +846,11 @@ $CONFIG = array(
  * This section is for configuring the download links for Nextcloud clients, as
  * seen in the first-run wizard and on Personal pages.
  *
- * Defaults to
- * * Desktop client: ``https://nextcloud.com/install/#install-clients``
- * * Android client: ``https://play.google.com/store/apps/details?id=com.nextcloud.client``
- * * iOS client: ``https://itunes.apple.com/us/app/nextcloud/id1125420102?mt=8``
- *  *iOS client app id: ``1125420102``
+ * Defaults to:
+ *  - Desktop client: ``https://nextcloud.com/install/#install-clients``
+ *  - Android client: ``https://play.google.com/store/apps/details?id=com.nextcloud.client``
+ *  - iOS client: ``https://itunes.apple.com/us/app/nextcloud/id1125420102?mt=8``
+ *  - iOS client app id: ``1125420102``
  */
 'customclient_desktop' =>
 	'https://nextcloud.com/install/#install-clients',
@@ -891,7 +952,7 @@ $CONFIG = array(
  */
 'preview_office_cl_parameters' =>
 	' --headless --nologo --nofirststartwizard --invisible --norestore '.
-	'--convert-to pdf --outdir ',
+	'--convert-to png --outdir ',
 
 /**
  * Only register providers that have been explicitly enabled
@@ -926,6 +987,7 @@ $CONFIG = array(
  *
  *  - OC\Preview\BMP
  *  - OC\Preview\GIF
+ *  - OC\Preview\HEIC
  *  - OC\Preview\JPEG
  *  - OC\Preview\MarkDown
  *  - OC\Preview\MP3
@@ -937,6 +999,7 @@ $CONFIG = array(
 	'OC\Preview\PNG',
 	'OC\Preview\JPEG',
 	'OC\Preview\GIF',
+	'OC\Preview\HEIC',
 	'OC\Preview\BMP',
 	'OC\Preview\XBitmap',
 	'OC\Preview\MP3',
@@ -1033,7 +1096,6 @@ $CONFIG = array(
  * * ``\OC\Memcache\ArrayCache`` In-memory array-based backend (not recommended)
  * * ``\OC\Memcache\Memcached``  Memcached backend
  * * ``\OC\Memcache\Redis``      Redis backend
- * * ``\OC\Memcache\XCache``     XCache backend
  *
  * Advice on choosing between the various backends:
  *
@@ -1098,15 +1160,19 @@ $CONFIG = array(
  * which then causes a FileLocked exception.
  *
  * See https://redis.io/topics/cluster-spec for details about the Redis cluster
+ *
+ * Authentication works with phpredis version 4.2.1+. See
+ * https://github.com/phpredis/phpredis/commit/c5994f2a42b8a348af92d3acb4edff1328ad8ce1
  */
 'redis.cluster' => [
 	'seeds' => [ // provide some/all of the cluster servers to bootstrap discovery, port required
 		'localhost:7000',
-		'localhost:7001'
+		'localhost:7001',
 	],
 	'timeout' => 0.0,
 	'read_timeout' => 0.0,
-	'failover_mode' => \RedisCluster::FAILOVER_ERROR
+	'failover_mode' => \RedisCluster::FAILOVER_ERROR,
+	'password' => '', // Optional, if not defined no password will be used.
 ],
 
 
@@ -1373,6 +1439,7 @@ $CONFIG = array(
 
 /**
  * Define a default folder for shared files and folders other than root.
+ * Changes to this value will only have effect on new shares.
  *
  * Defaults to ``/``
  */
@@ -1465,11 +1532,26 @@ $CONFIG = array(
 /**
  * List of trusted proxy servers
  *
- * If you configure these also consider setting `forwarded_for_headers` which
- * otherwise defaults to `HTTP_X_FORWARDED_FOR` (the `X-Forwarded-For` header).
+ * You may set this to an array containing a combination of
+ * - IPv4 addresses, e.g. `192.168.2.123`
+ * - IPv4 ranges in CIDR notation, e.g. `192.168.2.0/24`
+ * - IPv6 addresses, e.g. `fd9e:21a7:a92c:2323::1`
+ *
+ * _(CIDR notation for IPv6 is currently work in progress and thus not
+ * available as of yet)_
+ *
+ * When an incoming request's `REMOTE_ADDR` matches any of the IP addresses
+ * specified here, it is assumed to be a proxy instead of a client. Thus, the
+ * client IP will be read from the HTTP header specified in
+ * `forwarded_for_headers` instead of from `REMOTE_ADDR`.
+ *
+ * So if you configure `trusted_proxies`, also consider setting
+ * `forwarded_for_headers` which otherwise defaults to `HTTP_X_FORWARDED_FOR`
+ * (the `X-Forwarded-For` header).
+ *
  * Defaults to an empty array.
  */
-'trusted_proxies' => array('203.0.113.45', '198.51.100.128'),
+'trusted_proxies' => array('203.0.113.45', '198.51.100.128', '192.168.2.0/24'),
 
 /**
  * Headers that should be trusted as client IP address in combination with
@@ -1479,7 +1561,7 @@ $CONFIG = array(
  * If set incorrectly, a client can spoof their IP address as visible to
  * Nextcloud, bypassing access controls and making logs useless!
  *
- * Defaults to ``'HTTP_X_FORWARED_FOR'``
+ * Defaults to ``'HTTP_X_FORWARDED_FOR'``
  */
 'forwarded_for_headers' => array('HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR'),
 
@@ -1595,4 +1677,33 @@ $CONFIG = array(
  */
 'gs.federation' => 'internal',
 
+/**
+ * List of incompatible user agents opted out from Same Site Cookie Protection.
+ * Some user agents are notorious and don't really properly follow HTTP
+ * specifications. For those, have an opt-out.
+ *
+ * WARNING: only use this if you know what you are doing
+ */
+'csrf.optout' => array(
+	'/^WebDAVFS/', // OS X Finder
+	'/^Microsoft-WebDAV-MiniRedir/', // Windows webdav drive
+),
+
+/**
+ * By default there is on public pages a link shown that allows users to
+ * learn about the "simple sign up" - see https://nextcloud.com/signup/
+ *
+ * If this is set to "false" it will not show the link.
+ */
+'simpleSignUpLink.shown' => true,
+
+/**
+ * By default autocompletion is enabled for the login form on Nextcloud's login page.
+ * While this is enabled, browsers are allowed to "remember" login names and such.
+ * Some companies require it to be disabled to comply with their security policy.
+ *
+ * Simply set this property to "false", if you want to turn this feature off.
+ */
+
+'login_form_autocomplete' => true,
 );

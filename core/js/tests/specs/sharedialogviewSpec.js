@@ -19,9 +19,10 @@
 *
 */
 
-/* global oc_appconfig, sinon */
+/* global sinon, OC */
 describe('OC.Share.ShareDialogView', function() {
 	var $container;
+	var oldConfig;
 	var oldAppConfig;
 	var autocompleteStub;
 	var avatarStub;
@@ -40,9 +41,11 @@ describe('OC.Share.ShareDialogView', function() {
 		// horrible parameters
 		$('#testArea').append('<input id="allowShareWithLink" type="hidden" value="yes">');
 		$container = $('#shareContainer');
+		oldConfig = OC.config;
+		OC.config['sharing.maxAutocompleteResults'] = 0;
 		/* jshint camelcase:false */
-		oldAppConfig = _.extend({}, oc_appconfig.core);
-		oc_appconfig.core.enforcePasswordForPublicLink = false;
+		oldAppConfig = _.extend({}, OC.appConfig.core);
+		OC.appConfig.core.enforcePasswordForPublicLink = false;
 
 		fetchStub = sinon.stub(OC.Share.ShareItemModel.prototype, 'fetch');
 		saveLinkShareStub = sinon.stub(OC.Share.ShareItemModel.prototype, 'saveLinkShare');
@@ -85,7 +88,7 @@ describe('OC.Share.ShareDialogView', function() {
 		// triggers rendering
 		shareModel.set({
 			shares: [],
-			linkShare: {isLinkShare: false}
+			linkShares: []
 		});
 
 		autocompleteStub = sinon.stub($.fn, 'autocomplete').callsFake(function() {
@@ -108,8 +111,9 @@ describe('OC.Share.ShareDialogView', function() {
 	});
 	afterEach(function() {
 		OC.currentUser = oldCurrentUser;
+		OC.config = oldConfig;
 		/* jshint camelcase:false */
-		oc_appconfig.core = oldAppConfig;
+		OC.appConfig.core = oldAppConfig;
 
 		dialog.remove();
 		fetchStub.restore();
@@ -122,35 +126,15 @@ describe('OC.Share.ShareDialogView', function() {
 	describe('Share with link', function() {
 		// TODO: test ajax calls
 		// TODO: test password field visibility (whenever enforced or not)
-		it('update password on focus out', function() {
-			$('#allowShareWithLink').val('yes');
-
-			dialog.model.set('linkShare', {
-				isLinkShare: true
-			});
-			dialog.render();
-
-			// Enable password, enter password and focusout
-			dialog.$el.find('[name=showPassword]').click();
-			dialog.$el.find('.linkPassText').focus();
-			dialog.$el.find('.linkPassText').val('foo');
-			dialog.$el.find('.linkPassText').focusout();
-
-			expect(saveLinkShareStub.calledOnce).toEqual(true);
-			expect(saveLinkShareStub.firstCall.args[0]).toEqual({
-				password: 'foo'
-			});
-		});
 		it('update password on enter', function() {
 			$('#allowShareWithLink').val('yes');
 
-			dialog.model.set('linkShare', {
-				isLinkShare: true
+			dialog.model.set({
+				linkShares: [{
+					id: 123
+				}]
 			});
 			dialog.render();
-
-			// Toggle linkshare
-			dialog.$el.find('.linkCheckbox').click();
 
 			// Enable password and enter password
 			dialog.$el.find('[name=showPassword]').click();
@@ -160,47 +144,70 @@ describe('OC.Share.ShareDialogView', function() {
 
 			expect(saveLinkShareStub.calledOnce).toEqual(true);
 			expect(saveLinkShareStub.firstCall.args[0]).toEqual({
+				cid: 123,
 				password: 'foo'
 			});
 		});
-		it('shows share with link checkbox when allowed', function() {
+		it('update password on submit', function() {
+			$('#allowShareWithLink').val('yes');
+
+			dialog.model.set({
+				linkShares: [{
+					id: 123
+				}]
+			});
+			dialog.render();
+
+			// Enable password and enter password
+			dialog.$el.find('[name=showPassword]').click();
+			dialog.$el.find('.linkPassText').focus();
+			dialog.$el.find('.linkPassText').val('foo');
+			dialog.$el.find('.linkPassText + .icon-confirm').click();
+
+			expect(saveLinkShareStub.calledOnce).toEqual(true);
+			expect(saveLinkShareStub.firstCall.args[0]).toEqual({
+				cid: 123,
+				password: 'foo'
+			});
+		});
+		it('shows add share with link button when allowed', function() {
 			$('#allowShareWithLink').val('yes');
 
 			dialog.render();
 
-			expect(dialog.$el.find('.linkCheckbox').length).toEqual(1);
+			expect(dialog.$el.find('.new-share').length).toEqual(1);
 		});
-		it('does not show share with link checkbox when not allowed', function() {
+		it('does not show add share with link button when not allowed', function() {
 			$('#allowShareWithLink').val('no');
 
 			dialog.render();
 
-			expect(dialog.$el.find('.linkCheckbox').length).toEqual(0);
+			expect(dialog.$el.find('.new-share').length).toEqual(0);
 			expect(dialog.$el.find('.shareWithField').length).toEqual(1);
 		});
 		it('shows populated link share when a link share exists', function() {
 			// this is how the OC.Share class does it...
 			var link = parent.location.protocol + '//' + location.host +
-				OC.generateUrl('/s/') + 'tehtoken';
-			shareModel.set('linkShare', {
-				isLinkShare: true,
-				token: 'tehtoken',
-				link: link,
-				expiration: '',
-				permissions: OC.PERMISSION_READ,
-				stime: 1403884258,
+				OC.generateUrl('/s/') + 'thetoken';
+			shareModel.set({
+				linkShares: [{
+					id: 123,
+					url: link
+				}]
 			});
 
 			dialog.render();
 
-			expect(dialog.$el.find('.linkCheckbox').prop('checked')).toEqual(true);
+			expect(dialog.$el.find('.share-menu .icon-more').length).toEqual(1);
 			expect(dialog.$el.find('.linkText').val()).toEqual(link);
 		});
 		it('autofocus link text when clicked', function() {
 			$('#allowShareWithLink').val('yes');
 
-			dialog.model.set('linkShare', {
-				isLinkShare: true
+			dialog.model.set({
+				linkShares: [{
+					id: 123
+				}]
 			});
 			dialog.render();
 
@@ -214,188 +221,6 @@ describe('OC.Share.ShareDialogView', function() {
 			focusStub.restore();
 			selectStub.restore();
 		});
-		describe('password', function() {
-			var slideToggleStub;
-
-			beforeEach(function() {
-				$('#allowShareWithLink').val('yes');
-				configModel.set({
-					enforcePasswordForPublicLink: false
-				});
-
-				slideToggleStub = sinon.stub($.fn, 'slideToggle');
-			});
-			afterEach(function() {
-				slideToggleStub.restore();
-			});
-
-			it('enforced but toggled does not fire request', function() {
-				configModel.set('enforcePasswordForPublicLink', true);
-				dialog.render();
-
-				dialog.$el.find('.linkCheckbox').click();
-
-				// The password linkPass field is shown (slideToggle is called).
-				// No request is made yet
-				expect(slideToggleStub.callCount).toEqual(1);
-				expect(slideToggleStub.getCall(0).thisValue.eq(0).attr('id')).toEqual('linkPass');
-				expect(fakeServer.requests.length).toEqual(0);
-
-				// Now untoggle share by link
-				dialog.$el.find('.linkCheckbox').click();
-				dialog.render();
-
-				// Password field disappears and no ajax requests have been made
-				expect(fakeServer.requests.length).toEqual(0);
-				expect(slideToggleStub.callCount).toEqual(2);
-				expect(slideToggleStub.getCall(1).thisValue.eq(0).attr('id')).toEqual('linkPass');
-			});
-		});
-		describe('expiration date', function() {
-			var shareData;
-			var shareItem;
-			var clock;
-			var expectedMinDate;
-
-			beforeEach(function() {
-				// pick a fake date
-				clock = sinon.useFakeTimers(new Date(2014, 0, 20, 14, 0, 0).getTime());
-				expectedMinDate = new Date(2014, 0, 21, 14, 0, 0);
-
-				configModel.set({
-					enforcePasswordForPublicLink: false,
-					isDefaultExpireDateEnabled: false,
-					isDefaultExpireDateEnforced: false,
-					defaultExpireDate: 7
-				});
-
-				shareModel.set('linkShare', {
-					isLinkShare: true,
-					token: 'tehtoken',
-					permissions: OC.PERMISSION_READ,
-					expiration: null
-				});
-			});
-			afterEach(function() {
-				clock.restore();
-			});
-
-			it('does not check expiration date checkbox when no date was set', function() {
-				shareModel.get('linkShare').expiration = null;
-				dialog.render();
-
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(false);
-				expect(dialog.$el.find('.datepicker').val()).toEqual('');
-			});
-			it('does not check expiration date checkbox for new share', function() {
-				dialog.render();
-
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(false);
-				expect(dialog.$el.find('.datepicker').val()).toEqual('');
-			});
-			it('checks expiration date checkbox and populates field when expiration date was set', function() {
-				shareModel.get('linkShare').expiration = '2014-02-01 00:00:00';
-				dialog.render();
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(true);
-				expect(dialog.$el.find('.datepicker').val()).toEqual('01-02-2014');
-			});
-			it('sets default date when default date setting is enabled', function() {
-				configModel.set('isDefaultExpireDateEnabled', true);
-				dialog.render();
-				dialog.$el.find('.linkCheckbox').click();
-				// here fetch would be called and the server returns the expiration date
-				shareModel.get('linkShare').expiration = '2014-1-27 00:00:00';
-				dialog.render();
-
-				// enabled by default
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(true);
-				expect(dialog.$el.find('.datepicker').val()).toEqual('27-01-2014');
-
-				// disabling is allowed
-				dialog.$el.find('[name=expirationCheckbox]').click();
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(false);
-			});
-			it('enforces default date when enforced date setting is enabled', function() {
-				configModel.set({
-					isDefaultExpireDateEnabled: true,
-					isDefaultExpireDateEnforced: true
-				});
-				dialog.render();
-				dialog.$el.find('.linkCheckbox').click();
-				// here fetch would be called and the server returns the expiration date
-				shareModel.get('linkShare').expiration = '2014-1-27 00:00:00';
-				dialog.render();
-
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(true);
-				expect(dialog.$el.find('.datepicker').val()).toEqual('27-01-2014');
-
-				// disabling is not allowed
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('disabled')).toEqual(true);
-				dialog.$el.find('[name=expirationCheckbox]').click();
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(true);
-			});
-			it('enforces default date when enforced date setting is enabled and password is enforced', function() {
-				configModel.set({
-					enforcePasswordForPublicLink: true,
-					isDefaultExpireDateEnabled: true,
-					isDefaultExpireDateEnforced: true
-				});
-				dialog.render();
-				dialog.$el.find('.linkCheckbox').click();
-				// here fetch would be called and the server returns the expiration date
-				shareModel.get('linkShare').expiration = '2014-1-27 00:00:00';
-				dialog.render();
-
-				//Enter password
-				dialog.$el.find('.linkPassText').val('foo');
-				dialog.$el.find('.linkPassText').trigger(new $.Event('keyup', {keyCode: 13}));
-				fakeServer.requests[0].respond(
-					200,
-					{ 'Content-Type': 'application/json' },
-					JSON.stringify({data: {token: 'xyz'}, status: 'success'})
-				);
-
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(true);
-				expect(dialog.$el.find('.datepicker').val()).toEqual('27-01-2014');
-
-				// disabling is not allowed
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('disabled')).toEqual(true);
-				dialog.$el.find('[name=expirationCheckbox]').click();
-				expect(dialog.$el.find('[name=expirationCheckbox]').prop('checked')).toEqual(true);
-			});
-			it('sets picker minDate to today and no maxDate by default', function() {
-				dialog.render();
-				dialog.$el.find('.linkCheckbox').click();
-				dialog.$el.find('[name=expirationCheckbox]').click();
-				expect($.datepicker._defaults.minDate).toEqual(expectedMinDate);
-				expect($.datepicker._defaults.maxDate).toEqual(null);
-			});
-			it('limits the date range to X days after share time when enforced', function() {
-				configModel.set({
-					isDefaultExpireDateEnabled: true,
-					isDefaultExpireDateEnforced: true
-				});
-				dialog.render();
-				dialog.$el.find('.linkCheckbox').click();
-				expect($.datepicker._defaults.minDate).toEqual(expectedMinDate);
-				expect($.datepicker._defaults.maxDate).toEqual(new Date(2014, 0, 27, 0, 0, 0, 0));
-			});
-			it('limits the date range to X days after share time when enforced, even when redisplayed the next days', function() {
-				// item exists, was created two days ago
-				var shareItem = shareModel.get('linkShare');
-				shareItem.expiration = '2014-1-27';
-				// share time has time component but must be stripped later
-				shareItem.stime = new Date(2014, 0, 20, 11, 0, 25).getTime() / 1000;
-				configModel.set({
-					isDefaultExpireDateEnabled: true,
-					isDefaultExpireDateEnforced: true
-				});
-				dialog.render();
-				expect($.datepicker._defaults.minDate).toEqual(expectedMinDate);
-				expect($.datepicker._defaults.maxDate).toEqual(new Date(2014, 0, 27, 0, 0, 0, 0));
-			});
-		});
-
 	});
 	describe('check for avatar', function() {
 		beforeEach(function() {
@@ -427,7 +252,21 @@ describe('OC.Share.ShareDialogView', function() {
 					share_type: OC.Share.SHARE_TYPE_REMOTE,
 					share_with: 'foo@bar.com/baz',
 					share_with_displayname: 'foo@bar.com/baz'
-
+				},{
+					id: 103,
+					item_source: 123,
+					permissions: 31,
+					share_type: OC.Share.SHARE_TYPE_CIRCLE,
+					share_with: 'circle-0',
+					share_with_displayname: 'Circle (Personal circle, user0)',
+					share_with_avatar: 'path/to/the/avatar'
+				},{
+					id: 104,
+					item_source: 123,
+					permissions: 31,
+					share_type: OC.Share.SHARE_TYPE_CIRCLE,
+					share_with: 'circle-1',
+					share_with_displayname: 'Circle (Public circle, user0)',
 				}]
 			});
 		});
@@ -439,10 +278,10 @@ describe('OC.Share.ShareDialogView', function() {
 			});
 
 			it('test correct function calls', function() {
-				expect(avatarStub.calledTwice).toEqual(true);
+				expect(avatarStub.calledThrice).toEqual(true);
 				expect(placeholderStub.callCount).toEqual(4);
-				expect(dialog.$('.shareWithList').children().length).toEqual(3);
-				expect(dialog.$('.avatar').length).toEqual(4);
+				expect(dialog.$('.shareWithList').children().length).toEqual(6);
+				expect(dialog.$('.avatar').length).toEqual(7);
 			});
 
 			it('test avatar owner', function() {
@@ -469,6 +308,20 @@ describe('OC.Share.ShareDialogView', function() {
 				expect(args.length).toEqual(1);
 				expect(args[0]).toEqual('foo@bar.com/baz ' + OC.Share.SHARE_TYPE_REMOTE);
 			});
+
+			it('test avatar for circle', function() {
+				var avatarElement = dialog.$('.avatar').eq(5);
+				expect(avatarElement.css('background')).toContain('path/to/the/avatar');
+			});
+
+			it('test avatar for circle without avatar', function() {
+				var args = avatarStub.getCall(2).args;
+				expect(args.length).toEqual(6);
+				// Note that "data-username" is set to "circle-{shareIndex}",
+				// not to the "shareWith" field.
+				expect(args[0]).toEqual('circle-4');
+				expect(args[5]).toEqual('Circle (Public circle, user0)');
+			});
 		});
 	});
 	describe('get suggestions', function() {
@@ -489,12 +342,15 @@ describe('OC.Share.ShareDialogView', function() {
 						'exact': {
 							'users': [],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
-						'lookup': []
+						'remote_groups': [],
+						'lookup': [],
+						'lookupEnabled': true,
 					}
 				}
 			});
@@ -509,9 +365,14 @@ describe('OC.Share.ShareDialogView', function() {
 			);
 
 			expect(doneStub.calledOnce).toEqual(true);
-			expect(doneStub.calledWithExactly([], [])).toEqual(true);
+			sinon.assert.calledWithExactly(doneStub, [{
+				label: t('core', 'Search globally'),
+				value: {},
+				lookup: true
+			}], [], false, true);
 			expect(failStub.called).toEqual(false);
 		});
+
 		it('single partial match', function() {
 			var doneStub = sinon.stub();
 			var failStub = sinon.stub();
@@ -529,7 +390,8 @@ describe('OC.Share.ShareDialogView', function() {
 						'exact': {
 							'users': [],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [
 							{
@@ -542,7 +404,9 @@ describe('OC.Share.ShareDialogView', function() {
 						],
 						'groups': [],
 						'remotes': [],
-						'lookup': []
+						'remote_groups': [],
+						'lookup': [],
+						'lookupEnabled': true,
 					}
 				}
 			});
@@ -557,11 +421,20 @@ describe('OC.Share.ShareDialogView', function() {
 			);
 
 			expect(doneStub.calledOnce).toEqual(true);
-			expect(doneStub.calledWithExactly([{
-				'label': 'bobby',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'imbob'}
-			}], [
-			])).toEqual(true);
+			sinon.assert.calledWithExactly(doneStub,
+				[{
+					'label': 'bobby',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'imbob'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[],
+				false,
+				true
+			);
 			expect(failStub.called).toEqual(false);
 		});
 		it('single exact match', function() {
@@ -589,12 +462,15 @@ describe('OC.Share.ShareDialogView', function() {
 								}
 							],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
-						'lookup': []
+						'remote_groups': [],
+						'lookup': [],
+						'lookupEnabled': true,
 					}
 				}
 			});
@@ -609,13 +485,23 @@ describe('OC.Share.ShareDialogView', function() {
 			);
 
 			expect(doneStub.calledOnce).toEqual(true);
-			expect(doneStub.calledWithExactly([{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}], [{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}])).toEqual(true);
+			sinon.assert.calledWithExactly(doneStub,
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}],
+				false,
+				true
+			);
 			expect(failStub.called).toEqual(false);
 		});
 		it('mixed matches', function() {
@@ -651,7 +537,8 @@ describe('OC.Share.ShareDialogView', function() {
 									}
 								}
 							],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [
 							{
@@ -679,7 +566,9 @@ describe('OC.Share.ShareDialogView', function() {
 							}
 						],
 						'remotes': [],
-						'lookup': []
+						'remote_groups': [],
+						'lookup': [],
+						'lookupEnabled': true
 					}
 				}
 			});
@@ -694,28 +583,153 @@ describe('OC.Share.ShareDialogView', function() {
 			);
 
 			expect(doneStub.calledOnce).toEqual(true);
-			expect(doneStub.calledWithExactly([{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}, {
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group1'}
-			}, {
-				'label': 'bobby',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'imbob'}
-			}, {
-				'label': 'bob the second',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user2'}
-			}, {
-				'label': 'bobfans',
-				'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'fans'}
-			}], [{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}, {
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group1'}
-			}])).toEqual(true);
+			sinon.assert.calledWithExactly(doneStub,
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}, {
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group1'}
+				}, {
+					'label': 'bobby',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'imbob'}
+				}, {
+					'label': 'bob the second',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user2'}
+				}, {
+					'label': 'bobfans',
+					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'fans'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}, {
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group1'}
+				}],
+				false,
+				true
+			);
+			expect(failStub.called).toEqual(false);
+		});
+
+		it('capped mixed matches', function() {
+			OC.config['sharing.maxAutocompleteResults'] = 3;
+			var doneStub = sinon.stub();
+			var failStub = sinon.stub();
+
+			dialog._getSuggestions('bob', 42, shareModel).done(doneStub).fail(failStub);
+
+			var jsonData = JSON.stringify({
+				'ocs': {
+					'meta': {
+						'status': 'success',
+						'statuscode': 100,
+						'message': null
+					},
+					'data': {
+						'exact': {
+							'users': [
+								{
+									'label': 'bob',
+									'value': {
+										'shareType': OC.Share.SHARE_TYPE_USER,
+										'shareWith': 'user1'
+									}
+								}
+							],
+							'groups': [
+								{
+									'label': 'bob',
+									'value': {
+										'shareType': OC.Share.SHARE_TYPE_GROUP,
+										'shareWith': 'group1'
+									}
+								}
+							],
+							'remotes': [],
+							'remote_groups': [],
+						},
+						'users': [
+							{
+								'label': 'bobby',
+								'value': {
+									'shareType': OC.Share.SHARE_TYPE_USER,
+									'shareWith': 'imbob'
+								}
+							},
+							{
+								'label': 'bob the second',
+								'value': {
+									'shareType': OC.Share.SHARE_TYPE_USER,
+									'shareWith': 'user2'
+								}
+							}
+						],
+						'groups': [
+							{
+								'label': 'bobfans',
+								'value': {
+									'shareType': OC.Share.SHARE_TYPE_GROUP,
+									'shareWith': 'fans'
+								}
+							}
+						],
+						'remotes': [],
+						'remote_groups': [],
+						'lookup': [],
+						'lookupEnabled': true
+					}
+				}
+			});
+
+			expect(doneStub.called).toEqual(false);
+			expect(failStub.called).toEqual(false);
+
+			fakeServer.requests[0].respond(
+				200,
+				{'Content-Type': 'application/json'},
+				jsonData
+			);
+
+			expect(doneStub.calledOnce).toEqual(true);
+			sinon.assert.calledWithExactly(doneStub,
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}, {
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group1'}
+				}, {
+					'label': 'bobby',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'imbob'}
+				}, {
+					'label': 'bob the second',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user2'}
+				}, {
+					'label': 'bobfans',
+					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'fans'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}, {
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group1'}
+				}],
+				true,
+				true
+			);
 			expect(failStub.called).toEqual(false);
 		});
 
@@ -744,12 +758,15 @@ describe('OC.Share.ShareDialogView', function() {
 								}
 							],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
-						'lookup': []
+						'remote_groups': [],
+						'lookup': [],
+						'lookupEnabled': true
 					}
 				}
 			});
@@ -764,13 +781,23 @@ describe('OC.Share.ShareDialogView', function() {
 			);
 
 			expect(doneStub.calledOnce).toEqual(true);
-			expect(doneStub.calledWithExactly([{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}], [{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}])).toEqual(true);
+			expect(doneStub.calledWithExactly(
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}],
+				false,
+				true
+			)).toEqual(true);
 			expect(failStub.called).toEqual(false);
 
 			var done2Stub = sinon.stub();
@@ -782,13 +809,23 @@ describe('OC.Share.ShareDialogView', function() {
 			expect(failStub.called).toEqual(false);
 
 			expect(done2Stub.calledOnce).toEqual(true);
-			expect(done2Stub.calledWithExactly([{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}], [{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}])).toEqual(true);
+			sinon.assert.calledWithExactly(doneStub,
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}],
+				false,
+				true
+			);
 			expect(fail2Stub.called).toEqual(false);
 		});
 
@@ -817,12 +854,15 @@ describe('OC.Share.ShareDialogView', function() {
 								}
 							],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
-						'lookup': []
+						'remote_groups': [],
+						'lookup': [],
+						'lookupEnabled': true
 					}
 				}
 			});
@@ -837,13 +877,23 @@ describe('OC.Share.ShareDialogView', function() {
 			);
 
 			expect(doneStub.calledOnce).toEqual(true);
-			expect(doneStub.calledWithExactly([{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}], [{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}])).toEqual(true);
+			sinon.assert.calledWithExactly(doneStub,
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}],
+				false,
+				true
+			);
 			expect(failStub.called).toEqual(false);
 
 			var done2Stub = sinon.stub();
@@ -883,13 +933,23 @@ describe('OC.Share.ShareDialogView', function() {
 			expect(fail2Stub.called).toEqual(false);
 
 			expect(done3Stub.calledOnce).toEqual(true);
-			expect(done3Stub.calledWithExactly([{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}], [{
-				'label': 'bob',
-				'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
-			}])).toEqual(true);
+			sinon.assert.calledWithExactly(done3Stub,
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				},
+				{
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}],
+				[{
+					'label': 'bob',
+					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
+				}],
+				false,
+				true
+			);
 			expect(fail3Stub.called).toEqual(false);
 		});
 	});
@@ -897,7 +957,7 @@ describe('OC.Share.ShareDialogView', function() {
 		var showTemporaryNotificationStub;
 
 		beforeEach(function() {
-			showTemporaryNotificationStub = sinon.stub(OC.Notification, 'show');
+			showTemporaryNotificationStub = sinon.stub(OC.Notification, 'showTemporary');
 		});
 
 		afterEach(function() {
@@ -928,7 +988,8 @@ describe('OC.Share.ShareDialogView', function() {
 									}
 								],
 								'groups': [],
-								'remotes': []
+								'remotes': [],
+								'remote_groups': [],
 							},
 							'users': [
 								{
@@ -941,7 +1002,9 @@ describe('OC.Share.ShareDialogView', function() {
 							],
 							'groups': [],
 							'remotes': [],
-							'lookup': []
+							'remote_groups': [],
+							'lookup': [],
+							'lookupEnabled': true
 						}
 					}
 				});
@@ -950,13 +1013,17 @@ describe('OC.Share.ShareDialogView', function() {
 					{'Content-Type': 'application/json'},
 					jsonData
 				);
-				expect(response.calledWithExactly([{
+				sinon.assert.calledWithExactly(response, [{
 					'label': 'bob',
 					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'user1'}
 				}, {
 					'label': 'bobby',
 					'value': {'shareType': OC.Share.SHARE_TYPE_USER, 'shareWith': 'imbob'}
-				}])).toEqual(true);
+				}, {
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}]);
 				expect(autocompleteStub.calledWith("option", "autoFocus", true)).toEqual(true);
 			});
 
@@ -983,7 +1050,8 @@ describe('OC.Share.ShareDialogView', function() {
 										}
 									}
 								],
-								'remotes': []
+								'remotes': [],
+								'remote_groups': [],
 							},
 							'users': [],
 							'groups': [
@@ -996,7 +1064,9 @@ describe('OC.Share.ShareDialogView', function() {
 								}
 							],
 							'remotes': [],
-							'lookup': []
+							'remote_groups': [],
+							'lookup': [],
+							'lookupEnabled': true
 						}
 					}
 				});
@@ -1005,13 +1075,17 @@ describe('OC.Share.ShareDialogView', function() {
 					{'Content-Type': 'application/json'},
 					jsonData
 				);
-				expect(response.calledWithExactly([{
+				sinon.assert.calledWithExactly(response, [{
 					'label': 'group',
 					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group'}
 				}, {
 					'label': 'group2',
 					'value': {'shareType': OC.Share.SHARE_TYPE_GROUP, 'shareWith': 'group2'}
-				}])).toEqual(true);
+				}, {
+					label: t('core', 'Search globally'),
+					value: {},
+					lookup: true
+				}]);
 				expect(autocompleteStub.calledWith("option", "autoFocus", true)).toEqual(true);
 			});
 
@@ -1038,7 +1112,8 @@ describe('OC.Share.ShareDialogView', function() {
 											'shareWith': 'foo@bar.com/baz'
 										}
 									}
-								]
+								],
+								'remote_groups': [],
 							},
 							'users': [],
 							'groups': [],
@@ -1051,6 +1126,7 @@ describe('OC.Share.ShareDialogView', function() {
 									}
 								}
 							],
+							'remote_groups': [],
 							'lookup': []
 						}
 					}
@@ -1086,6 +1162,7 @@ describe('OC.Share.ShareDialogView', function() {
 								'users': [],
 								'groups': [],
 								'remotes': [],
+								'remote_groups': [],
 								'emails': [
 									{
 										'label': 'foo@bar.com',
@@ -1099,6 +1176,7 @@ describe('OC.Share.ShareDialogView', function() {
 							'users': [],
 							'groups': [],
 							'remotes': [],
+							'remote_groups': [],
 							'lookup': [],
 							'emails': [
 								{
@@ -1143,6 +1221,7 @@ describe('OC.Share.ShareDialogView', function() {
 								'users': [],
 								'groups': [],
 								'remotes': [],
+								'remote_groups': [],
 								'circles': [
 									{
 										'label': 'CircleName (type, owner)',
@@ -1163,6 +1242,7 @@ describe('OC.Share.ShareDialogView', function() {
 							'users': [],
 							'groups': [],
 							'remotes': [],
+							'remote_groups': [],
 							'lookup': [],
 							'circles': [
 								{
@@ -1211,7 +1291,8 @@ describe('OC.Share.ShareDialogView', function() {
 							'exact': {
 								'users': [],
 								'groups': [],
-								'remotes': []
+								'remotes': [],
+								'remote_groups': [],
 							},
 							'users': [
 								{
@@ -1231,6 +1312,7 @@ describe('OC.Share.ShareDialogView', function() {
 							],
 							'groups': [],
 							'remotes': [],
+							'remote_groups': [],
 							'lookup': []
 						}
 					}
@@ -1270,7 +1352,8 @@ describe('OC.Share.ShareDialogView', function() {
 							'exact': {
 								'users': [],
 								'groups': [],
-								'remotes': []
+								'remotes': [],
+								'remote_groups': [],
 							},
 							'users': [
 								{
@@ -1290,6 +1373,7 @@ describe('OC.Share.ShareDialogView', function() {
 							],
 							'groups': [],
 							'remotes': [],
+							'remote_groups': [],
 							'lookup': []
 						}
 					}
@@ -1364,7 +1448,8 @@ describe('OC.Share.ShareDialogView', function() {
 								'exact': {
 									'users': [],
 									'groups': [],
-									'remotes': []
+									'remotes': [],
+									'remote_groups': [],
 								},
 								'users': [
 									{
@@ -1384,6 +1469,7 @@ describe('OC.Share.ShareDialogView', function() {
 								],
 								'groups': [],
 								'remotes': [],
+								'remote_groups': [],
 								'lookup': []
 							}
 						}
@@ -1423,7 +1509,8 @@ describe('OC.Share.ShareDialogView', function() {
 										}
 									],
 									'groups': [],
-									'remotes': []
+									'remotes': [],
+									'remote_groups': [],
 								},
 								'users': [
 									{
@@ -1436,6 +1523,7 @@ describe('OC.Share.ShareDialogView', function() {
 								],
 								'groups': [],
 								'remotes': [],
+								'remote_groups': [],
 								'lookup': []
 							}
 						}
@@ -1467,7 +1555,8 @@ describe('OC.Share.ShareDialogView', function() {
 								'exact': {
 									'users': [],
 									'groups': [],
-									'remotes': []
+									'remotes': [],
+									'remote_groups': [],
 								},
 								'users': [],
 								'groups': [
@@ -1487,6 +1576,7 @@ describe('OC.Share.ShareDialogView', function() {
 									}
 								],
 								'remotes': [],
+								'remote_groups': [],
 								'lookup': []
 							}
 						}
@@ -1526,7 +1616,8 @@ describe('OC.Share.ShareDialogView', function() {
 											}
 										}
 									],
-									'remotes': []
+									'remotes': [],
+									'remote_groups': [],
 								},
 								'users': [],
 								'groups': [
@@ -1539,6 +1630,7 @@ describe('OC.Share.ShareDialogView', function() {
 									}
 								],
 								'remotes': [],
+								'remote_groups': [],
 								'lookup': []
 							}
 						}
@@ -1570,7 +1662,8 @@ describe('OC.Share.ShareDialogView', function() {
 								'exact': {
 									'users': [],
 									'groups': [],
-									'remotes': []
+									'remotes': [],
+									'remote_groups': [],
 								},
 								'users': [],
 								'groups': [],
@@ -1590,6 +1683,7 @@ describe('OC.Share.ShareDialogView', function() {
 										}
 									}
 								],
+								'remote_groups': [],
 								'lookup': []
 							}
 						}
@@ -1629,7 +1723,8 @@ describe('OC.Share.ShareDialogView', function() {
 												'shareWith': 'foo@bar.com/baz'
 											}
 										}
-									]
+									],
+									'remote_groups': [],
 								},
 								'users': [],
 								'groups': [],
@@ -1642,6 +1737,7 @@ describe('OC.Share.ShareDialogView', function() {
 										}
 									}
 								],
+								'remote_groups': [],
 								'lookup': []
 							}
 						}
@@ -1674,12 +1770,14 @@ describe('OC.Share.ShareDialogView', function() {
 									'users': [],
 									'groups': [],
 									'remotes': [],
+									'remote_groups': [],
 									'emails': []
 								},
 								'users': [],
 								'groups': [],
 								'remotes': [],
 								'lookup': [],
+								'remote_groups': [],
 								'emails': [
 									{
 										'label': 'foo@bar.com',
@@ -1727,6 +1825,7 @@ describe('OC.Share.ShareDialogView', function() {
 									'users': [],
 									'groups': [],
 									'remotes': [],
+									'remote_groups': [],
 									'emails': [
 										{
 											'label': 'foo@bar.com',
@@ -1740,6 +1839,7 @@ describe('OC.Share.ShareDialogView', function() {
 								'users': [],
 								'groups': [],
 								'remotes': [],
+								'remote_groups': [],
 								'lookup': [],
 								'emails': [
 									{
@@ -1781,11 +1881,13 @@ describe('OC.Share.ShareDialogView', function() {
 									'users': [],
 									'groups': [],
 									'remotes': [],
+									'remote_groups': [],
 									'circles': []
 								},
 								'users': [],
 								'groups': [],
 								'remotes': [],
+								'remote_groups': [],
 								'lookup': [],
 								'circles': [
 									{
@@ -1834,6 +1936,7 @@ describe('OC.Share.ShareDialogView', function() {
 									'users': [],
 									'groups': [],
 									'remotes': [],
+									'remote_groups': [],
 									'circles': [
 										{
 											'label': 'CircleName (type, owner)',
@@ -1854,6 +1957,7 @@ describe('OC.Share.ShareDialogView', function() {
 								'users': [],
 								'groups': [],
 								'remotes': [],
+								'remote_groups': [],
 								'lookup': [],
 								'circles': [
 									{
@@ -2031,11 +2135,13 @@ describe('OC.Share.ShareDialogView', function() {
 						'exact': {
 							'users': [],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
+						'remote_groups': [],
 						'lookup': []
 					}
 				}
@@ -2126,11 +2232,13 @@ describe('OC.Share.ShareDialogView', function() {
 								}
 							],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
+						'remote_groups': [],
 						'lookup': []
 					}
 				}
@@ -2191,11 +2299,13 @@ describe('OC.Share.ShareDialogView', function() {
 								}
 							],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
+						'remote_groups': [],
 						'lookup': []
 					}
 				}
@@ -2248,12 +2358,14 @@ describe('OC.Share.ShareDialogView', function() {
 						'exact': {
 							'users': [],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
-						'lookup': []
+						'lookup': [],
+						'remote_groups': [],
 					}
 				}
 			});
@@ -2292,7 +2404,8 @@ describe('OC.Share.ShareDialogView', function() {
 						'exact': {
 							'users': [],
 							'groups': [],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [
 							{
@@ -2305,6 +2418,7 @@ describe('OC.Share.ShareDialogView', function() {
 						],
 						'groups': [],
 						'remotes': [],
+						'remote_groups': [],
 						'lookup': []
 					}
 				}
@@ -2356,11 +2470,13 @@ describe('OC.Share.ShareDialogView', function() {
 									}
 								}
 							],
-							'remotes': []
+							'remotes': [],
+							'remote_groups': [],
 						},
 						'users': [],
 						'groups': [],
 						'remotes': [],
+						'remote_groups': [],
 						'lookup': []
 					}
 				}
