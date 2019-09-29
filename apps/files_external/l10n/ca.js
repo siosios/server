@@ -74,6 +74,7 @@ OC.L10N.register(
     "Log-in credentials, save in database" : "Credencials d'inici de sessió, desades a la base de dades",
     "Username and password" : "Nom d'usuari i contrasenya",
     "Log-in credentials, save in session" : "Credencials d'inici de sessió, desades a la sessió",
+    "Global credentials, user entered" : "Credencials globals, l'usuari ha entrat",
     "User entered, store in database" : "Usuari introduït, emmagatzemat a la base de dades",
     "RSA public key" : "Clau pública RSA",
     "Public key" : "Clau pública",
@@ -129,8 +130,6 @@ OC.L10N.register(
     "Add storage" : "Afegeix emmagatzematge",
     "Advanced settings" : "Paràmetres avançats",
     "Allow users to mount external storage" : "Permet als usuaris muntar emmagatzematge extern",
-    "Global credentials can be used to authenticate with multiple external storages that have the same credentials." : "Les credencials globals es poden utilitzar per autenticar-se amb múltiples emmagatzematges externs que tenen les mateixes credencials.",
-    "Some of the configured external mount points are not connected. Please click on the red row(s) for more information" : "Alguns dels punts de muntatge externs configurats no estan connectats. Si us plau, feu clic a la/les fila/files vermella/vermelles per obtenir més informació",
-    "\"%s\" is not installed. Mounting of %s is not possible. Please ask your system administrator to install it." : "\"%s\" no està instal·lat. El muntatge de %s no és possible. Si us plau, demaneu a l'administrador del sistema que l'instal·li."
+    "Global credentials can be used to authenticate with multiple external storages that have the same credentials." : "Les credencials globals es poden utilitzar per autenticar-se amb múltiples emmagatzematges externs que tenen les mateixes credencials."
 },
 "nplurals=2; plural=(n != 1);");

@@ -31,6 +31,8 @@
     "Copy" : "Copiar",
     "Choose target folder" : "Elegir carpeta de destino",
     "Open" : "Abrir",
+    "Delete file" : "Eliminar archivo",
+    "Delete folder" : "Eliminar carpeta",
     "Disconnect storage" : "Desconectar almacenamiento",
     "Unshare" : "Dejar de compartir",
     "Could not load info for file \"{file}\"" : "No se ha podido cargar información para el archivo \"{file}\"",
@@ -134,6 +136,7 @@
     "Upload (max. %s)" : "Subida (máx. %s)",
     "File Management" : "Gestión de archivos",
     "%s used" : "usado %s",
+    "%s%% of %s used" : "%s%% de %s usado",
     "%1$s of %2$s used" : "%1$s de %2$s utilizados",
     "Settings" : "Ajustes",
     "Show hidden files" : "Mostrar archivos ocultos",
@@ -157,15 +160,14 @@
     "Deleted shares" : "Recursos compartidos eliminados",
     "Text file" : "Archivo de texto",
     "New text file.txt" : "Nuevo archivo.txt",
-    "Target folder" : "Directorio de destino",
     "File handling" : "Manejo de archivos",
     "Maximum upload size" : "Tamaño de subida máximo ",
     "max. possible: " : "máx. posible: ",
     "Save" : "Guardar",
     "With PHP-FPM it might take 5 minutes for changes to be applied." : "Con PHP-FPM podría tardar hasta 5 minutos en realizarse los cambios.",
     "Missing permissions to edit from here." : "Faltan permisos para poder editar desde aquí.",
-    "%s of %s used" : "%s de %s usado",
     "Cancel upload" : "Cancelar subida",
+    "%s of %s used" : "%s de %s usado",
     "%1$s%% of %2$s used" : "%1$s %% de %2$s usados"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

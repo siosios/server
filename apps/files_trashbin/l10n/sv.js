@@ -3,6 +3,7 @@ OC.L10N.register(
     {
     "Deleted files" : "Raderade filer",
     "restored" : "återställd",
+    "This application enables users to restore files that were deleted from the system." : "Denna app gör det möjligt för användare att återställa filer som raderats från systemet.",
     "Restore" : "Återskapa",
     "Delete permanently" : "Radera permanent",
     "Error while restoring file from trashbin" : "Det gick inte att återställa filen från papperskorgen",
@@ -19,9 +20,6 @@ OC.L10N.register(
     "Name" : "Namn",
     "Actions" : "Åtgärder",
     "Deleted" : "Raderad",
-    "Delete" : "Radera",
-    "Couldn't delete %s permanently" : "Kunde inte radera %s permanent",
-    "Couldn't restore %s" : "Kunde inte återställa %s",
-    "Error" : "Fel"
+    "Delete" : "Radera"
 },
 "nplurals=2; plural=(n != 1);");

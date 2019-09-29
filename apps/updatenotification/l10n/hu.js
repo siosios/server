@@ -2,8 +2,8 @@ OC.L10N.register(
     "updatenotification",
     {
     "{version} is available. Get more information on how to update." : "{version} rendelkezésre áll. További információ a frissítéshez.",
-    "Update notifications" : "Frissítési értesítés",
     "Channel updated" : "Csatorna frissítve",
+    "Update notifications" : "Frissítési értesítés",
     "The update server could not be reached since %d days to check for new updates." : "A frissítési szerver  %d napja nem elérhető a frissítések kereséséhez.",
     "Please check the Nextcloud and server log files for errors." : "Kérlek nézd meg a Nextcloud és a szervernaplókat a hibák miatt.",
     "Update to %1$s is available." : "%1$s frissítés elérhető.",
@@ -36,7 +36,6 @@ OC.L10N.register(
     "View changelog" : "Változásnapló megjelenítése",
     "_<strong>%n</strong> app has no update for this version available_::_<strong>%n</strong> apps have no update for this version available_" : ["<strong>%n</strong>  alkalmazásnak nincs elérhető frissítése ehhez a verzióhoz","<strong>%n</strong> alkalmazásnak nincs elérhető frissítése ehhez a verzióhoz"],
     "You can always update to a newer version / experimental channel. But you can never downgrade to a more stable channel." : "Mindig frissíthetsz az újabb verzióra vagy kísérleti csatornára, de visszafelé sosem frissíthetsz egy jóval stabilabb verzióra.",
-    "<strong>beta</strong> is a pre-release version only for testing new features, not for production environments." : "<strong>Béta</strong>, egy előzetes verzió kizárólag az új funkciók tesztelésére, nem élő környezetbe.",
-    "Could not start updater, please try the manual update" : "Nem sikerült elindítani a frissítőt, kérlek próbáld a manuális frissítést"
+    "<strong>beta</strong> is a pre-release version only for testing new features, not for production environments." : "<strong>Béta</strong>, egy előzetes verzió kizárólag az új funkciók tesztelésére, nem élő környezetbe."
 },
 "nplurals=2; plural=(n != 1);");

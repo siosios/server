@@ -118,9 +118,9 @@ class Manager implements ICommentsManager {
 	 */
 	protected function prepareCommentForDatabaseWrite(IComment $comment) {
 		if (!$comment->getActorType()
-			|| !$comment->getActorId()
+			|| $comment->getActorId() === ''
 			|| !$comment->getObjectType()
-			|| !$comment->getObjectId()
+			|| $comment->getObjectId() === ''
 			|| !$comment->getVerb()
 		) {
 			throw new \UnexpectedValueException('Actor, Object and Verb information must be provided for saving');
@@ -158,9 +158,9 @@ class Manager implements ICommentsManager {
 		$comment = $this->get($id);
 		if ($comment->getParentId() === '0') {
 			return $comment->getId();
-		} else {
-			return $this->determineTopmostParentId($comment->getId());
 		}
+
+		return $this->determineTopmostParentId($comment->getParentId());
 	}
 
 	/**

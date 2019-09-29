@@ -83,8 +83,8 @@ import jstimezonedetect from 'jstimezonedetect'
 import marked from 'marked'
 import md5 from 'blueimp-md5'
 import moment from 'moment'
-import 'Select2'
-import 'Select2/select2.css'
+import 'select2'
+import 'select2/select2.css'
 import 'snap.js/dist/snap'
 import 'strengthify'
 import 'strengthify/strengthify.css'
@@ -107,7 +107,7 @@ window['Clipboard'] = ClipboardJS
 window['ClipboardJS'] = ClipboardJS
 window['cssVars'] = cssVars
 window['dav'] = dav
-window['DOMPurify'] = DOMPurify
+setDeprecatedProp('DOMPurify', () => DOMPurify, 'The global DOMPurify is deprecated, ship your own')
 window['Handlebars'] = Handlebars
 window['jstimezonedetect'] = jstimezonedetect
 window['jstz'] = jstimezonedetect

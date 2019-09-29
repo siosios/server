@@ -1,7 +1,6 @@
 OC.L10N.register(
     "federatedfilesharing",
     {
-    "Federated sharing" : "Souporaba v zveznem oblaku",
     "Do you want to add the remote share {name} from {owner}@{remote}?" : "Ali želite dodati oddaljeni delež {ime} od {lastnika}@{daljinsko}?",
     "Remote share" : "Oddaljeno mesto za souporabo",
     "Cancel" : "Prekliči",
@@ -16,6 +15,7 @@ OC.L10N.register(
     "Not allowed to create a federated share with the same user" : "Ni dovoljeno ustvariti souporabe zveznega oblaka z istim uporabnikom",
     "File is already shared with %s" : "Datoteka je že v souporabi pri %s",
     "Could not find share" : "Ni mogoče najti mape v souporabi",
+    "Federated sharing" : "Souporaba v zveznem oblaku",
     "Accept" : "Sprejmi",
     "Decline" : "Zavrni",
     "Share with me through my #Nextcloud Federated Cloud ID, see %s" : "Omogoči souporabo prek #Nextcloud ID zveznega oblaka, več na %s",
@@ -30,7 +30,6 @@ OC.L10N.register(
     "Your Federated Cloud ID:" : "Vaš ID zveznega oblaka:",
     "Add to your website" : "Dodaj na spletišče",
     "Share with me via Nextcloud" : "Omogoči souporabo prek oblaka Nextcloud",
-    "HTML Code:" : "Koda HTML:",
-    "Sharing %s failed, because this item is already shared with %s" : "Nastavljanje souporabe %s je spodletelo, ker je ima uporabnik %s predmet že v souporabi."
+    "HTML Code:" : "Koda HTML:"
 },
 "nplurals=4; plural=(n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3);");

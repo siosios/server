@@ -22,6 +22,7 @@
 <template>
 	<form method="post"
 		  name="login"
+		  :action="OC.generateUrl('login')"
 		  @submit="submit">
 		<fieldset>
 			<div v-if="apacheAuthFailed"
@@ -65,7 +66,8 @@
 
 			<p class="groupbottom"
 			   :class="{shake: invalidPassword}">
-				<input type="password"
+				<input :type="passwordInputType"
+					   class="password-with-toggle"
 					   name="password"
 					   id="password"
 					   ref="password"
@@ -75,12 +77,16 @@
 					   required>
 				<label for="password"
 					   class="infield">{{ t('Password') }}</label>
+				<a href="#" @click.stop.prevent="togglePassword" class="toggle-password">
+					<img :src="OC.imagePath('core', 'actions/toggle.svg')"/>
+				</a>
 			</p>
 
 			<div id="submit-wrapper">
 				<input type="submit"
-					   id="submit"
 					   class="login primary"
+					   name="submit"
+					   id="submit-form"
 					   title=""
 					   :value="!loading ? t('core', 'Log in') : t('core', 'Logging in …')" />
 				<div class="submit-icon"
@@ -162,6 +168,7 @@
 				timezoneOffset: (-new Date().getTimezoneOffset() / 60),
 				user: this.username,
 				password: '',
+				passwordInputType: 'password',
 			}
 		},
 		computed: {
@@ -186,6 +193,14 @@
 			}
 		},
 		methods: {
+			togglePassword () {
+				if(this.passwordInputType === 'password'){
+					this.passwordInputType = 'text'
+				}
+				else{
+					this.passwordInputType = 'password'
+				}
+			},
 			updateUsername () {
 				this.$emit('update:username', this.user)
 			},

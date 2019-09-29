@@ -96,8 +96,8 @@ export default {
 	 */
 	showHtml: function (html, options) {
 		options = options || {}
-		options.showHtml = true
-		options.timeout = (options.timeout === 0) ? -1 : options.timeout
+		options.isHTML = true
+		options.timeout = (!options.timeout) ? -1 : options.timeout
 		const toast = window.OCP.Toast.message(html, options)
 		return $(toast.toastElement)
 	},
@@ -113,6 +113,8 @@ export default {
 	 * @deprecated 17.0.0 use OCP.Toast
 	 */
 	show: function (text, options) {
+		options = options || {};
+		options.timeout = (!options.timeout) ? -1 : options.timeout;
 		const toast = window.OCP.Toast.message(text, options);
 		return $(toast.toastElement);
 	},

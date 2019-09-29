@@ -397,41 +397,6 @@ trigger:
 
 ---
 kind: pipeline
-name: mariadb10.0-php7.1
-
-steps:
-- name: submodules
-  image: docker:git
-  commands:
-    - git submodule update --init
-- name: mariadb10.0-php7.1
-  image: nextcloudci/php7.1:php7.1-16
-  commands:
-    - NOCOVERAGE=true TEST_SELECTION=DB ./autotest.sh mariadb
-
-services:
-- name: cache
-  image: redis
-- name: mariadb
-  image: mariadb:10.0
-  environment:
-    MYSQL_ROOT_PASSWORD: owncloud
-    MYSQL_USER: oc_autotest
-    MYSQL_PASSWORD: owncloud
-    MYSQL_DATABASE: oc_autotest
-  tmpfs:
-    - /var/lib/mysql
-
-trigger:
-  branch:
-    - master
-    - stable*
-  event:
-    - pull_request
-    - push
-
----
-kind: pipeline
 name: mariadb10.1-php7.1
 
 steps:
@@ -497,7 +462,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -532,20 +496,19 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
 kind: pipeline
-name: mariadb10.4-php7.1
+name: mariadb10.4-php7.3
 
 steps:
 - name: submodules
   image: docker:git
   commands:
     - git submodule update --init
-- name: mariadb10.4-php7.1
-  image: nextcloudci/php7.1:php7.1-16
+- name: mariadb10.4-php7.3
+  image: nextcloudci/php7.3:php7.3-1
   commands:
     - NOCOVERAGE=true TEST_SELECTION=DB ./autotest.sh mariadb
 
@@ -572,15 +535,15 @@ trigger:
 
 ---
 kind: pipeline
-name: mysql8.0-php7.1
+name: mysql8.0-php7.2
 
 steps:
 - name: submodules
   image: docker:git
   commands:
     - git submodule update --init
-- name: mysql-php7.1
-  image: nextcloudci/php7.1:php7.1-16
+- name: mysql-php7.2
+  image: nextcloudci/php7.2:php7.2-12
   commands:
     - NOCOVERAGE=true TEST_SELECTION=DB ./autotest.sh mysql
 
@@ -638,7 +601,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -671,7 +633,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -704,7 +665,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -743,50 +703,15 @@ trigger:
 
 ---
 kind: pipeline
-name: mysql5.5-php7.1
+name: postgres9-php7.3
 
 steps:
 - name: submodules
   image: docker:git
   commands:
     - git submodule update --init
-- name: mysql5.5-php7.1
-  image: nextcloudci/php7.1:php7.1-16
-  commands:
-    - NOCOVERAGE=true TEST_SELECTION=DB ./autotest.sh mysql
-
-services:
-- name: cache
-  image: redis
-- name: mysql
-  image: mysql:5.5
-  environment:
-    MYSQL_ROOT_PASSWORD: owncloud
-    MYSQL_USER: oc_autotest
-    MYSQL_PASSWORD: owncloud
-    MYSQL_DATABASE: oc_autotest
-  tmpfs:
-    - /var/lib/mysql
-
-trigger:
-  branch:
-    - master
-    - stable*
-  event:
-    - pull_request
-    - push
-
----
-kind: pipeline
-name: postgres9-php7.1
-
-steps:
-- name: submodules
-  image: docker:git
-  commands:
-    - git submodule update --init
-- name: postgres-php7.1
-  image: nextcloudci/php7.1:php7.1-16
+- name: postgres-php7.3
+  image: nextcloudci/php7.3:php7.3-1
   commands:
     - sleep 10 # gives the database enough time to initialize
     - POSTGRES=9 NOCOVERAGE=true TEST_SELECTION=DB ./autotest.sh pgsql
@@ -843,7 +768,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -914,7 +838,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -950,7 +873,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -986,7 +908,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -999,8 +920,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-capabilities_features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh capabilities_features/capabilities.feature
@@ -1023,8 +945,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-federation_features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin
     - cd build/integration
     - ./run.sh federation_features/federated.feature
@@ -1047,8 +970,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-auth
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/auth.feature
@@ -1071,8 +995,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-maintenance-mode
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/maintenance-mode.feature
@@ -1095,8 +1020,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-ratelimiting
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - ./occ config:system:set redis host --value=cache
     - ./occ config:system:set redis port --value=6379 --type=integer
@@ -1129,8 +1055,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-carddav
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/carddav.feature
@@ -1153,8 +1080,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-dav-v2
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/dav-v2.feature
@@ -1177,8 +1105,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-ocs-v1
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/ocs-v1.feature
@@ -1201,8 +1130,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-sharing-v1
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/sharing-v1.feature
@@ -1225,8 +1155,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-sharing-v1-part2
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/sharing-v1-part2.feature
@@ -1249,8 +1180,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-sharing-v1-part3
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/sharing-v1-part3.feature
@@ -1273,8 +1205,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-checksums-v1
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/checksums.feature
@@ -1297,8 +1230,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-external-storage
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/external-storage.feature
@@ -1321,8 +1255,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-provisioning-v1
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/provisioning-v1.feature
@@ -1345,8 +1280,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-tags
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/tags.feature
@@ -1369,8 +1305,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-caldav
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/caldav.feature
@@ -1393,8 +1330,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-comments
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/comments.feature
@@ -1417,8 +1355,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-comments-search
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/comments-search.feature
@@ -1441,8 +1380,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-favorites
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/favorites.feature
@@ -1465,8 +1405,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-provisioning-v2
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/provisioning-v2.feature
@@ -1489,8 +1430,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-webdav-related
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/webdav-related.feature
@@ -1513,8 +1455,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-sharees-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh sharees_features/sharees.feature
@@ -1537,8 +1480,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-sharees-v2-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh sharees_features/sharees_provisioningapiv2.feature
@@ -1561,8 +1505,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-setup-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - cd build/integration
     - ./run.sh setup_features/setup.feature
 
@@ -1584,8 +1529,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-filesdrop-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh filesdrop_features/filesdrop.feature
@@ -1608,8 +1554,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-transfer-ownership-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/transfer-ownership.feature
@@ -1632,8 +1579,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-ldap-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh ldap_features/ldap-ocs.feature
@@ -1656,8 +1604,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-ldap-openldap-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - ./occ config:system:set redis host --value=cache
     - ./occ config:system:set redis port --value=6379 --type=integer
@@ -1696,8 +1645,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-ldap-openldap-uid-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - ./occ config:system:set redis host --value=cache
     - ./occ config:system:set redis port --value=6379 --type=integer
@@ -1736,8 +1686,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-ldap-openldap-numerical-id-features
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - ./occ config:system:set redis host --value=cache
     - ./occ config:system:set redis port --value=6379 --type=integer
@@ -1776,8 +1727,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-trashbin
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh features/trashbin.feature
@@ -1800,8 +1752,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-remote-api
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh remoteapi_features/remote.feature
@@ -1824,8 +1777,9 @@ steps:
   commands:
     - git submodule update --init
 - name: integration-download
-  image: nextcloudci/integration-php7.1:1
+  image: nextcloudci/integration-php7.1:2
   commands:
+    - bash tests/drone-run-integration-tests.sh || exit 0
     - ./occ maintenance:install --admin-pass=admin --data-dir=/dev/shm/nc_int
     - cd build/integration
     - ./run.sh --tags ~@large features/download.feature
@@ -2195,7 +2149,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---
@@ -2225,7 +2178,6 @@ trigger:
     - master
     - stable*
   event:
-    - pull_request
     - push
 
 ---

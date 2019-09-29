@@ -1,7 +1,6 @@
 OC.L10N.register(
     "federatedfilesharing",
     {
-    "Federated sharing" : "Federerad delning",
     "Do you want to add the remote share {name} from {owner}@{remote}?" : "Vill du lägga till extern delning {name} från {owner}@{remote}?",
     "Remote share" : "Extern delning",
     "Remote share password" : "Lösenord för extern delning",
@@ -24,6 +23,7 @@ OC.L10N.register(
     "File is already shared with %s" : "Filen är redan delad med %s",
     "Sharing %1$s failed, could not find %2$s, maybe the server is currently unreachable or uses a self-signed certificate." : "Delning %1$s misslyckades. Kunde inte hitta %2$s, kanske är servern inte tillgänglig eller så används ett självsignerat certifikat.",
     "Could not find share" : "Kunde inte hitta delning",
+    "Federated sharing" : "Federerad delning",
     "You received \"%3$s\" as a remote share from %1$s (on behalf of %2$s)" : "Du tog emot \"%3$s\" som en extern delning från %1$s (på uppdrag av %2$s)",
     "You received {share} as a remote share from {user} (on behalf of {behalf})" : "Du tog emot {share} som en extern delning {user} (på uppdrag av {behalf})",
     "You received \"%3$s\" as a remote share from %1$s" : "Du tog emot \"%3$s\" som en extern delning från %1$s",
@@ -50,8 +50,6 @@ OC.L10N.register(
     "Share it so your friends can share files with you:" : "Dela det så att dina vänner kan dela filer med dig:",
     "Add to your website" : "Lägg till på din hemsida",
     "Share with me via Nextcloud" : "Dela med mig via Nextcloud",
-    "HTML Code:" : "HTML Kod:",
-    "Sharing %s failed, because this item is already shared with %s" : "Delning %s misslyckades därför att objektet redan är delat med %s",
-    "Sharing %s failed, could not find %s, maybe the server is currently unreachable or uses a self-signed certificate." : "Misslyckades att dela ut %s kunde inte hitta %s, kanske är servern inte tillgänglig för närvarande eller så används ett självsignerat certifikat"
+    "HTML Code:" : "HTML Kod:"
 },
 "nplurals=2; plural=(n != 1);");

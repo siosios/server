@@ -77,7 +77,7 @@ kbd {
 
 /* APP-NAVIGATION ------------------------------------------------------------ */
 /* Navigation: folder like structure */
-#app-navigation {
+#app-navigation:not(.vue) {
 	width: $navigation-width;
 	position: fixed;
 	top: $header-height;
@@ -711,7 +711,7 @@ $min-content-width: $breakpoint-mobile - $navigation-width - $list-min-width;
 }
 
 
-.settings-button {
+#app-settings-header .settings-button {
 	display: block;
 	height: 44px;
 	width: 100%;
@@ -732,9 +732,12 @@ $min-content-width: $breakpoint-mobile - $navigation-width - $list-min-width;
 	color: var(--color-main-text);
 	opacity: .57;
 
-	&.opened,
+	&.opened {
+		border-top: solid 1px var(--color-border);
+	}
 	&:hover,
-	&:focus {
+	&:focus,
+	&.opened {
 		background-color: var(--color-main-background);
 		opacity: 1;
 		box-shadow: inset 4px 0 var(--color-primary);

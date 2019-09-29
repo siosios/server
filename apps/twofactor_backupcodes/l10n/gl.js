@@ -14,15 +14,13 @@ OC.L10N.register(
     "Generate backup codes" : "Xerar códigos de seguranza",
     "You created two-factor backup codes for your account" : "Creou códigos de seguranza de dous factores para a súa conta",
     "Second-factor backup codes" : "Códigos de seguranza do segundo factor",
-    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Activou a autenticación de dous factores mais non xerou aída os códigos de seguranza. Asegúrese de facelo para o caso de perda de acceso ao seu segundo factor.",
+    "You enabled two-factor authentication but did not generate backup codes yet. They are needed to restore access to your account in case you lose your second factor." : "Activou a autenticación de dous factores mais aínda non xerou os códigos de copia de seguranza. Necesítanse para restaurar o acceso á súa conta no caso de perder o segundo factor.",
     "Backup code" : "Código de seguranza",
     "Use backup code" : "Usar código de seguranza",
     "Two factor backup codes" : "Códigos de seguranza de dous factores",
     "A two-factor auth backup codes provider" : "Un provedor de códigos de seguranza para a autenticación de dous factores",
     "Use one of the backup codes you saved when setting up two-factor authentication." : "Use un dos códigos de seguranza que gardou cuando axustou a autenticación de dous factores.",
     "Submit" : "Enviar ",
-    "Backup codes have been generated. {{used}} of {{total}} codes have been used." : "Los códigos de seguranza foron xerados. Usou {{used}} códigos de {{total}}.",
-    "Nextcloud backup codes" : "Códigos de seguranza do Nextcloud",
     "activated" : "activado",
     "updated" : "actualizado",
     "mounted" : "montado",
@@ -32,6 +30,8 @@ OC.L10N.register(
     "beforeUpdate" : "antesDaActualización",
     "beforeDestroy" : "antesDaDestrución",
     "destroyed" : "destruído",
-    "beforeMount" : "antesDaMontaxe"
+    "beforeMount" : "antesDaMontaxe",
+    "Nextcloud backup codes" : "Códigos de seguranza do Nextcloud",
+    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Activou a autenticación de dous factores mais non xerou aída os códigos de seguranza. Asegúrese de facelo para o caso de perda de acceso ao seu segundo factor."
 },
 "nplurals=2; plural=(n != 1);");
