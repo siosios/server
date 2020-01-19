@@ -1,9 +1,16 @@
 <?php
 /**
- * @author Lukas Reschke <lukas@owncloud.com>
- *
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  * @copyright Copyright (c) 2015, ownCloud, Inc.
+ *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ *
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -16,7 +23,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -27,19 +34,19 @@ use OC\App\AppStore\Fetcher\AppFetcher;
 use OC\App\AppStore\Fetcher\CategoryFetcher;
 use OC\Installer;
 use OCA\Settings\Controller\AppSettingsController;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\IConfig;
+use OCP\IL10N;
 use OCP\ILogger;
+use OCP\INavigationManager;
+use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use Test\TestCase;
-use OCP\IRequest;
-use OCP\IL10N;
-use OCP\IConfig;
-use OCP\INavigationManager;
-use OCP\App\IAppManager;
 
 /**
  * Class AppSettingsControllerTest
@@ -76,7 +83,7 @@ class AppSettingsControllerTest extends TestCase {
 	/** @var ILogger|MockObject */
 	private $logger;
 
-	public function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->request = $this->createMock(IRequest::class);

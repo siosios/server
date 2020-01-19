@@ -1,10 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 /**
  * @copyright 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
  *
- * @author 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Greta Doci <gretadoci@gmail.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -19,16 +22,17 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 namespace OCA\Settings\Tests\Settings\Personal;
 
 use OC\Authentication\TwoFactorAuth\ProviderLoader;
-use OCP\IInitialStateService;
 use OCA\Settings\Personal\Security;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IConfig;
+use OCP\IInitialStateService;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
@@ -58,7 +62,7 @@ class SecurityTest extends TestCase {
 	/** @var Security */
 	private $section;
 
-	public function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->initialStateService = $this->createMock(IInitialStateService::class);

@@ -4,7 +4,9 @@
  *
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -24,14 +26,14 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OCA\Files_Trashbin\Tests;
 
-use OC\Files\Storage\Temporary;
 use OC\Files\Filesystem;
+use OC\Files\Storage\Temporary;
 use OCA\Files_Trashbin\Events\MoveToTrashEvent;
 use OCA\Files_Trashbin\Storage;
 use OCA\Files_Trashbin\Trash\ITrashManager;
@@ -66,7 +68,7 @@ class StorageTest extends \Test\TestCase {
 	 */
 	private $userView;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		\OC_Hook::clear();
@@ -88,7 +90,7 @@ class StorageTest extends \Test\TestCase {
 		$this->userView->file_put_contents('folder/inside.txt', 'bar');
 	}
 
-	protected function tearDown() {
+	protected function tearDown(): void {
 		\OC\Files\Filesystem::getLoader()->removeStorageWrapper('oc_trashbin');
 		$this->logout();
 		$user = \OC::$server->getUserManager()->get($this->user);
@@ -282,7 +284,8 @@ class StorageTest extends \Test\TestCase {
 			->setSharedBy($this->user)
 			->setSharedWith($recipientUser)
 			->setPermissions(\OCP\Constants::PERMISSION_ALL);
-		\OC::$server->getShareManager()->createShare($share);
+		$share = \OC::$server->getShareManager()->createShare($share);
+		\OC::$server->getShareManager()->acceptShare($share, $recipientUser);
 
 		$this->loginAsUser($recipientUser);
 
@@ -335,7 +338,8 @@ class StorageTest extends \Test\TestCase {
 			->setSharedBy($this->user)
 			->setSharedWith($recipientUser)
 			->setPermissions(\OCP\Constants::PERMISSION_ALL);
-		\OC::$server->getShareManager()->createShare($share);
+		$share = \OC::$server->getShareManager()->createShare($share);
+		\OC::$server->getShareManager()->acceptShare($share, $recipientUser);
 
 		$this->loginAsUser($recipientUser);
 

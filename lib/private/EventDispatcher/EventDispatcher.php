@@ -5,7 +5,8 @@ declare(strict_types=1);
 /**
  * @copyright 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
  *
- * @author 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -20,18 +21,22 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 namespace OC\EventDispatcher;
 
+use function get_class;
+use OC\Broadcast\Events\BroadcastEvent;
+use OCP\Broadcast\Events\IBroadcastEvent;
+use OCP\EventDispatcher\ABroadcastedEvent;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IContainer;
 use OCP\ILogger;
 use OCP\IServerContainer;
 use Symfony\Component\EventDispatcher\EventDispatcher as SymfonyDispatcher;
-use function get_class;
 
 class EventDispatcher implements IEventDispatcher {
 
@@ -73,6 +78,14 @@ class EventDispatcher implements IEventDispatcher {
 	public function dispatch(string $eventName,
 							 Event $event): void {
 		$this->dispatcher->dispatch($event, $eventName);
+
+		if ($event instanceof ABroadcastedEvent && !$event->isPropagationStopped()) {
+			// Propagate broadcast
+			$this->dispatch(
+				IBroadcastEvent::class,
+				new BroadcastEvent($event)
+			);
+		}
 	}
 
 	public function dispatchTyped(Event $event): void {

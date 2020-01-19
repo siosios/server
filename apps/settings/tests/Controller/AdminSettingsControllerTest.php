@@ -2,7 +2,11 @@
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,13 +21,14 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCA\Settings\Tests\Controller;
 
-use OCA\Settings\Personal\ServerDevNotice;
 use OCA\Settings\Controller\AdminSettingsController;
+use OCA\Settings\Personal\ServerDevNotice;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\Group\ISubAdmin;
 use OCP\IGroupManager;
@@ -61,7 +66,7 @@ class AdminSettingsControllerTest extends TestCase {
 	/** @var string */
 	private $adminUid = 'lololo';
 
-	public function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->request = $this->createMock(IRequest::class);
@@ -86,7 +91,7 @@ class AdminSettingsControllerTest extends TestCase {
 		\OC::$server->getGroupManager()->createGroup('admin')->addUser($user);
 	}
 
-	public function tearDown() {
+	protected function tearDown(): void {
 		\OC::$server->getUserManager()->get($this->adminUid)->delete();
 
 		parent::tearDown();

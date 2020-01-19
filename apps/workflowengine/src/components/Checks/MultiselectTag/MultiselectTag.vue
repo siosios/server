@@ -22,13 +22,17 @@
 
 <template>
 	<Multiselect v-model="inputValObjects"
-		:options="tags" :options-limit="5"
+		:options="tags"
+		:options-limit="5"
 		:placeholder="label"
 		track-by="id"
 		:custom-label="tagLabel"
-		class="multiselect-vue" :multiple="multiple"
-		:close-on-select="false" :tag-width="60"
-		:disabled="disabled" @input="update">
+		class="multiselect-vue"
+		:multiple="multiple"
+		:close-on-select="false"
+		:tag-width="60"
+		:disabled="disabled"
+		@input="update">
 		<span slot="noResult">{{ t('core', 'No results') }}</span>
 		<template #option="scope">
 			{{ tagLabel(scope.option) }}
@@ -44,42 +48,41 @@ let uuid = 0
 export default {
 	name: 'MultiselectTag',
 	components: {
-		Multiselect
+		Multiselect,
 	},
 	props: {
 		label: {
 			type: String,
-			required: true
+			required: true,
 		},
 		value: {
-			default() {
-				return []
-			}
+			type: [String, Array],
+			default: null,
 		},
 		disabled: {
 			type: Boolean,
-			default: false
+			default: false,
 		},
 		multiple: {
 			type: Boolean,
-			default: true
-		}
+			default: false,
+		},
 	},
 	data() {
 		return {
 			inputValObjects: [],
-			tags: []
+			tags: [],
 		}
 	},
 	computed: {
 		id() {
 			return 'settings-input-text-' + this.uuid
-		}
+		},
 	},
 	watch: {
 		value(newVal) {
 			this.inputValObjects = this.getValueObject()
-		}
+		},
 	},
 	beforeCreate: function() {
 		this.uuid = uuid.toString()
@@ -121,7 +124,7 @@ export default {
 				return t('systemtags', '%s (restricted)').replace('%s', displayName)
 			}
 			return displayName
-		}
-	}
+		},
+	},
 }
 </script>

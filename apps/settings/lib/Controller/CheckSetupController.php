@@ -2,15 +2,22 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Cthulhux <git@tuxproject.de>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Derek <derek.kelly27@gmail.com>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Ko- <k.stoffelen@cs.ru.nl>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Michael Weimann <mail@michael-weimann.eu>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sven Strickroth <email@cs-ware.de>
+ * @author Sylvia van Os <sylvia@hackerchick.me>
+ * @author Timo Förster <tfoerster@webfoersterei.de>
  *
  * @license AGPL-3.0
  *
@@ -24,7 +31,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -589,8 +596,13 @@ Raw output
 		$tables = [
 			'activity' => ['activity_id', 'object_id'],
 			'activity_mq' => ['mail_id'],
+			'authtoken' => ['id'],
+			'bruteforce_attempts' => ['id'],
 			'filecache' => ['fileid', 'storage', 'parent', 'mimetype', 'mimepart', 'mtime', 'storage_mtime'],
+			'file_locks' => ['id'],
+			'jobs' => ['id'],
 			'mimetypes' => ['id'],
+			'mounts' => ['id', 'storage_id', 'root_id', 'mount_id'],
 			'storages' => ['numeric_id'],
 		];
 

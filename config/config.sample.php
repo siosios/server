@@ -357,8 +357,8 @@ $CONFIG = array(
 'mail_smtptimeout' => 10,
 
 /**
- * This depends on ``mail_smtpmode``. Specify when you are using ``ssl`` or
- * ``tls``, or leave empty for no encryption.
+ * This depends on ``mail_smtpmode``. Specify when you are using ``ssl`` for SSL/TLS or
+ * ``tls`` for STARTTLS, or leave empty for no encryption.
  *
  * Defaults to ``''`` (empty string)
  */
@@ -1187,7 +1187,7 @@ $CONFIG = array(
 ),
 
 /**
- * Connection options for memcached, see http://apprize.info/php/scaling/15.html
+ * Connection options for memcached
  */
 'memcached_options' => array(
 	// Set timeouts to 50ms
@@ -1337,6 +1337,18 @@ $CONFIG = array(
  * Default is no limit (value set to 0)
  */
 'sharing.minSearchStringLength' => 0,
+
+/**
+ * Set to true to enable that internal shares need to be accepted by the users by default.
+ * Users can change this for their account in their personal sharing settings
+ */
+'sharing.enable_share_accept' => false,
+
+/**
+ * Set to true to enforce that internal shares need to be accepted
+ */
+'sharing.force_share_accept' => false,
+
 
 /**
  * All other configuration options

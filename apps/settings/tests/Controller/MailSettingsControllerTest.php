@@ -3,17 +3,33 @@
  * @copyright 2014 Lukas Reschke lukas@nextcloud.com
  * @copyright Copyright (c) 2017  Joas Schilling <coding@schilljs.com>
  *
- * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
- * This file is licensed under the Affero General Public License version 3 or
- * later.
- * See the COPYING-README file.
+ * @license GNU AGPL version 3 or any later version
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 namespace OCA\Settings\Tests\Controller;
 
 use OC\Mail\Message;
+use OC\User\User;
 use OCA\Settings\Controller\MailSettingsController;
 use OCP\AppFramework\Http;
 use OCP\IConfig;
@@ -22,7 +38,6 @@ use OCP\IRequest;
 use OCP\IUserSession;
 use OCP\Mail\IEMailTemplate;
 use OCP\Mail\IMailer;
-use OC\User\User;
 
 /**
  * @package Tests\Settings\Controller
@@ -41,7 +56,7 @@ class MailSettingsControllerTest extends \Test\TestCase {
 	/** @var MailSettingsController */
 	private $mailController;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->l = $this->createMock(IL10N::class);
@@ -172,7 +187,7 @@ class MailSettingsControllerTest extends \Test\TestCase {
 			->method('createEMailTemplate')
 			->willReturn($emailTemplate);
 		$response = $this->mailController->sendTestMail();
-		$this->assertSame(Http::STATUS_OK, $response->getStatus(), $response->getData());
+		$this->assertSame(Http::STATUS_OK, $response->getStatus());
 	}
 
 }

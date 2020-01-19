@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
@@ -7,20 +9,19 @@ declare(strict_types=1);
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
- * @author Björn Schießle <bjoern@schiessle.org>
  * @author Borjan Tchakaloff <borjan@tchakaloff.fr>
  * @author Brice Maron <brice@bmaron.net>
  * @author Christopher Schäpers <kondou@ts.unde.re>
- * @author Felix Moeller <mail@felixmoeller.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Rudolf <github.com@daniel-rudolf.de>
  * @author Frank Karlitschek <frank@karlitschek.de>
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Julius Haertl <jus@bitgrid.net>
  * @author Julius Härtl <jus@bitgrid.net>
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Kamil Domanski <kdomanski@kdemail.net>
- * @author Klaas Freitag <freitag@owncloud.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Markus Goetz <markus@woboq.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -32,7 +33,6 @@ declare(strict_types=1);
  * @author Sebastian Wessalowski <sebastian@wessalowski.org>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
- * @author Tom Needham <tom@owncloud.com>
  * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
@@ -47,7 +47,7 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 use OC\App\DependencyAnalyzer;
@@ -55,6 +55,7 @@ use OC\App\Platform;
 use OC\DB\MigrationService;
 use OC\Installer;
 use OC\Repair;
+use OC\ServerNotAvailableException;
 use OCP\App\ManagerEvent;
 use OCP\ILogger;
 
@@ -153,9 +154,13 @@ class OC_App {
 			try {
 				self::requireAppFile($app);
 			} catch (Throwable $ex) {
+				if($ex instanceof ServerNotAvailableException) {
+					throw $ex;
+				}
 				\OC::$server->getLogger()->logException($ex);
-				if (!\OC::$server->getAppManager()->isShipped($app)) {
-					// Only disable apps which are not shipped
+
+				if (!\OC::$server->getAppManager()->isShipped($app) && !self::isType($app, ['authentication'])) {
+					// Only disable apps which are not shipped and that are not authentication apps
 					\OC::$server->getAppManager()->disableApp($app, true);
 				}
 			}
@@ -222,10 +227,11 @@ class OC_App {
 	 * @internal
 	 * @param string $app
 	 * @param string $path
+	 * @param bool $force
 	 */
-	public static function registerAutoloading(string $app, string $path) {
+	public static function registerAutoloading(string $app, string $path, bool $force = false) {
 		$key = $app . '-' . $path;
-		if(isset(self::$alreadyRegistered[$key])) {
+		if (!$force && isset(self::$alreadyRegistered[$key])) {
 			return;
 		}
 
@@ -895,10 +901,11 @@ class OC_App {
 		if($appPath === false) {
 			return false;
 		}
-		self::registerAutoloading($appId, $appPath);
 
 		\OC::$server->getAppManager()->clearAppsCache();
 		$appData = self::getAppInfo($appId);
+
+		self::registerAutoloading($appId, $appPath, true);
 		self::executeRepairSteps($appId, $appData['repair-steps']['pre-migration']);
 
 		if (file_exists($appPath . '/appinfo/database.xml')) {

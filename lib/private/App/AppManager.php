@@ -5,15 +5,19 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Christoph Schaefer "christophł@wolkesicher.de"
- * @author Christoph Wurst <christoph@owncloud.com>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
+ * @author Daniel Rudolf <github.com@daniel-rudolf.de>
+ * @author Greta Doci <gretadoci@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Julius Haertl <jus@bitgrid.net>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Tobia De Koninck <tobia@ledfan.be>
  * @author Vincent Petry <pvince81@owncloud.com>
- * @author Daniel Rudolf <nextcloud.com@daniel-rudolf.de>
  *
  * @license AGPL-3.0
  *
@@ -27,7 +31,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -38,6 +42,7 @@ use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
 use OCP\App\ManagerEvent;
 use OCP\ICacheFactory;
+use OCP\IConfig;
 use OCP\IGroup;
 use OCP\IGroupManager;
 use OCP\ILogger;
@@ -61,6 +66,9 @@ class AppManager implements IAppManager {
 
 	/** @var IUserSession */
 	private $userSession;
+
+	/** @var IConfig */
+	private $config;
 
 	/** @var AppConfig */
 	private $appConfig;
@@ -97,18 +105,21 @@ class AppManager implements IAppManager {
 
 	/**
 	 * @param IUserSession $userSession
+	 * @param IConfig $config
 	 * @param AppConfig $appConfig
 	 * @param IGroupManager $groupManager
 	 * @param ICacheFactory $memCacheFactory
 	 * @param EventDispatcherInterface $dispatcher
 	 */
 	public function __construct(IUserSession $userSession,
+								IConfig $config,
 								AppConfig $appConfig,
 								IGroupManager $groupManager,
 								ICacheFactory $memCacheFactory,
 								EventDispatcherInterface $dispatcher,
 								ILogger $logger) {
 		$this->userSession = $userSession;
+		$this->config = $config;
 		$this->appConfig = $appConfig;
 		$this->groupManager = $groupManager;
 		$this->memCacheFactory = $memCacheFactory;
@@ -292,15 +303,28 @@ class AppManager implements IAppManager {
 		return isset($installedApps[$appId]);
 	}
 
+	public function ignoreNextcloudRequirementForApp(string $appId): void {
+		$ignoreMaxApps = $this->config->getSystemValue('app_install_overwrite', []);
+		if (!in_array($appId, $ignoreMaxApps, true)) {
+			$ignoreMaxApps[] = $appId;
+			$this->config->setSystemValue('app_install_overwrite', $ignoreMaxApps);
+		}
+	}
+
 	/**
 	 * Enable an app for every user
 	 *
 	 * @param string $appId
+	 * @param bool $forceEnable
 	 * @throws AppPathNotFoundException
 	 */
-	public function enableApp($appId) {
+	public function enableApp(string $appId, bool $forceEnable = false): void {
 		// Check if app exists
 		$this->getAppPath($appId);
+
+		if ($forceEnable) {
+			$this->ignoreNextcloudRequirementForApp($appId);
+		}
 
 		$this->installedAppsCache[$appId] = 'yes';
 		$this->appConfig->setValue($appId, 'enabled', 'yes');
@@ -330,16 +354,21 @@ class AppManager implements IAppManager {
 	 *
 	 * @param string $appId
 	 * @param \OCP\IGroup[] $groups
+	 * @param bool $forceEnable
 	 * @throws \InvalidArgumentException if app can't be enabled for groups
 	 * @throws AppPathNotFoundException
 	 */
-	public function enableAppForGroups($appId, $groups) {
+	public function enableAppForGroups(string $appId, array $groups, bool $forceEnable = false): void {
 		// Check if app exists
 		$this->getAppPath($appId);
 
 		$info = $this->getAppInfo($appId);
 		if (!empty($info['types']) && $this->hasProtectedAppType($info['types'])) {
 			throw new \InvalidArgumentException("$appId can't be enabled for groups.");
+		}
+
+		if ($forceEnable) {
+			$this->ignoreNextcloudRequirementForApp($appId);
 		}
 
 		$groupIds = array_map(function ($group) {

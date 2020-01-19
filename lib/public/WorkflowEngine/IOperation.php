@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,13 +18,13 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 namespace OCP\WorkflowEngine;
 
-use Symfony\Component\EventDispatcher\GenericEvent;
+use OCP\EventDispatcher\Event;
 
 /**
  * Interface IOperation
@@ -99,5 +100,5 @@ interface IOperation {
 	 *
 	 * @since 18.0.0
 	 */
-	public function onEvent(string $eventName, GenericEvent $event, IRuleMatcher $ruleMatcher): void;
+	public function onEvent(string $eventName, Event $event, IRuleMatcher $ruleMatcher): void;
 }

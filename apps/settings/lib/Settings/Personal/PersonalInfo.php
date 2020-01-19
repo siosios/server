@@ -3,7 +3,13 @@
  * @copyright Copyright (c) 2017 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Citharel <tcit@tcit.fr>
  *
  * @license GNU AGPL version 3 or any later version
@@ -19,7 +25,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -90,7 +96,7 @@ class PersonalInfo implements ISettings {
 		$federatedFileSharingEnabled = $this->appManager->isEnabledForUser('federatedfilesharing');
 		$lookupServerUploadEnabled = false;
 		if($federatedFileSharingEnabled) {
-			$federatedFileSharing = new Application();
+			$federatedFileSharing = \OC::$server->query(Application::class);
 			$shareProvider = $federatedFileSharing->getFederatedShareProvider();
 			$lookupServerUploadEnabled = $shareProvider->isLookupServerUploadEnabled();
 		}
@@ -245,6 +251,13 @@ class PersonalInfo implements ISettings {
 		$localesForLanguage = array_filter($localeCodes, function($localeCode) use ($userLang) {
 			return 0 === strpos($localeCode['code'], $userLang);
 		});
+
+		if (!$userLocale) {
+			$userLocale = [
+				'code' => 'en',
+				'name' => 'English'
+			];
+		}
 
 		return [
 			'activelocaleLang' => $userLocaleString,

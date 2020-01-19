@@ -1,9 +1,12 @@
 <?php
+
 declare(strict_types=1);
+
 /**
  * @copyright 2018 Georg Ehrke <oc.list@georgehrke.com>
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,9 +21,10 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 namespace OCA\DAV\BackgroundJob;
 
 use GuzzleHttp\HandlerStack;
@@ -246,6 +250,17 @@ class RefreshWebcalJob extends Job {
 			if ((bool)filter_var($host, FILTER_VALIDATE_IP) && !filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
 				$this->logger->warning("Subscription $subscriptionId was not refreshed because it violates local access rules");
 				return null;
+			}
+
+			// Also check for IPv6 IPv4 nesting, because that's not covered by filter_var
+			if ((bool)filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) && substr_count($host, '.') > 0) {
+				$delimiter = strrpos($host, ':'); // Get last colon
+				$ipv4Address = substr($host, $delimiter + 1);
+
+				if (!filter_var($ipv4Address, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+					$this->logger->warning("Subscription $subscriptionId was not refreshed because it violates local access rules");
+					return null;
+				}
 			}
 		}
 

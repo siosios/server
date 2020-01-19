@@ -32,6 +32,7 @@ OC.L10N.register(
     "destroyed" : "Vernichtet",
     "beforeMount" : "beforeMount",
     "Nextcloud backup codes" : "Nextcloud Backup-Codes",
-    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Sie haben die Zwei-Faktor-Authentifizierung aktiviert, aber noch keine Backup-Codes generiert. Bitte holen Sie dies für den Fall, dass Sie den Zugriff auf Ihren zweiten Faktor verlieren, nach."
+    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Sie haben die Zwei-Faktor-Authentifizierung aktiviert, aber noch keine Backup-Codes generiert. Bitte holen Sie dies für den Fall, dass Sie den Zugriff auf Ihren zweiten Faktor verlieren, nach.",
+    "function" : "Funktion"
 },
 "nplurals=2; plural=(n != 1);");

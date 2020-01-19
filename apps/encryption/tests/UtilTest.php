@@ -21,10 +21,9 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 
 namespace OCA\Encryption\Tests;
 
@@ -81,7 +80,7 @@ class UtilTest extends TestCase {
 		$this->assertTrue($this->instance->userHasFiles('admin'));
 	}
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 		$this->mountMock = $this->createMock(IMountPoint::class);
 		$this->filesMock = $this->createMock(View::class);

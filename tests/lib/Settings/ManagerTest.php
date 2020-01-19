@@ -23,10 +23,10 @@
 
 namespace OCA\Settings\Tests\AppInfo;
 
-use OCA\Settings\Admin\Sharing;
 use OC\Settings\Manager;
-use OCA\Settings\Personal\Security;
 use OC\Settings\Section;
+use OCA\Settings\Admin\Sharing;
+use OCA\Settings\Personal\Security;
 use OCP\IDBConnection;
 use OCP\IL10N;
 use OCP\ILogger;
@@ -51,7 +51,7 @@ class ManagerTest extends TestCase {
 	/** @var IServerContainer|\PHPUnit_Framework_MockObject_MockObject */
 	private $container;
 
-	public function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->logger = $this->createMock(ILogger::class);
@@ -119,7 +119,7 @@ class ManagerTest extends TestCase {
 		$this->url->expects($this->exactly(3))
 			->method('imagePath')
 			->willReturnMap([
-				['core', 'actions/info.svg', '1'],
+				['core', 'actions/user.svg', '1'],
 				['settings', 'password.svg', '2'],
 				['core', 'clients/phone.svg', '3'],
 			]);
@@ -178,7 +178,7 @@ class ManagerTest extends TestCase {
 		$this->url->expects($this->exactly(3))
 			->method('imagePath')
 			->willReturnMap([
-				['core', 'actions/info.svg', '1'],
+				['core', 'actions/user.svg', '1'],
 				['settings', 'password.svg', '2'],
 				['core', 'clients/phone.svg', '3'],
 			]);
@@ -279,7 +279,7 @@ class ManagerTest extends TestCase {
 		$this->url->expects($this->exactly(9))
 			->method('imagePath')
 			->willReturnMap([
-				['core', 'actions/info.svg', '1'],
+				['core', 'actions/user.svg', '1'],
 				['settings', 'password.svg', '2'],
 				['core', 'clients/phone.svg', '3'],
 				['settings', 'admin.svg', '0'],

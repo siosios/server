@@ -4,8 +4,11 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sascha Wiswedel <sascha.wiswedel@nextcloud.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -20,7 +23,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -82,6 +85,9 @@ class Sharing implements ISettings {
 			'enableLinkPasswordByDefault'          => $this->config->getAppValue('core', 'shareapi_enable_link_password_by_default', 'no'),
 			'shareApiDefaultPermissions'           => $this->config->getAppValue('core', 'shareapi_default_permissions', Constants::PERMISSION_ALL),
 			'shareApiDefaultPermissionsCheckboxes' => $this->getSharePermissionList(),
+			'shareDefaultInternalExpireDateSet'    => $this->config->getAppValue('core', 'shareapi_default_internal_expire_date', 'no'),
+			'shareInternalExpireAfterNDays'        => $this->config->getAppValue('core', 'shareapi_internal_expire_after_n_days', '7'),
+			'shareInternalEnforceExpireDate'       => $this->config->getAppValue('core', 'shareapi_enforce_internal_expire_date', 'no'),
 		];
 
 		return new TemplateResponse('settings', 'settings/admin/sharing', $parameters, '');
@@ -111,7 +117,7 @@ class Sharing implements ISettings {
 			],
 			[
 				'id' => 'canshare',
-				'label' => $this->l->t('Share'),
+				'label' => $this->l->t('Reshare'),
 				'value' => Constants::PERMISSION_SHARE
 			],
 		];

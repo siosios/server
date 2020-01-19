@@ -32,6 +32,7 @@ OC.L10N.register(
     "destroyed" : "destruït",
     "beforeMount" : "beforeMount",
     "Nextcloud backup codes" : "Codis de seguretat de Nextcloud",
-    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Heu activat l'autenticació de dos factors, però encara no heu generat els codis de seguretat. Assegureu-vos de fer-ho en cas de perdre l'accés al segon factor."
+    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Heu activat l'autenticació de dos factors, però encara no heu generat els codis de seguretat. Assegureu-vos de fer-ho en cas de perdre l'accés al segon factor.",
+    "function" : "funció"
 },
 "nplurals=2; plural=(n != 1);");

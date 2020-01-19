@@ -1,8 +1,17 @@
 <?php
 /**
- * @author Christoph Wurst <christoph@owncloud.com>
- *
  * @copyright Copyright (c) 2016, ownCloud, Inc.
+ *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
+ * @author Fabrizio Steiner <fabrizio.steiner@gmail.com>
+ * @author Greta Doci <gretadoci@gmail.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sergej Nikolaev <kinolaev@gmail.com>
+ *
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -15,13 +24,14 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace Test\Settings\Controller;
 
 use OC\AppFramework\Http;
+use OC\Authentication\Exceptions\ExpiredTokenException;
 use OC\Authentication\Exceptions\InvalidTokenException;
 use OC\Authentication\Token\DefaultToken;
 use OC\Authentication\Token\IProvider;
@@ -60,7 +70,7 @@ class AuthSettingsControllerTest extends TestCase {
 	private $remoteWipe;
 	private $uid = 'jane';
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->request = $this->createMock(IRequest::class);
@@ -188,6 +198,30 @@ class AuthSettingsControllerTest extends TestCase {
 		$this->assertEquals([], $this->controller->destroy($tokenId));
 	}
 
+	public function testDestroyExpired() {
+		$tokenId = 124;
+		$token = $this->createMock(DefaultToken::class);
+
+		$token->expects($this->exactly(2))
+			->method('getId')
+			->willReturn($tokenId);
+
+		$token->expects($this->once())
+			->method('getUID')
+			->willReturn($this->uid);
+
+		$this->tokenProvider->expects($this->once())
+			->method('getTokenById')
+			->with($this->equalTo($tokenId))
+			->willThrowException(new ExpiredTokenException($token));
+
+		$this->tokenProvider->expects($this->once())
+			->method('invalidateTokenById')
+			->with($this->uid, $tokenId);
+
+		$this->assertSame([], $this->controller->destroy($tokenId));
+	}
+
 	public function testDestroyWrongUser() {
 		$tokenId = 124;
 		$token = $this->createMock(DefaultToken::class);
@@ -312,6 +346,26 @@ class AuthSettingsControllerTest extends TestCase {
 
 		$token->expects($this->never())
 			->method('setScope');
+
+		$this->tokenProvider->expects($this->once())
+			->method('updateToken')
+			->with($this->equalTo($token));
+
+		$this->assertSame([], $this->controller->update($tokenId, ['filesystem' => true], 'App password'));
+	}
+
+	public function testUpdateExpired() {
+		$tokenId = 42;
+		$token = $this->createMock(DefaultToken::class);
+
+		$token->expects($this->once())
+			->method('getUID')
+			->willReturn($this->uid);
+
+		$this->tokenProvider->expects($this->once())
+			->method('getTokenById')
+			->with($this->equalTo($tokenId))
+			->willThrowException(new ExpiredTokenException($token));
 
 		$this->tokenProvider->expects($this->once())
 			->method('updateToken')

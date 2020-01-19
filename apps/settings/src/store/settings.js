@@ -1,4 +1,4 @@
-/*
+/**
  * @copyright Copyright (c) 2018 John Molakvoæ <skjnldsv@protonmail.com>
  *
  * @author John Molakvoæ <skjnldsv@protonmail.com>
@@ -20,21 +20,19 @@
  *
  */
 
-import api from './api';
-
 const state = {
-	serverData: {}
-};
+	serverData: {},
+}
 const mutations = {
 	setServerData(state, data) {
-		state.serverData = data;
-	}
-};
+		state.serverData = data
+	},
+}
 const getters = {
 	getServerData(state) {
-		return state.serverData;
-	}
-};
-const actions = {};
+		return state.serverData
+	},
+}
+const actions = {}
 
-export default {state, mutations, getters, actions};
+export default { state, mutations, getters, actions }

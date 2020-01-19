@@ -4,17 +4,15 @@
  * @copyright Copyright (c) 2018, Georg Ehrke
  *
  * @author Bart Visscher <bartv@thisnet.nl>
+ * @author Christoph Seitz <christoph.seitz@posteo.de>
+ * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Jakob Sack <mail@jakobsack.de>
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Vincent Petry <pvince81@owncloud.com>
- * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Vinicius Cubas Brand <vinicius@eita.org.br>
- * @author Daniel Tygel <dtygel@eita.org.br>
  *
  * @license AGPL-3.0
  *
@@ -28,7 +26,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -40,6 +38,7 @@ use OCA\DAV\CalDAV\Proxy\ProxyMapper;
 use OCA\DAV\Traits\PrincipalProxyTrait;
 use OCP\App\IAppManager;
 use OCP\AppFramework\QueryException;
+use OCP\IConfig;
 use OCP\IGroup;
 use OCP\IGroupManager;
 use OCP\IUser;
@@ -79,6 +78,9 @@ class Principal implements BackendInterface {
 	/** @var ProxyMapper */
 	private $proxyMapper;
 
+	/** @var IConfig */
+	private $config;
+
 	/**
 	 * Principal constructor.
 	 *
@@ -88,6 +90,7 @@ class Principal implements BackendInterface {
 	 * @param IUserSession $userSession
 	 * @param IAppManager $appManager
 	 * @param ProxyMapper $proxyMapper
+	 * @param IConfig $config
 	 * @param string $principalPrefix
 	 */
 	public function __construct(IUserManager $userManager,
@@ -96,6 +99,7 @@ class Principal implements BackendInterface {
 								IUserSession $userSession,
 								IAppManager $appManager,
 								ProxyMapper $proxyMapper,
+								IConfig $config,
 								string $principalPrefix = 'principals/users/') {
 		$this->userManager = $userManager;
 		$this->groupManager = $groupManager;
@@ -105,6 +109,7 @@ class Principal implements BackendInterface {
 		$this->principalPrefix = trim($principalPrefix, '/');
 		$this->hasGroups = $this->hasCircles = ($principalPrefix === 'principals/users/');
 		$this->proxyMapper = $proxyMapper;
+		$this->config = $config;
 	}
 
 	use PrincipalProxyTrait {
@@ -240,6 +245,8 @@ class Principal implements BackendInterface {
 			return [];
 		}
 
+		$allowEnumeration = $this->config->getAppValue('core', 'shareapi_allow_share_dialog_user_enumeration', 'yes') === 'yes';
+
 		// If sharing is restricted to group members only,
 		// return only members that have groups in common
 		$restrictGroups = false;
@@ -257,6 +264,12 @@ class Principal implements BackendInterface {
 				case '{http://sabredav.org/ns}email-address':
 					$users = $this->userManager->getByEmail($value);
 
+					if (!$allowEnumeration) {
+						$users = \array_filter($users, static function(IUser $user) use ($value) {
+							return $user->getEMailAddress() === $value;
+						});
+					}
+
 					$results[] = array_reduce($users, function(array $carry, IUser $user) use ($restrictGroups) {
 						// is sharing restricted to groups only?
 						if ($restrictGroups !== false) {
@@ -273,6 +286,12 @@ class Principal implements BackendInterface {
 
 				case '{DAV:}displayname':
 					$users = $this->userManager->searchDisplayName($value);
+
+					if (!$allowEnumeration) {
+						$users = \array_filter($users, static function(IUser $user) use ($value) {
+							return $user->getDisplayName() === $value;
+						});
+					}
 
 					$results[] = array_reduce($users, function(array $carry, IUser $user) use ($restrictGroups) {
 						// is sharing restricted to groups only?

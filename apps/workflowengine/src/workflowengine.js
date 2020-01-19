@@ -1,3 +1,27 @@
+/**
+ * @copyright Copyright (c) 2019 Julius Härtl <jus@bitgrid.net>
+ *
+ * @author Julius Härtl <jus@bitgrid.net>
+ *
+ * @license GNU AGPL version 3 or any later version
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+import '@babel/polyfill'
+
 import Vue from 'vue'
 import Vuex from 'vuex'
 import store from './store'
@@ -11,9 +35,9 @@ import ShippedChecks from './components/Checks'
  * @property {string} class - The PHP class name of the check
  * @property {Comparison[]} operators - A list of possible comparison operations running on the check
  * @property {Vue} component - A vue component to handle the rendering of options
- * 	The component should handle the v-model directive properly,
- * 	so it needs a value property to receive data and emit an input
- * 	event once the data has changed
+ *  The component should handle the v-model directive properly,
+ *  so it needs a value property to receive data and emit an input
+ *  event once the data has changed
  * @property {callable} placeholder - Return a placeholder of no custom component is used
  * @property {callable} validate - validate a check if no custom component is used
  **/
@@ -26,9 +50,9 @@ import ShippedChecks from './components/Checks'
  * @property {string} operation - Default value for the operation field
  * @property {string} color - Custom color code to be applied for the operator selector
  * @property {Vue} component - A vue component to handle the rendering of options
- * 	The component should handle the v-model directive properly,
- * 	so it needs a value property to receive data and emit an input
- * 	event once the data has changed
+ *  The component should handle the v-model directive properly,
+ *  so it needs a value property to receive data and emit an input
+ *  event once the data has changed
  */
 
 /**
@@ -44,18 +68,18 @@ window.OCA.WorkflowEngine = Object.assign({}, OCA.WorkflowEngine, {
 
 	/**
 	 *
-	 * @param {CheckPlugin} Plugin
+	 * @param {CheckPlugin} Plugin the plugin to register
 	 */
-	registerCheck: function (Plugin) {
+	registerCheck: function(Plugin) {
 		store.commit('addPluginCheck', Plugin)
 	},
 	/**
 	 *
-	 * @param {OperatorPlugin} Plugin
+	 * @param {OperatorPlugin} Plugin the plugin to register
 	 */
-	registerOperator: function (Plugin) {
+	registerOperator: function(Plugin) {
 		store.commit('addPluginOperator', Plugin)
-	}
+	},
 })
 
 // Register shipped checks
@@ -65,6 +89,7 @@ Vue.use(Vuex)
 Vue.prototype.t = t
 
 const View = Vue.extend(Settings)
-new View({
-	store
-}).$mount('#workflowengine')
+const workflowengine = new View({
+	store,
+})
+workflowengine.$mount('#workflowengine')

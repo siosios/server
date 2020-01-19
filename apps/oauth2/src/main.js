@@ -20,18 +20,19 @@
  *
  */
 
-import Vue from 'vue';
-import App from './App.vue';
-import { loadState } from 'nextcloud-initial-state'
+import Vue from 'vue'
+import App from './App.vue'
+import { loadState } from '@nextcloud/initial-state'
 
-Vue.prototype.t = t;
-Vue.prototype.OC = OC;
+Vue.prototype.t = t
+Vue.prototype.OC = OC
 
-const clients = loadState('oauth2', 'clients');
+const clients = loadState('oauth2', 'clients')
 
 const View = Vue.extend(App)
-new View({
+const oauth = new View({
 	propsData: {
-		clients
-	}
-}).$mount('#oauth2');
+		clients,
+	},
+})
+oauth.$mount('#oauth2')

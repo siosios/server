@@ -5,7 +5,9 @@
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Clark Tomlinson <fallen013@gmail.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -20,7 +22,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -28,18 +30,18 @@ namespace OCA\Encryption\Hooks;
 
 
 use OC\Files\Filesystem;
-use OCP\Encryption\Exceptions\GenericEncryptionException;
-use OCP\IUserManager;
-use OCP\Util as OCUtil;
+use OCA\Encryption\Crypto\Crypt;
 use OCA\Encryption\Hooks\Contracts\IHook;
 use OCA\Encryption\KeyManager;
-use OCA\Encryption\Crypto\Crypt;
-use OCA\Encryption\Users\Setup;
-use OCP\ILogger;
-use OCP\IUserSession;
-use OCA\Encryption\Util;
-use OCA\Encryption\Session;
 use OCA\Encryption\Recovery;
+use OCA\Encryption\Session;
+use OCA\Encryption\Users\Setup;
+use OCA\Encryption\Util;
+use OCP\Encryption\Exceptions\GenericEncryptionException;
+use OCP\ILogger;
+use OCP\IUserManager;
+use OCP\IUserSession;
+use OCP\Util as OCUtil;
 
 class UserHooks implements IHook {
 

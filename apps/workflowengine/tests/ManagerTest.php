@@ -26,6 +26,7 @@ use OC\L10N\L10N;
 use OCA\WorkflowEngine\Entity\File;
 use OCA\WorkflowEngine\Helper\ScopeContext;
 use OCA\WorkflowEngine\Manager;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\IRootFolder;
 use OCP\IDBConnection;
 use OCP\IL10N;
@@ -33,6 +34,7 @@ use OCP\ILogger;
 use OCP\IServerContainer;
 use OCP\IURLGenerator;
 use OCP\IUserSession;
+use OCP\SystemTag\ISystemTagManager;
 use OCP\WorkflowEngine\ICheck;
 use OCP\WorkflowEngine\IEntity;
 use OCP\WorkflowEngine\IManager;
@@ -56,15 +58,17 @@ class ManagerTest extends TestCase {
 	/** @var \PHPUnit\Framework\MockObject\MockObject|ILogger */
 	protected $logger;
 	/** @var \PHPUnit\Framework\MockObject\MockObject|EventDispatcherInterface */
-	protected $eventDispatcher;
+	protected $legacyDispatcher;
 	/** @var MockObject|IServerContainer */
 	protected $container;
 	/** @var MockObject|IUserSession */
 	protected $session;
 	/** @var MockObject|L10N */
 	protected $l;
+	/** @var MockObject|IEventDispatcher */
+	protected $dispatcher;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->db = \OC::$server->getDatabaseConnection();
@@ -76,22 +80,24 @@ class ManagerTest extends TestCase {
 				return vsprintf($text, $parameters);
 			}));
 
-		$this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
+		$this->legacyDispatcher = $this->createMock(EventDispatcherInterface::class);
 		$this->logger = $this->createMock(ILogger::class);
 		$this->session = $this->createMock(IUserSession::class);
+		$this->dispatcher = $this->createMock(IEventDispatcher::class);
 
 		$this->manager = new Manager(
 			\OC::$server->getDatabaseConnection(),
 			$this->container,
 			$this->l,
-			$this->eventDispatcher,
+			$this->legacyDispatcher,
 			$this->logger,
-			$this->session
+			$this->session,
+			$this->dispatcher
 		);
 		$this->clearTables();
 	}
 
-	protected function tearDown() {
+	protected function tearDown(): void {
 		$this->clearTables();
 		parent::tearDown();
 	}
@@ -279,7 +285,15 @@ class ManagerTest extends TestCase {
 					return $this->createMock(IOperation::class);
 				} else if($class === File::class) {
 					return $this->getMockBuilder(File::class)
-						->setConstructorArgs([$this->l, $this->createMock(IURLGenerator::class), $this->createMock(IRootFolder::class)])
+						->setConstructorArgs([
+							$this->l,
+							$this->createMock(IURLGenerator::class),
+							$this->createMock(IRootFolder::class),
+							$this->createMock(ILogger::class),
+							$this->createMock(\OCP\Share\IManager::class),
+							$this->createMock(IUserSession::class),
+							$this->createMock(ISystemTagManager::class)
+						])
 						->setMethodsExcept(['getEvents'])
 						->getMock();
 				}
@@ -393,7 +407,7 @@ class ManagerTest extends TestCase {
 		/** @var MockObject|IEntity $extraEntity */
 		$extraEntity = $this->createMock(IEntity::class);
 
-		$this->eventDispatcher->expects($this->once())
+		$this->legacyDispatcher->expects($this->once())
 			->method('dispatch')
 			->with('OCP\WorkflowEngine::registerEntities', $this->anything())
 			->willReturnCallback(function() use ($extraEntity) {

@@ -5,7 +5,8 @@ declare(strict_types=1);
 /**
  * @copyright 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
  *
- * @author 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -20,7 +21,8 @@ declare(strict_types=1);
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 namespace Test\Settings\Personal\Security;
@@ -52,7 +54,7 @@ class AuthtokensTest extends TestCase {
 	/** @var Security\Authtokens */
 	private $section;
 
-	public function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->authTokenProvider = $this->createMock(IAuthTokenProvider::class);

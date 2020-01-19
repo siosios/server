@@ -1,10 +1,9 @@
 <?php
-// FIXME: disabled for now to be able to inject IGroupManager and also use
-// getSubAdmin()
-//declare(strict_types=1);
 /**
  *
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Matthew Setter <matthew@matthewsetter.com>
@@ -24,9 +23,14 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
+// FIXME: disabled for now to be able to inject IGroupManager and also use
+// getSubAdmin()
+//declare(strict_types=1);
+
 namespace OCA\Settings\Controller;
 
 use OC\HintException;
@@ -187,10 +191,8 @@ class ChangePasswordController extends Controller {
 			$recovery = new \OCA\Encryption\Recovery(
 				\OC::$server->getUserSession(),
 				$crypt,
-				\OC::$server->getSecureRandom(),
 				$keyManager,
 				\OC::$server->getConfig(),
-				$keyStorage,
 				\OC::$server->getEncryptionFilesHelper(),
 				new \OC\Files\View());
 			$recoveryAdminEnabled = $recovery->isRecoveryKeyEnabled();

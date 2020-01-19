@@ -4,6 +4,7 @@
  *
  * @author Bart Visscher <bartv@thisnet.nl>
  * @author Bernhard Posselt <dev@bernhard-posselt.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Felix Epp <work@felixepp.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
@@ -27,22 +28,22 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
 namespace OC\Route;
 
+use OCP\AppFramework\App;
 use OCP\ILogger;
 use OCP\Route\IRouter;
-use OCP\AppFramework\App;
 use OCP\Util;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
-use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\RouteCollection;
-use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 
 class Router implements IRouter {
 	/** @var RouteCollection[] */
@@ -371,7 +372,7 @@ class Router implements IRouter {
 			$applicationClassName = $appNameSpace . '\\AppInfo\\Application';
 
 			if (class_exists($applicationClassName)) {
-				$application = new $applicationClassName();
+				$application = \OC::$server->query($applicationClassName);
 			} else {
 				$application = new App($appName);
 			}

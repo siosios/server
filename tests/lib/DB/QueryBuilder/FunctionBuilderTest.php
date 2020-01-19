@@ -35,7 +35,7 @@ class FunctionBuilderTest extends TestCase {
 	/** @var \Doctrine\DBAL\Connection|\OCP\IDBConnection */
 	protected $connection;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->connection = \OC::$server->getDatabaseConnection();
@@ -197,5 +197,25 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$this->assertEquals(10, $query->execute()->fetchColumn());
+	}
+
+	public function testGreatest() {
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->greatest($query->createNamedParameter(2, IQueryBuilder::PARAM_INT), new Literal(1)));
+		$query->from('appconfig')
+			->setMaxResults(1);
+
+		$this->assertEquals(2, $query->execute()->fetchColumn());
+	}
+
+	public function testLeast() {
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->least($query->createNamedParameter(2, IQueryBuilder::PARAM_INT), new Literal(1)));
+		$query->from('appconfig')
+			->setMaxResults(1);
+
+		$this->assertEquals(1, $query->execute()->fetchColumn());
 	}
 }

@@ -8,6 +8,7 @@
  * @author Joas Schilling <coding@schilljs.com>
  * @author Michael Göhler <somebody.here@gmx.de>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Oliver Salzburg <oliver.salzburg@gmail.com>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Vincent Petry <pvince81@owncloud.com>
@@ -24,9 +25,10 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+
 namespace OC\Setup;
 
 use OC\DB\MySqlTools;
@@ -100,9 +102,9 @@ class MySQL extends AbstractDatabase {
 			$password = $this->dbPassword;
 			// we need to create 2 accounts, one for global use and one for local user. if we don't specify the local one,
 			// the anonymous user would take precedence when there is one.
-			$query = "CREATE USER '$name'@'localhost' IDENTIFIED BY '$password'";
+			$query = "CREATE USER '$name'@'localhost' IDENTIFIED WITH mysql_native_password BY '$password'";
 			$connection->executeUpdate($query);
-			$query = "CREATE USER '$name'@'%' IDENTIFIED BY '$password'";
+			$query = "CREATE USER '$name'@'%' IDENTIFIED WITH mysql_native_password BY '$password'";
 			$connection->executeUpdate($query);
 		}
 		catch (\Exception $ex){

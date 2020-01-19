@@ -28,6 +28,7 @@ OC.L10N.register(
     "created" : "skapad",
     "destroyed" : "förstörd",
     "Nextcloud backup codes" : "Nextcloud återställningsnycklar",
-    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Du har aktiverat tvåfaktorsautentisering men har ännu inte skapat återställningsnycklar. Detta är nödvändigt om du förlorar tillgång till din andra faktor."
+    "You have enabled two-factor authentication but have not yet generated backup codes. Be sure to do this in case you lose access to your second factor." : "Du har aktiverat tvåfaktorsautentisering men har ännu inte skapat återställningsnycklar. Detta är nödvändigt om du förlorar tillgång till din andra faktor.",
+    "function" : "funktion"
 },
 "nplurals=2; plural=(n != 1);");

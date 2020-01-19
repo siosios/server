@@ -3,10 +3,9 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  *
- * @author Christoph Wurst <christoph@owncloud.com>
- * @author Felix A. Epp <work@felixepp.de>
- * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -25,7 +24,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -40,16 +39,16 @@ use OC\App\Platform;
 use OC\Installer;
 use OC_App;
 use OCP\App\IAppManager;
-use \OCP\AppFramework\Controller;
+use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\IConfig;
+use OCP\IL10N;
 use OCP\ILogger;
 use OCP\INavigationManager;
 use OCP\IRequest;
-use OCP\IL10N;
-use OCP\IConfig;
 use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
 
@@ -550,13 +549,7 @@ class AppSettingsController extends Controller {
 
 	public function force(string $appId): JSONResponse {
 		$appId = OC_App::cleanAppId($appId);
-
-		$ignoreMaxApps = $this->config->getSystemValue('app_install_overwrite', []);
-		if (!in_array($appId, $ignoreMaxApps, true)) {
-			$ignoreMaxApps[] = $appId;
-			$this->config->setSystemValue('app_install_overwrite', $ignoreMaxApps);
-		}
-
+		$this->appManager->ignoreNextcloudRequirementForApp($appId);
 		return new JSONResponse();
 	}
 

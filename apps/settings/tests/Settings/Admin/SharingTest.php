@@ -2,7 +2,12 @@
 /**
  * @copyright Copyright (c) 2016 Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -17,7 +22,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -42,7 +47,7 @@ class SharingTest extends TestCase {
 	/** @var  IManager|\PHPUnit_Framework_MockObject_MockObject */
 	private $shareManager;
 
-	public function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 		$this->config = $this->getMockBuilder(IConfig::class)->getMock();
 		$this->l10n = $this->getMockBuilder(IL10N::class)->getMock();
@@ -131,6 +136,21 @@ class SharingTest extends TestCase {
 			->method('getAppValue')
 			->with('core', 'shareapi_default_permissions', Constants::PERMISSION_ALL)
 			->willReturn(Constants::PERMISSION_ALL);
+		$this->config
+			->expects($this->at(14))
+			->method('getAppValue')
+			->with('core', 'shareapi_default_internal_expire_date', 'no')
+			->willReturn('no');
+		$this->config
+			->expects($this->at(15))
+			->method('getAppValue')
+			->with('core', 'shareapi_internal_expire_after_n_days', '7')
+			->willReturn('7');
+		$this->config
+			->expects($this->at(16))
+			->method('getAppValue')
+			->with('core', 'shareapi_enforce_internal_expire_date', 'no')
+			->willReturn('no');
 
 		$expected = new TemplateResponse(
 			'settings',
@@ -152,7 +172,10 @@ class SharingTest extends TestCase {
 				'publicShareDisclaimerText'       => 'Lorem ipsum',
 				'enableLinkPasswordByDefault'     => 'yes',
 				'shareApiDefaultPermissions'      => Constants::PERMISSION_ALL,
-				'shareApiDefaultPermissionsCheckboxes' => $this->invokePrivate($this->admin, 'getSharePermissionList', [])
+				'shareApiDefaultPermissionsCheckboxes' => $this->invokePrivate($this->admin, 'getSharePermissionList', []),
+				'shareDefaultInternalExpireDateSet' => 'no',
+				'shareInternalExpireAfterNDays' => '7',
+				'shareInternalEnforceExpireDate' => 'no',
 			],
 			''
 		);
@@ -231,6 +254,21 @@ class SharingTest extends TestCase {
 			->method('getAppValue')
 			->with('core', 'shareapi_default_permissions', Constants::PERMISSION_ALL)
 			->willReturn(Constants::PERMISSION_ALL);
+		$this->config
+			->expects($this->at(14))
+			->method('getAppValue')
+			->with('core', 'shareapi_default_internal_expire_date', 'no')
+			->willReturn('no');
+		$this->config
+			->expects($this->at(15))
+			->method('getAppValue')
+			->with('core', 'shareapi_internal_expire_after_n_days', '7')
+			->willReturn('7');
+		$this->config
+			->expects($this->at(16))
+			->method('getAppValue')
+			->with('core', 'shareapi_enforce_internal_expire_date', 'no')
+			->willReturn('no');
 
 
 		$expected = new TemplateResponse(
@@ -253,7 +291,10 @@ class SharingTest extends TestCase {
 				'publicShareDisclaimerText'       => 'Lorem ipsum',
 				'enableLinkPasswordByDefault'     => 'yes',
 				'shareApiDefaultPermissions'      => Constants::PERMISSION_ALL,
-				'shareApiDefaultPermissionsCheckboxes' => $this->invokePrivate($this->admin, 'getSharePermissionList', [])
+				'shareApiDefaultPermissionsCheckboxes' => $this->invokePrivate($this->admin, 'getSharePermissionList', []),
+				'shareDefaultInternalExpireDateSet' => 'no',
+				'shareInternalExpireAfterNDays' => '7',
+				'shareInternalEnforceExpireDate' => 'no',
 			],
 			''
 		);

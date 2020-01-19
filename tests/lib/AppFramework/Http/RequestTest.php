@@ -13,8 +13,8 @@ namespace Test\AppFramework\Http;
 use OC\AppFramework\Http\Request;
 use OC\Security\CSRF\CsrfToken;
 use OC\Security\CSRF\CsrfTokenManager;
-use OCP\Security\ISecureRandom;
 use OCP\IConfig;
+use OCP\Security\ISecureRandom;
 
 /**
  * Class RequestTest
@@ -31,7 +31,7 @@ class RequestTest extends \Test\TestCase {
 	/** @var CsrfTokenManager */
 	protected $csrfTokenManager;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		if (in_array('fakeinput', stream_get_wrappers())) {
@@ -45,7 +45,7 @@ class RequestTest extends \Test\TestCase {
 			->disableOriginalConstructor()->getMock();
 	}
 
-	protected function tearDown() {
+	protected function tearDown(): void {
 		stream_wrapper_unregister('fakeinput');
 		parent::tearDown();
 	}
@@ -103,10 +103,10 @@ class RequestTest extends \Test\TestCase {
 	}
 
 
-	/**
-	 * @expectedException \RuntimeException
-	 */
+
 	public function testImmutableArrayAccess() {
+		$this->expectException(\RuntimeException::class);
+
 		$vars = array(
 			'get' => array('name' => 'John Q. Public', 'nickname' => 'Joey'),
 			'method' => 'GET'
@@ -123,10 +123,10 @@ class RequestTest extends \Test\TestCase {
 		$request['nickname'] = 'Janey';
 	}
 
-	/**
-	 * @expectedException \RuntimeException
-	 */
+
 	public function testImmutableMagicAccess() {
+		$this->expectException(\RuntimeException::class);
+
 		$vars = array(
 			'get' => array('name' => 'John Q. Public', 'nickname' => 'Joey'),
 			'method' => 'GET'
@@ -143,10 +143,10 @@ class RequestTest extends \Test\TestCase {
 		$request->{'nickname'} = 'Janey';
 	}
 
-	/**
-	 * @expectedException \LogicException
-	 */
+
 	public function testGetTheMethodRight() {
+		$this->expectException(\LogicException::class);
+
 		$vars = array(
 			'get' => array('name' => 'John Q. Public', 'nickname' => 'Joey'),
 			'method' => 'GET',
@@ -999,6 +999,27 @@ class RequestTest extends \Test\TestCase {
 				],
 				true,
 			],
+			[
+				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.99 Safari/537.36 Vivaldi/2.9.1705.41',
+				[
+					Request::USER_AGENT_CHROME
+				],
+				true
+			],
+			[
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.38 Safari/537.36 Brave/75',
+				[
+					Request::USER_AGENT_CHROME
+				],
+				true
+			],
+			[
+				'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 OPR/50.0.2762.67',
+				[
+					Request::USER_AGENT_CHROME
+				],
+				true
+			]
 		];
 	}
 
@@ -1246,11 +1267,11 @@ class RequestTest extends \Test\TestCase {
 		$this->assertSame('www.owncloud.org', self::invokePrivate($request, 'getOverwriteHost'));
 	}
 
-	/**
-	 * @expectedException \Exception
-	 * @expectedExceptionMessage The requested uri(/foo.php) cannot be processed by the script '/var/www/index.php')
-	 */
+
 	public function testGetPathInfoNotProcessible() {
+		$this->expectException(\Exception::class);
+		$this->expectExceptionMessage('The requested uri(/foo.php) cannot be processed by the script \'/var/www/index.php\')');
+
 		$request = new Request(
 			[
 				'server' => [
@@ -1267,11 +1288,11 @@ class RequestTest extends \Test\TestCase {
 		$request->getPathInfo();
 	}
 
-	/**
-	 * @expectedException \Exception
-	 * @expectedExceptionMessage The requested uri(/foo.php) cannot be processed by the script '/var/www/index.php')
-	 */
+
 	public function testGetRawPathInfoNotProcessible() {
+		$this->expectException(\Exception::class);
+		$this->expectExceptionMessage('The requested uri(/foo.php) cannot be processed by the script \'/var/www/index.php\')');
+
 		$request = new Request(
 			[
 				'server' => [

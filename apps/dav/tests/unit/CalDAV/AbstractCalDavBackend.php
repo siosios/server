@@ -5,6 +5,7 @@
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -19,7 +20,7 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -72,7 +73,7 @@ abstract class AbstractCalDavBackend extends TestCase {
 	const UNIT_TEST_GROUP = 'principals/groups/caldav-unit-test-group';
 	const UNIT_TEST_GROUP2 = 'principals/groups/caldav-unit-test-group2';
 
-	public function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->userManager = $this->createMock(IUserManager::class);
@@ -86,6 +87,7 @@ abstract class AbstractCalDavBackend extends TestCase {
 				$this->createMock(IUserSession::class),
 				$this->createMock(IAppManager::class),
 				$this->createMock(ProxyMapper::class),
+				$this->createMock(IConfig::class),
 			])
 			->setMethods(['getPrincipalByPath', 'getGroupMembership'])
 			->getMock();
@@ -106,7 +108,7 @@ abstract class AbstractCalDavBackend extends TestCase {
 		$this->cleanUpBackend();
 	}
 
-	public function tearDown() {
+	protected function tearDown(): void {
 		$this->cleanUpBackend();
 		parent::tearDown();
 	}
