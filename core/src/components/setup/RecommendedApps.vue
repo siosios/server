@@ -79,8 +79,14 @@ const recommended = {
 		description: t('core', 'Simple email app nicely integrated with Files, Contacts and Calendar.'),
 		icon: imagePath('core', 'actions/mail.svg'),
 	},
-	talk: {
-		description: t('core', 'Screensharing, online meetings and web conferencing – on desktop and with mobile apps.'),
+	spreed: {
+		description: t('core', 'Chatting, video calls, screensharing, online meetings and web conferencing – in your browser and with mobile apps.'),
+	},
+	richdocuments: {
+		description: t('core', 'Collaboratively edit office documents.'),
+	},
+	richdocumentscode: {
+		description: t('core', 'Local document editing back-end used by the Collabora Online app.'),
 	},
 }
 const recommendedIds = Object.keys(recommended)
@@ -129,7 +135,7 @@ export default {
 				.map(app => limit(() => {
 					logger.info(`installing ${app.id}`)
 					app.loading = true
-					return axios.post(generateUrl(`settings/apps/enable`), { appIds: [app.id], groups: [] })
+					return axios.post(generateUrl('settings/apps/enable'), { appIds: [app.id], groups: [] })
 						.catch(error => {
 							logger.error(`could not install ${app.id}`, { error })
 							app.installationError = true
@@ -149,7 +155,7 @@ export default {
 				.catch(error => logger.error('could not install recommended apps', { error }))
 		},
 		customIcon(appId) {
-			if (!(appId in recommended)) {
+			if (!(appId in recommended) || !recommended[appId].icon) {
 				logger.warn(`no app icon for recommended app ${appId}`)
 				return imagePath('core', 'places/default-app-icon.svg')
 			}
@@ -168,7 +174,7 @@ export default {
 
 <style lang="scss" scoped>
 .body-login-container {
-	max-width: 290px;
+
 }
 
 p.loading, p.loading-error {

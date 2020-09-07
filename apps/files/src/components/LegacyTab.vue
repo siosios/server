@@ -21,24 +21,26 @@
   -->
 
 <template>
-	<AppSidebarTab :icon="icon"
+	<AppSidebarTab
+		:id="id"
+		:icon="icon"
 		:name="name"
 		:active-tab="activeTab" />
 </template>
 <script>
-import AppSidebarTab from 'nextcloud-vue/dist/Components/AppSidebarTab'
+import AppSidebarTab from '@nextcloud/vue/dist/Components/AppSidebarTab'
 
 export default {
 	name: 'LegacyTab',
 	components: {
-		AppSidebarTab: AppSidebarTab,
+		AppSidebarTab,
 	},
 	props: {
 		component: {
 			type: Object,
 			required: true,
 		},
-		name: {
+		id: {
 			type: String,
 			required: true,
 		},
@@ -52,9 +54,8 @@ export default {
 		icon() {
 			return this.component.getIcon()
 		},
-		id() {
-			// copied from AppSidebarTab
-			return this.name.toLowerCase().replace(/ /g, '-')
+		name() {
+			return this.component.getLabel()
 		},
 		order() {
 			return this.component.order
@@ -67,9 +68,9 @@ export default {
 		},
 	},
 	watch: {
-		activeTab(activeTab) {
-			if (activeTab === this.id && this.fileInfo) {
-				this.setFileInfo(this.fileInfo)
+		fileInfo(fileInfo) {
+			if (fileInfo) {
+				this.setFileInfo(fileInfo)
 			}
 		},
 	},

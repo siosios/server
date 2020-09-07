@@ -6,6 +6,7 @@ declare(strict_types=1);
  * @copyright 2016 Christoph Wurst <christoph@winzerhof-wurst.at>
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Lionel Elie Mamane <lionel@mamane.lu>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -112,11 +113,10 @@ class Store implements IStore {
 
 		if ($trySession && $this->session->exists('login_credentials')) {
 			$creds = json_decode($this->session->get('login_credentials'));
-			return new Credentials($creds->uid, $creds->uid, $creds->password);
+			return new Credentials($creds->uid, $creds->loginName, $creds->password);
 		}
 
 		// If we reach this line, an exception was thrown.
 		throw new CredentialsUnavailableException();
 	}
-
 }

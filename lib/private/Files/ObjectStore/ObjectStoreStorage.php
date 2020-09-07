@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bjoern Schiessle <bjoern@schiessle.org>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Marcel Klehr <mklehr@gmx.net>
@@ -104,7 +105,7 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 					// something went wrong
 					return false;
 				}
-			} else if ($parentType === 'file') {
+			} elseif ($parentType === 'file') {
 				// parent is a file
 				return false;
 			}
@@ -181,7 +182,7 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 					return false;
 				}
 			} else {
-				if(!$this->unlink($child['path'])) {
+				if (!$this->unlink($child['path'])) {
 					return false;
 				}
 			}
@@ -245,7 +246,7 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 		$path = $this->normalizePath($path);
 
 		try {
-			$files = array();
+			$files = [];
 			$folderContents = $this->getCache()->getFolderContents($path);
 			foreach ($folderContents as $file) {
 				$files[] = $file['name'];
@@ -303,6 +304,7 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 				} else {
 					return false;
 				}
+				// no break
 			case 'w':
 			case 'wb':
 			case 'w+':
@@ -349,12 +351,7 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 
 	public function getMimeType($path) {
 		$path = $this->normalizePath($path);
-		$stat = $this->stat($path);
-		if (is_array($stat)) {
-			return $stat['mimetype'];
-		} else {
-			return false;
-		}
+		return parent::getMimeType($path);
 	}
 
 	public function touch($path, $mtime = null) {
@@ -380,14 +377,14 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 				// work with all object storage implementations
 				$this->file_put_contents($path, ' ');
 				$mimeType = \OC::$server->getMimeTypeDetector()->detectPath($path);
-				$stat = array(
+				$stat = [
 					'etag' => $this->getETag($path),
 					'mimetype' => $mimeType,
 					'size' => 0,
 					'mtime' => $mtime,
 					'storage_mtime' => $mtime,
 					'permissions' => \OCP\Constants::PERMISSION_ALL - \OCP\Constants::PERMISSION_CREATE,
-				);
+				];
 				$this->getCache()->put($path, $stat);
 			} catch (\Exception $ex) {
 				$this->logger->logException($ex, [
@@ -449,7 +446,13 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 
 		$exists = $this->getCache()->inCache($path);
 		$uploadPath = $exists ? $path : $path . '.part';
-		$fileId = $this->getCache()->put($uploadPath, $stat);
+
+		if ($exists) {
+			$fileId = $stat['fileid'];
+		} else {
+			$fileId = $this->getCache()->put($uploadPath, $stat);
+		}
+
 		$urn = $this->getURN($fileId);
 		try {
 			//upload to object storage
@@ -464,19 +467,33 @@ class ObjectStoreStorage extends \OC\Files\Storage\Common {
 				if (is_resource($countStream)) {
 					fclose($countStream);
 				}
+				$stat['size'] = $size;
 			} else {
 				$this->objectStore->writeObject($urn, $stream);
 			}
 		} catch (\Exception $ex) {
-			$this->getCache()->remove($uploadPath);
-			$this->logger->logException($ex, [
-				'app' => 'objectstore',
-				'message' => 'Could not create object ' . $urn . ' for ' . $path,
-			]);
+			if (!$exists) {
+				/*
+				 * Only remove the entry if we are dealing with a new file.
+				 * Else people lose access to existing files
+				 */
+				$this->getCache()->remove($uploadPath);
+				$this->logger->logException($ex, [
+					'app' => 'objectstore',
+					'message' => 'Could not create object ' . $urn . ' for ' . $path,
+				]);
+			} else {
+				$this->logger->logException($ex, [
+					'app' => 'objectstore',
+					'message' => 'Could not update object ' . $urn . ' for ' . $path,
+				]);
+			}
 			throw $ex; // make this bubble up
 		}
 
-		if (!$exists) {
+		if ($exists) {
+			$this->getCache()->update($fileId, $stat);
+		} else {
 			if ($this->objectStore->objectExists($urn)) {
 				$this->getCache()->move($uploadPath, $path);
 			} else {

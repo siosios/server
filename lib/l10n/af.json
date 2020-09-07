@@ -9,8 +9,6 @@
     "Log out" : "Meld af",
     "Users" : "Gebruikers",
     "Unknown user" : "Onbekende gebruiker",
-    "Security" : "Sekuriteit",
-    "Personal info" : "Persoonlike inligting",
     "Open »%s«" : "Open »%s«",
     "Sunday" : "Sondag",
     "Monday" : "Maandag",
@@ -21,9 +19,7 @@
     "Saturday" : "Saterdag",
     "a safe home for all your data" : "’n veilige tuiste vir al u data",
     "Storage is temporarily not available" : "Berging is tydelik nie beskikbaar nie",
-    "Create" : "Skep",
-    "Delete" : "Skrap",
-    "Share" : "Deel",
-    "Unlimited" : "Onbeperkte"
+    "Security" : "Sekuriteit",
+    "Personal info" : "Persoonlike inligting"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

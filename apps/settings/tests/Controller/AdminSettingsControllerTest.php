@@ -4,8 +4,8 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Jan C. Borchardt <hey@jancborchardt.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -28,7 +28,7 @@
 namespace OCA\Settings\Tests\Controller;
 
 use OCA\Settings\Controller\AdminSettingsController;
-use OCA\Settings\Personal\ServerDevNotice;
+use OCA\Settings\Settings\Personal\ServerDevNotice;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\Group\ISubAdmin;
 use OCP\IGroupManager;
@@ -86,7 +86,7 @@ class AdminSettingsControllerTest extends TestCase {
 			$this->subAdmin
 		);
 
-		$user = \OC::$server->getUserManager()->createUser($this->adminUid, 'olo');
+		$user = \OC::$server->getUserManager()->createUser($this->adminUid, 'mylongrandompassword');
 		\OC_User::setUserId($user->getUID());
 		\OC::$server->getGroupManager()->createGroup('admin')->addUser($user);
 	}
@@ -123,7 +123,7 @@ class AdminSettingsControllerTest extends TestCase {
 			->expects($this->once())
 			->method('getAdminSettings')
 			->with('test')
-			->willReturn([5 => new ServerDevNotice()]);
+			->willReturn([5 => $this->createMock(ServerDevNotice::class)]);
 
 		$idx = $this->adminSettingsController->index('test');
 

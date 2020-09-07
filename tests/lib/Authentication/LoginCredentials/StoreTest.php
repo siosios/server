@@ -34,18 +34,17 @@ use OCP\Authentication\Exceptions\CredentialsUnavailableException;
 use OCP\ILogger;
 use OCP\ISession;
 use OCP\Session\Exceptions\SessionNotAvailableException;
-use PHPUnit_Framework_MockObject_MockObject;
 use Test\TestCase;
 
 class StoreTest extends TestCase {
 
-	/** @var ISession|PHPUnit_Framework_MockObject_MockObject */
+	/** @var ISession|\PHPUnit\Framework\MockObject\MockObject */
 	private $session;
 
-	/** @var IProvider|PHPUnit_Framework_MockObject_MockObject */
+	/** @var IProvider|\PHPUnit\Framework\MockObject\MockObject */
 	private $tokenProvider;
 
-	/** @var ILogger|PHPUnit_Framework_MockObject_MockObject */
+	/** @var ILogger|\PHPUnit\Framework\MockObject\MockObject */
 	private $logger;
 
 	/** @var Store */
@@ -142,7 +141,8 @@ class StoreTest extends TestCase {
 	}
 
 	public function testGetLoginCredentialsInvalidTokenLoginCredentials() {
-		$uid = 'user987';
+		$uid = 'id987';
+		$user = 'user987';
 		$password = '7389374';
 
 		$this->session->expects($this->once())
@@ -159,8 +159,8 @@ class StoreTest extends TestCase {
 		$this->session->expects($this->once())
 			->method('get')
 			->with($this->equalTo('login_credentials'))
-			->willReturn('{"run":true,"uid":"user987","password":"7389374"}');
-		$expected = new Credentials('user987', 'user987', '7389374');
+			->willReturn('{"run":true,"uid":"id987","loginName":"user987","password":"7389374"}');
+		$expected = new Credentials($uid, $user, $password);
 
 		$actual = $this->store->getLoginCredentials();
 
@@ -179,5 +179,4 @@ class StoreTest extends TestCase {
 
 		$this->store->getLoginCredentials();
 	}
-
 }

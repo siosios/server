@@ -5,6 +5,7 @@
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
@@ -55,39 +56,39 @@ use OCP\Security\ISecureRandom;
  */
 class UsersControllerTest extends \Test\TestCase {
 
-	/** @var IGroupManager|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IGroupManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $groupManager;
-	/** @var IUserManager|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IUserManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $userManager;
-	/** @var IUserSession|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IUserSession|\PHPUnit\Framework\MockObject\MockObject */
 	private $userSession;
-	/** @var IConfig|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IConfig|\PHPUnit\Framework\MockObject\MockObject */
 	private $config;
-	/** @var ILogger|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var ILogger|\PHPUnit\Framework\MockObject\MockObject */
 	private $logger;
-	/** @var IMailer|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IMailer|\PHPUnit\Framework\MockObject\MockObject */
 	private $mailer;
-	/** @var IFactory|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IFactory|\PHPUnit\Framework\MockObject\MockObject */
 	private $l10nFactory;
-	/** @var IAppManager|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IAppManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $appManager;
-	/** @var IAvatarManager|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IAvatarManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $avatarManager;
-	/** @var IL10N|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IL10N|\PHPUnit\Framework\MockObject\MockObject */
 	private $l;
-	/** @var AccountManager | \PHPUnit_Framework_MockObject_MockObject */
+	/** @var AccountManager | \PHPUnit\Framework\MockObject\MockObject */
 	private $accountManager;
-	/** @var ISecureRandom | \PHPUnit_Framework_MockObject_MockObject  */
+	/** @var ISecureRandom | \PHPUnit\Framework\MockObject\MockObject  */
 	private $secureRandom;
-	/** @var \OCA\Settings\Mailer\NewUserMailHelper|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var \OCA\Settings\Mailer\NewUserMailHelper|\PHPUnit\Framework\MockObject\MockObject */
 	private $newUserMailHelper;
-	/** @var  IJobList | \PHPUnit_Framework_MockObject_MockObject */
+	/** @var  IJobList | \PHPUnit\Framework\MockObject\MockObject */
 	private $jobList;
-	/** @var \OC\Security\IdentityProof\Manager |\PHPUnit_Framework_MockObject_MockObject  */
+	/** @var \OC\Security\IdentityProof\Manager |\PHPUnit\Framework\MockObject\MockObject  */
 	private $securityManager;
-	/** @var  IManager | \PHPUnit_Framework_MockObject_MockObject */
+	/** @var  IManager | \PHPUnit\Framework\MockObject\MockObject */
 	private $encryptionManager;
-	/** @var  IEncryptionModule  | \PHPUnit_Framework_MockObject_MockObject */
+	/** @var  IEncryptionModule  | \PHPUnit\Framework\MockObject\MockObject */
 	private $encryptionModule;
 
 	protected function setUp(): void {
@@ -107,19 +108,20 @@ class UsersControllerTest extends \Test\TestCase {
 		$this->encryptionManager = $this->createMock(IManager::class);
 
 		$this->l->method('t')
-			->will($this->returnCallback(function ($text, $parameters = []) {
+			->willReturnCallback(function ($text, $parameters = []) {
 				return vsprintf($text, $parameters);
-			}));
+			});
 
 		$this->encryptionModule = $this->createMock(IEncryptionModule::class);
 		$this->encryptionManager->expects($this->any())->method('getEncryptionModules')
-			->willReturn(['encryptionModule' => ['callback' => function() { return $this->encryptionModule;}]]);
-
+			->willReturn(['encryptionModule' => ['callback' => function () {
+				return $this->encryptionModule;
+			}]]);
 	}
 
 	/**
 	 * @param bool $isAdmin
-	 * @return UsersController | \PHPUnit_Framework_MockObject_MockObject
+	 * @return UsersController | \PHPUnit\Framework\MockObject\MockObject
 	 */
 	protected function getController($isAdmin = false, $mockedMethods = []) {
 		if (empty($mockedMethods)) {
@@ -444,12 +446,11 @@ class UsersControllerTest extends \Test\TestCase {
 	 * @dataProvider dataTestGetVerificationCode
 	 */
 	public function testGetVerificationCode($account, $type, $dataBefore, $expectedData, $onlyVerificationCode) {
-
 		$message = 'Use my Federated Cloud ID to share with me: user@nextcloud.com';
 		$signature = 'theSignature';
 
 		$code = $message . ' ' . $signature;
-		if($type === AccountManager::PROPERTY_TWITTER) {
+		if ($type === AccountManager::PROPERTY_TWITTER) {
 			$code = $message . ' ' . md5($signature);
 		}
 
@@ -485,7 +486,6 @@ class UsersControllerTest extends \Test\TestCase {
 	}
 
 	public function dataTestGetVerificationCode() {
-
 		$accountDataBefore = [
 			AccountManager::PROPERTY_WEBSITE => ['value' => 'https://nextcloud.com', 'verified' => AccountManager::NOT_VERIFIED],
 			AccountManager::PROPERTY_TWITTER => ['value' => '@nextclouders', 'verified' => AccountManager::NOT_VERIFIED, 'signature' => 'theSignature'],
@@ -513,7 +513,6 @@ class UsersControllerTest extends \Test\TestCase {
 	 * test get verification code in case no valid user was given
 	 */
 	public function testGetVerificationCodeInvalidUser() {
-
 		$controller = $this->getController();
 		$this->userSession->expects($this->once())->method('getUser')->willReturn(null);
 		$result = $controller->getVerificationCode('account', false);
@@ -540,9 +539,12 @@ class UsersControllerTest extends \Test\TestCase {
 			->willReturn($encryptionEnabled);
 		$this->encryptionManager->expects($this->any())
 			->method('getEncryptionModule')
-			->willReturnCallback(function() use ($encryptionModuleLoaded) {
-				if ($encryptionModuleLoaded) return $this->encryptionModule;
-				else throw new ModuleDoesNotExistsException();
+			->willReturnCallback(function () use ($encryptionModuleLoaded) {
+				if ($encryptionModuleLoaded) {
+					return $this->encryptionModule;
+				} else {
+					throw new ModuleDoesNotExistsException();
+				}
 			});
 		$this->encryptionModule->expects($this->any())
 			->method('needDetailedAccessList')
@@ -565,5 +567,4 @@ class UsersControllerTest extends \Test\TestCase {
 			[false, false, false, true],
 		];
 	}
-
 }

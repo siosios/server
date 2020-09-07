@@ -2,6 +2,8 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
@@ -134,24 +136,26 @@ class AvatarController extends Controller {
 
 		if ($scope !== IAccountManager::VISIBILITY_PUBLIC && $this->userId === null) {
 			// Public avatar access is not allowed
-			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+			$response = new JSONResponse([], Http::STATUS_NOT_FOUND);
+			$response->cacheFor(1800);
+			return $response;
 		}
 
 		try {
 			$avatar = $this->avatarManager->getAvatar($userId);
 			$avatarFile = $avatar->getFile($size);
-			$resp = new FileDisplayResponse(
+			$response = new FileDisplayResponse(
 				$avatarFile,
-				$avatar->isCustomAvatar() ? Http::STATUS_OK : Http::STATUS_CREATED,
-				['Content-Type' => $avatarFile->getMimeType()]
+				Http::STATUS_OK,
+				['Content-Type' => $avatarFile->getMimeType(), 'X-NC-IsCustomAvatar' => (int)$avatar->isCustomAvatar()]
 			);
 		} catch (\Exception $e) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
 		}
 
-		// Cache for 30 minutes
-		$resp->cacheFor(1800);
-		return $resp;
+		// Cache for 1 day
+		$response->cacheFor(60*60*24);
+		return $response;
 	}
 
 	/**
@@ -256,7 +260,7 @@ class AvatarController extends Controller {
 
 	/**
 	 * @NoAdminRequired
-     *
+	 *
 	 * @return JSONResponse
 	 */
 	public function deleteAvatar() {
@@ -279,8 +283,8 @@ class AvatarController extends Controller {
 		$tmpAvatar = $this->cache->get('tmpAvatar');
 		if (is_null($tmpAvatar)) {
 			return new JSONResponse(['data' => [
-										'message' => $this->l->t("No temporary profile picture available, try again")
-									]],
+				'message' => $this->l->t("No temporary profile picture available, try again")
+			]],
 									Http::STATUS_NOT_FOUND);
 		}
 
@@ -317,8 +321,8 @@ class AvatarController extends Controller {
 		$tmpAvatar = $this->cache->get('tmpAvatar');
 		if (is_null($tmpAvatar)) {
 			return new JSONResponse(['data' => [
-										'message' => $this->l->t("No temporary profile picture available, try again")
-									]],
+				'message' => $this->l->t("No temporary profile picture available, try again")
+			]],
 									Http::STATUS_BAD_REQUEST);
 		}
 

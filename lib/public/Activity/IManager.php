@@ -8,6 +8,7 @@ declare(strict_types=1);
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -31,7 +32,6 @@ namespace OCP\Activity;
 /**
  * Interface IManager
  *
- * @package OCP\Activity
  * @since 6.0.0
  */
 interface IManager {
@@ -103,7 +103,7 @@ interface IManager {
 	public function registerSetting(string $setting): void;
 
 	/**
-	 * @return ISetting[]
+	 * @return ActivitySettings[]
 	 * @since 11.0.0
 	 */
 	public function getSettings(): array;
@@ -122,11 +122,11 @@ interface IManager {
 
 	/**
 	 * @param string $id
-	 * @return ISetting
+	 * @return ActivitySettings
 	 * @throws \InvalidArgumentException when the setting was not found
 	 * @since 11.0.0
 	 */
-	public function getSettingById(string $id): ISetting;
+	public function getSettingById(string $id): ActivitySettings;
 
 	/**
 	 * @param string $type

@@ -59,28 +59,28 @@ use PHPUnit\Framework\MockObject\MockObject;
 class AvatarControllerTest extends \Test\TestCase {
 	/** @var AvatarController */
 	private $avatarController;
-	/** @var IAvatar|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IAvatar|\PHPUnit\Framework\MockObject\MockObject */
 	private $avatarMock;
-	/** @var IUser|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IUser|\PHPUnit\Framework\MockObject\MockObject */
 	private $userMock;
-	/** @var File|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var File|\PHPUnit\Framework\MockObject\MockObject */
 	private $avatarFile;
 
-	/** @var IAvatarManager|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IAvatarManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $avatarManager;
-	/** @var ICache|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var ICache|\PHPUnit\Framework\MockObject\MockObject */
 	private $cache;
-	/** @var IL10N|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IL10N|\PHPUnit\Framework\MockObject\MockObject */
 	private $l;
-	/** @var IUserManager|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IUserManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $userManager;
-	/** @var IRootFolder|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IRootFolder|\PHPUnit\Framework\MockObject\MockObject */
 	private $rootFolder;
-	/** @var ILogger|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var ILogger|\PHPUnit\Framework\MockObject\MockObject */
 	private $logger;
-	/** @var IRequest|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var IRequest|\PHPUnit\Framework\MockObject\MockObject */
 	private $request;
-	/** @var TimeFactory|\PHPUnit_Framework_MockObject_MockObject */
+	/** @var TimeFactory|\PHPUnit\Framework\MockObject\MockObject */
 	private $timeFactory;
 	/** @var IAccountManager|MockObject */
 	private $accountManager;
@@ -92,7 +92,7 @@ class AvatarControllerTest extends \Test\TestCase {
 		$this->cache = $this->getMockBuilder('OCP\ICache')
 			->disableOriginalConstructor()->getMock();
 		$this->l = $this->getMockBuilder(IL10N::class)->getMock();
-		$this->l->method('t')->will($this->returnArgument(0));
+		$this->l->method('t')->willReturnArgument(0);
 		$this->userManager = $this->getMockBuilder(IUserManager::class)->getMock();
 		$this->request = $this->getMockBuilder(IRequest::class)->getMock();
 		$this->rootFolder = $this->getMockBuilder('OCP\Files\IRootFolder')->getMock();
@@ -193,6 +193,8 @@ class AvatarControllerTest extends \Test\TestCase {
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertArrayHasKey('Content-Type', $response->getHeaders());
 		$this->assertEquals('image type', $response->getHeaders()['Content-Type']);
+		$this->assertArrayHasKey('X-NC-IsCustomAvatar', $response->getHeaders());
+		$this->assertEquals('1', $response->getHeaders()['X-NC-IsCustomAvatar']);
 
 		$this->assertEquals('my etag', $response->getETag());
 	}
@@ -206,9 +208,11 @@ class AvatarControllerTest extends \Test\TestCase {
 
 		$response = $this->avatarController->getAvatar('userId', 32);
 
-		$this->assertEquals(Http::STATUS_CREATED, $response->getStatus());
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertArrayHasKey('Content-Type', $response->getHeaders());
 		$this->assertEquals('image type', $response->getHeaders()['Content-Type']);
+		$this->assertArrayHasKey('X-NC-IsCustomAvatar', $response->getHeaders());
+		$this->assertEquals('0', $response->getHeaders()['X-NC-IsCustomAvatar']);
 
 		$this->assertEquals('my etag', $response->getETag());
 	}
@@ -560,5 +564,4 @@ class AvatarControllerTest extends \Test\TestCase {
 
 		$this->assertEquals('File is too big', $response->getData()['data']['message']);
 	}
-
 }

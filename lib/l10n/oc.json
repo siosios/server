@@ -2,7 +2,6 @@
     "seconds ago" : "i a qualques segondas",
     "Help" : "Ajuda",
     "Settings" : "Paramètres",
-    "Sharing" : "Partiment",
     "Sunday" : "Dimenge",
     "Monday" : "Diluns",
     "Tuesday" : "Dimars",
@@ -10,8 +9,6 @@
     "Thursday" : "Dijòus",
     "Friday" : "Divendres",
     "Saturday" : "Dissabte",
-    "Create" : "Crear",
-    "Delete" : "Suprimir",
-    "Share" : "Partejar"
+    "Sharing" : "Partiment"
 },"pluralForm" :"nplurals=2; plural=(n > 1);"
 }
