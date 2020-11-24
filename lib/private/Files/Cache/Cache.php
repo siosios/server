@@ -151,7 +151,9 @@ class Cache implements ICache {
 			$query->whereFileId($file);
 		}
 
-		$data = $query->execute()->fetch();
+		$result = $query->execute();
+		$data = $result->fetch();
+		$result->closeCursor();
 
 		//merge partial data
 		if (!$data and is_string($file) and isset($this->partial[$file])) {
@@ -220,7 +222,10 @@ class Cache implements ICache {
 				->whereParent($fileId)
 				->orderBy('name', 'ASC');
 
-			$files = $query->execute()->fetchAll();
+			$result = $query->execute();
+			$files = $result->fetchAll();
+			$result->closeCursor();
+
 			return array_map(function (array $data) {
 				return self::cacheEntryFromData($data, $this->mimetypeLoader);
 			}, $files);
@@ -254,8 +259,6 @@ class Cache implements ICache {
 	 *
 	 * @return int file id
 	 * @throws \RuntimeException
-	 *
-	 * @suppress SqlInjectionChecker
 	 */
 	public function insert($file, array $data) {
 		// normalize file
@@ -469,7 +472,10 @@ class Cache implements ICache {
 			->whereStorageId()
 			->wherePath($file);
 
-		$id = $query->execute()->fetchColumn();
+		$result = $query->execute();
+		$id = $result->fetchColumn();
+		$result->closeCursor();
+
 		return $id === false ? -1 : (int)$id;
 	}
 
@@ -613,7 +619,6 @@ class Cache implements ICache {
 	 * @param string $targetPath
 	 * @throws \OC\DatabaseException
 	 * @throws \Exception if the given storages have an invalid id
-	 * @suppress SqlInjectionChecker
 	 */
 	public function moveFromCache(ICache $sourceCache, $sourcePath, $targetPath) {
 		if ($sourceCache instanceof Cache) {
@@ -713,7 +718,11 @@ class Cache implements ICache {
 			->from('filecache')
 			->whereStorageId()
 			->wherePath($file);
-		$size = $query->execute()->fetchColumn();
+
+		$result = $query->execute();
+		$size = $result->fetchColumn();
+		$result->closeCursor();
+
 		if ($size !== false) {
 			if ((int)$size === -1) {
 				return self::SHALLOW;
@@ -748,9 +757,13 @@ class Cache implements ICache {
 			->whereStorageId()
 			->andWhere($query->expr()->iLike('name', $query->createNamedParameter($pattern)));
 
+		$result = $query->execute();
+		$files = $result->fetchAll();
+		$result->closeCursor();
+
 		return array_map(function (array $data) {
 			return self::cacheEntryFromData($data, $this->mimetypeLoader);
-		}, $query->execute()->fetchAll());
+		}, $files);
 	}
 
 	/**
@@ -785,9 +798,13 @@ class Cache implements ICache {
 			$query->andWhere($query->expr()->eq('mimepart', $query->createNamedParameter($mimeId, IQueryBuilder::PARAM_INT)));
 		}
 
+		$result = $query->execute();
+		$files = $result->fetchAll();
+		$result->closeCursor();
+
 		return array_map(function (array $data) {
 			return self::cacheEntryFromData($data, $this->mimetypeLoader);
-		}, $query->execute()->fetchAll());
+		}, $files);
 	}
 
 	public function searchQuery(ISearchQuery $searchQuery) {
@@ -868,7 +885,11 @@ class Cache implements ICache {
 				->whereParent($fileId)
 				->andWhere($query->expr()->lt('size', $query->createNamedParameter(0, IQueryBuilder::PARAM_INT)));
 
-			return (int)$query->execute()->fetchColumn();
+			$result = $query->execute();
+			$size = (int)$result->fetchColumn();
+			$result->closeCursor();
+
+			return $size;
 		}
 		return -1;
 	}
@@ -895,7 +916,11 @@ class Cache implements ICache {
 				->whereStorageId()
 				->whereParent($id);
 
-			if ($row = $query->execute()->fetch()) {
+			$result = $query->execute();
+			$row = $result->fetch();
+			$result->closeCursor();
+
+			if ($row) {
 				[$sum, $min] = array_values($row);
 				$sum = 0 + $sum;
 				$min = 0 + $min;
@@ -923,9 +948,13 @@ class Cache implements ICache {
 			->from('filecache')
 			->whereStorageId();
 
+		$result = $query->execute();
+		$files = $result->fetchAll(\PDO::FETCH_COLUMN);
+		$result->closeCursor();
+
 		return array_map(function ($id) {
 			return (int)$id;
-		}, $query->execute()->fetchAll(\PDO::FETCH_COLUMN));
+		}, $files);
 	}
 
 	/**
@@ -945,7 +974,11 @@ class Cache implements ICache {
 			->andWhere($query->expr()->lt('size', $query->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
 			->orderBy('fileid', 'DESC');
 
-		return $query->execute()->fetchColumn();
+		$result = $query->execute();
+		$path = $result->fetchColumn();
+		$result->closeCursor();
+
+		return $path;
 	}
 
 	/**
@@ -961,8 +994,15 @@ class Cache implements ICache {
 			->whereStorageId()
 			->whereFileId($id);
 
-		$path = $query->execute()->fetchColumn();
-		return $path === false ? null : $path;
+		$result = $query->execute();
+		$path = $result->fetchColumn();
+		$result->closeCursor();
+
+		if ($path === false) {
+			return null;
+		}
+
+		return (string) $path;
 	}
 
 	/**
@@ -979,7 +1019,12 @@ class Cache implements ICache {
 		$query->select('path', 'storage')
 			->from('filecache')
 			->where($query->expr()->eq('fileid', $query->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-		if ($row = $query->execute()->fetch()) {
+
+		$result = $query->execute();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		if ($row) {
 			$numericId = $row['storage'];
 			$path = $row['path'];
 		} else {

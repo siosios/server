@@ -60,11 +60,11 @@ module.exports = []
 			rules: [
 				{
 					test: /\.css$/,
-					use: ['vue-style-loader', 'css-loader'],
+					use: ['style-loader', 'css-loader'],
 				},
 				{
 					test: /\.scss$/,
-					use: ['vue-style-loader', 'css-loader', 'sass-loader'],
+					use: ['style-loader', 'css-loader', 'sass-loader'],
 				},
 				{
 					test: /\.(js|vue)$/,
@@ -104,6 +104,7 @@ module.exports = []
 						'p-timeout',
 						'p-try',
 						'semver',
+						'striptags',
 						'toastify-js',
 						'v-tooltip',
 					]),

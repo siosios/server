@@ -70,7 +70,7 @@ trait Provisioning {
 	}
 
 	/**
-	 * @Given /^user "([^"]*)" with displayname "([^"]*)" exists$/
+	 * @Given /^user "([^"]*)" with displayname "((?:[^"]|\\")*)" exists$/
 	 * @param string $user
 	 */
 	public function assureUserWithDisplaynameExists($user, $displayname) {
@@ -422,7 +422,7 @@ trait Provisioning {
 			'groupid' => $group,
 		];
 
-		$this->response =$client->post($fullUrl, $options);
+		$this->response = $client->post($fullUrl, $options);
 	}
 
 

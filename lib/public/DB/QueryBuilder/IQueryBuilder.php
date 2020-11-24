@@ -278,7 +278,7 @@ interface IQueryBuilder {
 	 * Gets the maximum number of results the query object was set to retrieve (the "limit").
 	 * Returns NULL if {@link setMaxResults} was not applied to this query builder.
 	 *
-	 * @return integer The maximum number of results.
+	 * @return int|null The maximum number of results.
 	 * @since 8.2.0
 	 */
 	public function getMaxResults();
@@ -522,7 +522,7 @@ interface IQueryBuilder {
 	 * </code>
 	 *
 	 * @param string $key The column to set.
-	 * @param IParameter|string $value The value, expression, placeholder, etc.
+	 * @param ILiteral|IParameter|IQueryFunction|string $value The value, expression, placeholder, etc.
 	 *
 	 * @return $this This QueryBuilder instance.
 	 * @since 8.2.0
@@ -651,7 +651,7 @@ interface IQueryBuilder {
 	 * </code>
 	 *
 	 * @param string $column The column into which the value should be inserted.
-	 * @param string $value The value that should be inserted into the column.
+	 * @param IParameter|string $value The value that should be inserted into the column.
 	 *
 	 * @return $this This QueryBuilder instance.
 	 * @since 8.2.0

@@ -42,6 +42,7 @@ namespace OC;
 use Doctrine\DBAL\Exception\TableExistsException;
 use OC\App\AppStore\Bundles\Bundle;
 use OC\App\AppStore\Fetcher\AppFetcher;
+use OC\AppFramework\Bootstrap\Coordinator;
 use OC\Archive\TAR;
 use OC_App;
 use OC_DB;
@@ -138,6 +139,9 @@ class Installer {
 
 		// check for required dependencies
 		\OC_App::checkAppDependencies($this->config, $l, $info, $ignoreMax);
+		/** @var Coordinator $coordinator */
+		$coordinator = \OC::$server->get(Coordinator::class);
+		$coordinator->runLazyRegistration($appId);
 		\OC_App::registerAutoloading($appId, $basedir);
 
 		$previousVersion = $this->config->getAppValue($info['id'], 'installed_version', false);
@@ -154,7 +158,7 @@ class Installer {
 			}
 		} else {
 			$ms = new \OC\DB\MigrationService($info['id'], \OC::$server->getDatabaseConnection());
-			$ms->migrate();
+			$ms->migrate('latest', true);
 		}
 		if ($previousVersion) {
 			OC_App::executeRepairSteps($appId, $info['repair-steps']['post-migration']);
@@ -173,10 +177,10 @@ class Installer {
 		\OC::$server->getConfig()->setAppValue($info['id'], 'enabled', 'no');
 
 		//set remote/public handlers
-		foreach ($info['remote'] as $name=>$path) {
+		foreach ($info['remote'] as $name => $path) {
 			\OC::$server->getConfig()->setAppValue('core', 'remote_'.$name, $info['id'].'/'.$path);
 		}
-		foreach ($info['public'] as $name=>$path) {
+		foreach ($info['public'] as $name => $path) {
 			\OC::$server->getConfig()->setAppValue('core', 'public_'.$name, $info['id'].'/'.$path);
 		}
 
@@ -294,12 +298,14 @@ class Installer {
 
 					if ($archive) {
 						if (!$archive->extract($extractDir)) {
-							throw new \Exception(
-								sprintf(
-									'Could not extract app %s',
-									$appId
-								)
-							);
+							$errorMessage = 'Could not extract app ' . $appId;
+
+							$archiveError = $archive->getError();
+							if ($archiveError instanceof \PEAR_Error) {
+								$errorMessage .= ': ' . $archiveError->getMessage();
+							}
+
+							throw new \Exception($errorMessage);
 						}
 						$allFiles = scandir($extractDir);
 						$folders = array_diff($allFiles, ['.', '..']);
@@ -455,7 +461,7 @@ class Installer {
 	 */
 	public function isDownloaded($name) {
 		foreach (\OC::$APPSROOTS as $dir) {
-			$dirToTest  = $dir['path'];
+			$dirToTest = $dir['path'];
 			$dirToTest .= '/';
 			$dirToTest .= $name;
 			$dirToTest .= '/';
@@ -535,7 +541,7 @@ class Installer {
 					if ($filename[0] !== '.' and is_dir($app_dir['path']."/$filename")) {
 						if (file_exists($app_dir['path']."/$filename/appinfo/info.xml")) {
 							if ($config->getAppValue($filename, "installed_version", null) === null) {
-								$info=OC_App::getAppInfo($filename);
+								$info = OC_App::getAppInfo($filename);
 								$enabled = isset($info['default_enable']);
 								if (($enabled || in_array($filename, $appManager->getAlwaysEnabledApps()))
 									  && $config->getAppValue($filename, 'enabled') !== 'no') {
@@ -587,7 +593,7 @@ class Installer {
 			}
 		} else {
 			$ms = new \OC\DB\MigrationService($app, \OC::$server->getDatabaseConnection());
-			$ms->migrate();
+			$ms->migrate('latest', true);
 		}
 
 		//run appinfo/install.php
@@ -609,10 +615,10 @@ class Installer {
 		}
 
 		//set remote/public handlers
-		foreach ($info['remote'] as $name=>$path) {
+		foreach ($info['remote'] as $name => $path) {
 			$config->setAppValue('core', 'remote_'.$name, $app.'/'.$path);
 		}
-		foreach ($info['public'] as $name=>$path) {
+		foreach ($info['public'] as $name => $path) {
 			$config->setAppValue('core', 'public_'.$name, $app.'/'.$path);
 		}
 

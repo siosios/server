@@ -54,29 +54,30 @@ namespace OCP;
 
 /**
  * This class provides different helper functions to make the life of a developer easier
+ *
  * @since 4.0.0
  */
 class Util {
 	/**
 	 * @deprecated 14.0.0 use \OCP\ILogger::DEBUG
 	 */
-	public const DEBUG=0;
+	public const DEBUG = 0;
 	/**
 	 * @deprecated 14.0.0 use \OCP\ILogger::INFO
 	 */
-	public const INFO=1;
+	public const INFO = 1;
 	/**
 	 * @deprecated 14.0.0 use \OCP\ILogger::WARN
 	 */
-	public const WARN=2;
+	public const WARN = 2;
 	/**
 	 * @deprecated 14.0.0 use \OCP\ILogger::ERROR
 	 */
-	public const ERROR=3;
+	public const ERROR = 3;
 	/**
 	 * @deprecated 14.0.0 use \OCP\ILogger::FATAL
 	 */
-	public const FATAL=4;
+	public const FATAL = 4;
 
 	/** \OCP\Share\IManager */
 	private static $shareManager;
@@ -204,7 +205,7 @@ class Util {
 	 * @param string $text the text content for the element
 	 * @since 4.0.0
 	 */
-	public static function addHeader($tag, $attributes, $text=null) {
+	public static function addHeader($tag, $attributes, $text = null) {
 		\OC_Util::addHeader($tag, $attributes, $text);
 	}
 
@@ -335,6 +336,7 @@ class Util {
 	 *
 	 * TODO: write example
 	 * @since 4.0.0
+	 * @deprecated 21.0.0 use \OCP\EventDispatcher\IEventDispatcher::addListener
 	 */
 	public static function connectHook($signalClass, $signalName, $slotClass, $slotName) {
 		return \OC_Hook::connect($signalClass, $signalName, $slotClass, $slotName);
@@ -349,6 +351,7 @@ class Util {
 	 *
 	 * TODO: write example
 	 * @since 4.0.0
+	 * @deprecated 21.0.0 use \OCP\EventDispatcher\IEventDispatcher::dispatchTypedEvent
 	 */
 	public static function emitHook($signalclass, $signalname, $params = []) {
 		return \OC_Hook::emit($signalclass, $signalname, $params);
@@ -513,7 +516,7 @@ class Util {
 	 */
 	public static function needUpgrade() {
 		if (!isset(self::$needUpgradeCache)) {
-			self::$needUpgradeCache=\OC_Util::needUpgrade(\OC::$server->getSystemConfig());
+			self::$needUpgradeCache = \OC_Util::needUpgrade(\OC::$server->getSystemConfig());
 		}
 		return self::$needUpgradeCache;
 	}

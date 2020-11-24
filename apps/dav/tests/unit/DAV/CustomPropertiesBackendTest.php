@@ -109,7 +109,15 @@ class CustomPropertiesBackendTest extends TestCase {
 			->from('properties')
 			->where($query->expr()->eq('userid', $query->createNamedParameter($user)))
 			->where($query->expr()->eq('propertypath', $query->createNamedParameter($this->formatPath($path))));
-		return $query->execute()->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+		$result = $query->execute();
+		$data = [];
+		while ($row = $result->fetch()) {
+			$data[$row['propertyname']] = $row['propertyvalue'];
+		}
+		$result->closeCursor();
+
+		return $data;
 	}
 
 	public function testPropFindNoDbCalls() {

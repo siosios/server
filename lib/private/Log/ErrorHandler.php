@@ -41,7 +41,7 @@ class ErrorHandler {
 		return preg_replace('/\/\/(.*):(.*)@/', '//xxx:xxx@', $msg);
 	}
 
-	public static function register($debug=false) {
+	public static function register($debug = false) {
 		$handler = new ErrorHandler();
 
 		if ($debug) {
@@ -88,12 +88,14 @@ class ErrorHandler {
 			return;
 		}
 		$msg = $message . ' at ' . $file . '#' . $line;
-		self::$logger->error(self::removePassword($msg), ['app' => 'PHP']);
+		$e = new \Error(self::removePassword($msg));
+		self::$logger->logException($e, ['app' => 'PHP']);
 	}
 
 	//Recoverable handler which catch all errors, warnings and notices
 	public static function onAll($number, $message, $file, $line) {
 		$msg = $message . ' at ' . $file . '#' . $line;
-		self::$logger->debug(self::removePassword($msg), ['app' => 'PHP']);
+		$e = new \Error(self::removePassword($msg));
+		self::$logger->logException($e, ['app' => 'PHP', 'level' => 0]);
 	}
 }

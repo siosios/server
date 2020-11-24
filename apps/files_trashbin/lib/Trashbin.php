@@ -44,6 +44,9 @@
 
 namespace OCA\Files_Trashbin;
 
+use OC\Files\Cache\Cache;
+use OC\Files\Cache\CacheEntry;
+use OC\Files\Cache\CacheQueryBuilder;
 use OC\Files\Filesystem;
 use OC\Files\ObjectStore\ObjectStoreStorage;
 use OC\Files\View;
@@ -125,17 +128,20 @@ class Trashbin {
 	 * @return array (filename => array (timestamp => original location))
 	 */
 	public static function getLocations($user) {
-		$query = \OC_DB::prepare('SELECT `id`, `timestamp`, `location`'
-			. ' FROM `*PREFIX*files_trash` WHERE `user`=?');
-		$result = $query->execute([$user]);
+		$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$query->select('id', 'timestamp', 'location')
+			->from('files_trash')
+			->where($query->expr()->eq('user', $query->createNamedParameter($user)));
+		$result = $query->execute();
 		$array = [];
-		while ($row = $result->fetchRow()) {
+		while ($row = $result->fetch()) {
 			if (isset($array[$row['id']])) {
 				$array[$row['id']][$row['timestamp']] = $row['location'];
 			} else {
 				$array[$row['id']] = [$row['timestamp'] => $row['location']];
 			}
 		}
+		$result->closeCursor();
 		return $array;
 	}
 
@@ -148,11 +154,19 @@ class Trashbin {
 	 * @return string original location
 	 */
 	public static function getLocation($user, $filename, $timestamp) {
-		$query = \OC_DB::prepare('SELECT `location` FROM `*PREFIX*files_trash`'
-			. ' WHERE `user`=? AND `id`=? AND `timestamp`=?');
-		$result = $query->execute([$user, $filename, $timestamp])->fetchAll();
-		if (isset($result[0]['location'])) {
-			return $result[0]['location'];
+		$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$query->select('location')
+			->from('files_trash')
+			->where($query->expr()->eq('user', $query->createNamedParameter($user)))
+			->andWhere($query->expr()->eq('id', $query->createNamedParameter($filename)))
+			->andWhere($query->expr()->eq('timestamp', $query->createNamedParameter($timestamp)));
+
+		$result = $query->execute();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		if (isset($row['location'])) {
+			return $row['location'];
 		} else {
 			return false;
 		}
@@ -205,8 +219,13 @@ class Trashbin {
 
 
 		if ($view->file_exists($target)) {
-			$query = \OC_DB::prepare("INSERT INTO `*PREFIX*files_trash` (`id`,`timestamp`,`location`,`user`) VALUES (?,?,?,?)");
-			$result = $query->execute([$targetFilename, $timestamp, $targetLocation, $user]);
+			$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+			$query->insert('files_trash')
+				->setValue('id', $query->createNamedParameter($targetFilename))
+				->setValue('timestamp', $query->createNamedParameter($timestamp))
+				->setValue('location', $query->createNamedParameter($targetLocation))
+				->setValue('user', $query->createNamedParameter($user));
+			$result = $query->execute();
 			if (!$result) {
 				\OC::$server->getLogger()->error('trash bin database couldn\'t be updated for the files owner', ['app' => 'files_trashbin']);
 			}
@@ -285,8 +304,14 @@ class Trashbin {
 			$trashStorage->unlink($trashInternalPath);
 		}
 
-		$connection = \OC::$server->getDatabaseConnection();
-		$connection->beginTransaction();
+		$config = \OC::$server->getConfig();
+		$systemTrashbinSize = (int)$config->getAppValue('files_trashbin', 'trashbin_size', '-1');
+		$userTrashbinSize = (int)$config->getUserValue($owner, 'files_trashbin', 'trashbin_size', '-1');
+		$configuredTrashbinSize = ($userTrashbinSize < 0) ? $systemTrashbinSize : $userTrashbinSize;
+		if ($configuredTrashbinSize >= 0 && $sourceStorage->filesize($sourceInternalPath) >= $configuredTrashbinSize) {
+			return false;
+		}
+
 		$trashStorage->getUpdater()->renameFromStorage($sourceStorage, $sourceInternalPath, $trashInternalPath);
 
 		try {
@@ -310,15 +335,24 @@ class Trashbin {
 			} else {
 				$sourceStorage->unlink($sourceInternalPath);
 			}
-			$connection->rollBack();
+
+			if ($sourceStorage->file_exists($sourceInternalPath)) {
+				// undo the cache move
+				$sourceStorage->getUpdater()->renameFromStorage($trashStorage, $trashInternalPath, $sourceInternalPath);
+			} else {
+				$trashStorage->getUpdater()->remove($trashInternalPath);
+			}
 			return false;
 		}
 
-		$connection->commit();
-
 		if ($moveSuccessful) {
-			$query = \OC_DB::prepare("INSERT INTO `*PREFIX*files_trash` (`id`,`timestamp`,`location`,`user`) VALUES (?,?,?,?)");
-			$result = $query->execute([$filename, $timestamp, $location, $owner]);
+			$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+			$query->insert('files_trash')
+				->setValue('id', $query->createNamedParameter($filename))
+				->setValue('timestamp', $query->createNamedParameter($timestamp))
+				->setValue('location', $query->createNamedParameter($location))
+				->setValue('user', $query->createNamedParameter($owner));
+			$result = $query->execute();
 			if (!$result) {
 				\OC::$server->getLogger()->error('trash bin database couldn\'t be updated', ['app' => 'files_trashbin']);
 			}
@@ -476,8 +510,12 @@ class Trashbin {
 			self::restoreVersions($view, $file, $filename, $uniqueFilename, $location, $timestamp);
 
 			if ($timestamp) {
-				$query = \OC_DB::prepare('DELETE FROM `*PREFIX*files_trash` WHERE `user`=? AND `id`=? AND `timestamp`=?');
-				$query->execute([$user, $filename, $timestamp]);
+				$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+				$query->delete('files_trash')
+					->where($query->expr()->eq('user', $query->createNamedParameter($user)))
+					->andWhere($query->expr()->eq('id', $query->createNamedParameter($filename)))
+					->andWhere($query->expr()->eq('timestamp', $query->createNamedParameter($timestamp)));
+				$query->execute();
 			}
 
 			return true;
@@ -563,8 +601,11 @@ class Trashbin {
 
 		// actual file deletion
 		$trash->delete();
-		$query = \OC_DB::prepare('DELETE FROM `*PREFIX*files_trash` WHERE `user`=?');
-		$query->execute([$user]);
+
+		$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$query->delete('files_trash')
+			->where($query->expr()->eq('user', $query->createNamedParameter($user)));
+		$query->execute();
 
 		// Bulk PostDelete-Hook
 		\OC_Hook::emit('\OCP\Trashbin', 'deleteAll', ['paths' => $filePaths]);
@@ -613,8 +654,13 @@ class Trashbin {
 		$size = 0;
 
 		if ($timestamp) {
-			$query = \OC_DB::prepare('DELETE FROM `*PREFIX*files_trash` WHERE `user`=? AND `id`=? AND `timestamp`=?');
-			$query->execute([$user, $filename, $timestamp]);
+			$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+			$query->delete('files_trash')
+				->where($query->expr()->eq('user', $query->createNamedParameter($user)))
+				->andWhere($query->expr()->eq('id', $query->createNamedParameter($filename)))
+				->andWhere($query->expr()->eq('timestamp', $query->createNamedParameter($timestamp)));
+			$query->execute();
+
 			$file = $filename . '.d' . $timestamp;
 		} else {
 			$file = $filename;
@@ -696,8 +742,10 @@ class Trashbin {
 	 * @return bool result of db delete operation
 	 */
 	public static function deleteUser($uid) {
-		$query = \OC_DB::prepare('DELETE FROM `*PREFIX*files_trash` WHERE `user`=?');
-		return $query->execute([$uid]);
+		$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$query->delete('files_trash')
+			->where($query->expr()->eq('user', $query->createNamedParameter($uid)));
+		return (bool) $query->execute();
 	}
 
 	/**
@@ -916,33 +964,63 @@ class Trashbin {
 		$view = new View('/' . $user . '/files_trashbin/versions');
 		$versions = [];
 
+		/** @var \OC\Files\Storage\Storage $storage */
+		[$storage,] = $view->resolvePath('/');
+
 		//force rescan of versions, local storage may not have updated the cache
 		if (!self::$scannedVersions) {
-			/** @var \OC\Files\Storage\Storage $storage */
-			[$storage,] = $view->resolvePath('/');
 			$storage->getScanner()->scan('files_trashbin/versions');
 			self::$scannedVersions = true;
 		}
 
+		$pattern = \OC::$server->getDatabaseConnection()->escapeLikeParameter(basename($filename));
 		if ($timestamp) {
 			// fetch for old versions
-			$matches = $view->searchRaw($filename . '.v%.d' . $timestamp);
-			$offset = -strlen($timestamp) - 2;
+			$escapedTimestamp = \OC::$server->getDatabaseConnection()->escapeLikeParameter($timestamp);
+			$pattern .= '.v%.d' . $escapedTimestamp;
+			$offset = -strlen($escapedTimestamp) - 2;
 		} else {
-			$matches = $view->searchRaw($filename . '.v%');
+			$pattern .= '.v%';
 		}
 
-		if (is_array($matches)) {
-			foreach ($matches as $ma) {
-				if ($timestamp) {
-					$parts = explode('.v', substr($ma['path'], 0, $offset));
-					$versions[] = end($parts);
-				} else {
-					$parts = explode('.v', $ma);
-					$versions[] = end($parts);
-				}
+		// Manually fetch all versions from the file cache to be able to filter them by their parent
+		$cache = $storage->getCache('');
+		$query = new CacheQueryBuilder(
+			\OC::$server->getDatabaseConnection(),
+			\OC::$server->getSystemConfig(),
+			\OC::$server->getLogger(),
+			$cache
+		);
+		$normalizedParentPath = ltrim(Filesystem::normalizePath(dirname('files_trashbin/versions/'. $filename)), '/');
+		$parentId = $cache->getId($normalizedParentPath);
+		if ($parentId === -1) {
+			return [];
+		}
+
+		$query->selectFileCache()
+			->whereStorageId()
+			->andWhere($query->expr()->eq('parent', $query->createNamedParameter($parentId)))
+			->andWhere($query->expr()->iLike('name', $query->createNamedParameter($pattern)));
+
+		$result = $query->execute();
+		$entries = $result->fetchAll();
+		$result->closeCursor();
+
+		/** @var CacheEntry[] $matches */
+		$matches = array_map(function (array $data) {
+			return Cache::cacheEntryFromData($data, \OC::$server->getMimeTypeLoader());
+		}, $entries);
+
+		foreach ($matches as $ma) {
+			if ($timestamp) {
+				$parts = explode('.v', substr($ma['path'], 0, $offset));
+				$versions[] = end($parts);
+			} else {
+				$parts = explode('.v', $ma['path']);
+				$versions[] = end($parts);
 			}
 		}
+
 		return $versions;
 	}
 

@@ -223,13 +223,22 @@ class ThemingDefaults extends \OC_Defaults {
 	 * @return string
 	 */
 	public function getLogo($useSvg = true): string {
-		$logo = $this->config->getAppValue('theming', 'logoMime', false);
+		$logo = $this->config->getAppValue('theming', 'logoMime', '');
 
-		$logoExists = true;
-		try {
-			$this->imageManager->getImage('logo', $useSvg);
-		} catch (\Exception $e) {
-			$logoExists = false;
+		// short cut to avoid setting up the filesystem just to check if the logo is there
+		//
+		// explanation: if an SVG is requested and the app config value for logoMime is set then the logo is there.
+		// otherwise we need to check it and maybe also generate a PNG from the SVG (that's done in getImage() which
+		// needs to be called then)
+		if ($useSvg === true && $logo !== false) {
+			$logoExists = true;
+		} else {
+			try {
+				$this->imageManager->getImage('logo', $useSvg);
+				$logoExists = true;
+			} catch (\Exception $e) {
+				$logoExists = false;
+			}
 		}
 
 		$cacheBusterCounter = $this->config->getAppValue('theming', 'cachebuster', '0');
@@ -300,13 +309,13 @@ class ThemingDefaults extends \OC_Defaults {
 		$variables['image-login-background'] = "url('".$this->imageManager->getImageUrl('background')."')";
 		$variables['image-login-plain'] = 'false';
 
-		if ($this->config->getAppValue('theming', 'color', null) !== null) {
+		if ($this->config->getAppValue('theming', 'color', '') !== '') {
 			$variables['color-primary'] = $this->getColorPrimary();
 			$variables['color-primary-text'] = $this->getTextColorPrimary();
 			$variables['color-primary-element'] = $this->util->elementColor($this->getColorPrimary());
 		}
 
-		if ($this->config->getAppValue('theming', 'backgroundMime', null) === 'backgroundColor') {
+		if ($this->config->getAppValue('theming', 'backgroundMime', '') === 'backgroundColor') {
 			$variables['image-login-plain'] = 'true';
 		}
 
@@ -372,7 +381,7 @@ class ThemingDefaults extends \OC_Defaults {
 	 */
 	private function increaseCacheBuster() {
 		$cacheBusterKey = $this->config->getAppValue('theming', 'cachebuster', '0');
-		$this->config->setAppValue('theming', 'cachebuster', (int)$cacheBusterKey+1);
+		$this->config->setAppValue('theming', 'cachebuster', (int)$cacheBusterKey + 1);
 		$this->cacheFactory->createDistributed('theming-')->clear();
 		$this->cacheFactory->createDistributed('imagePath')->clear();
 	}
@@ -398,6 +407,7 @@ class ThemingDefaults extends \OC_Defaults {
 		$this->config->deleteAppValue('theming', $setting);
 		$this->increaseCacheBuster();
 
+		$returnValue = '';
 		switch ($setting) {
 			case 'name':
 				$returnValue = $this->getEntity();
@@ -411,8 +421,11 @@ class ThemingDefaults extends \OC_Defaults {
 			case 'color':
 				$returnValue = $this->getColorPrimary();
 				break;
-			default:
-				$returnValue = '';
+			case 'logo':
+			case 'logoheader':
+			case 'background':
+			case 'favicon':
+				$this->imageManager->delete($setting);
 				break;
 		}
 

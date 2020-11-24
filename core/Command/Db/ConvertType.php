@@ -295,7 +295,6 @@ class ConvertType extends Command implements CompletionAwareInterface {
 	 * @param Table $table
 	 * @param InputInterface $input
 	 * @param OutputInterface $output
-	 * @suppress SqlInjectionChecker
 	 */
 	protected function copyTable(Connection $fromDB, Connection $toDB, Table $table, InputInterface $input, OutputInterface $output) {
 		if ($table->getName() === $toDB->getPrefix() . 'migrations') {
@@ -313,7 +312,7 @@ class ConvertType extends Command implements CompletionAwareInterface {
 		$count = $result->fetchColumn();
 		$result->closeCursor();
 
-		$numChunks = ceil($count/$chunkSize);
+		$numChunks = ceil($count / $chunkSize);
 		if ($numChunks > 1) {
 			$output->writeln('chunked query, ' . $numChunks . ' chunks');
 		}
@@ -433,11 +432,11 @@ class ConvertType extends Command implements CompletionAwareInterface {
 		}
 
 		$this->config->setSystemValues([
-			'dbtype'		=> $type,
-			'dbname'		=> $dbName,
-			'dbhost'		=> $dbHost,
-			'dbuser'		=> $username,
-			'dbpassword'	=> $password,
+			'dbtype' => $type,
+			'dbname' => $dbName,
+			'dbhost' => $dbHost,
+			'dbuser' => $username,
+			'dbpassword' => $password,
 		]);
 	}
 

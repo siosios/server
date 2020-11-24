@@ -1236,6 +1236,7 @@
 				mtime: parseInt($el.attr('data-mtime'), 10),
 				type: $el.attr('data-type'),
 				etag: $el.attr('data-etag'),
+				quotaAvailableBytes: $el.attr('data-quota'),
 				permissions: parseInt($el.attr('data-permissions'), 10),
 				hasPreview: $el.attr('data-has-preview') === 'true',
 				isEncrypted: $el.attr('data-e2eencrypted') === 'true'
@@ -1495,6 +1496,7 @@
 				"data-mime": mime,
 				"data-mtime": mtime,
 				"data-etag": fileData.etag,
+				"data-quota": fileData.quotaAvailableBytes,
 				"data-permissions": permissions,
 				"data-has-preview": fileData.hasPreview !== false,
 				"data-e2eencrypted": fileData.isEncrypted === true
@@ -1561,9 +1563,7 @@
 				"href": linkUrl
 			});
 			if (this._defaultFileActionsDisabled) {
-				linkElem = $('<p></p>').attr({
-					"class": "name"
-				})
+				linkElem.addClass('disabled');
 			}
 
 			linkElem.append('<div class="thumbnail-wrapper"><div class="thumbnail" style="background-image:url(' + icon + ');"></div></div>');
@@ -3700,7 +3700,22 @@
 			console.warn('registerTabView is deprecated! It will be removed in nextcloud 20.');
 			const enabled = tabView.canDisplay || undefined
 			if (tabView.id) {
-				OCA.Files.Sidebar.registerTab(new OCA.Files.Sidebar.Tab(tabView.id, tabView, enabled, true))
+				OCA.Files.Sidebar.registerTab(new OCA.Files.Sidebar.Tab({
+					id: tabView.id,
+					name: tabView.getLabel(),
+					icon: tabView.getIcon(),
+					mount: function(el, fileInfo) {
+						tabView.setFileInfo(new OCA.Files.FileInfoModel(fileInfo))
+						el.appendChild(tabView.el)
+					},
+					update: function(fileInfo) {
+						tabView.setFileInfo(new OCA.Files.FileInfoModel(fileInfo))
+					},
+					destroy: function() {
+						tabView.el.remove()
+					},
+					enabled: enabled
+				}))
 			}
 		},
 

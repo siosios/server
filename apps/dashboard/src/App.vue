@@ -68,14 +68,18 @@
 				<a v-if="isAdmin" :href="appStoreUrl" class="button">{{ t('dashboard', 'Get more widgets from the app store') }}</a>
 
 				<h3>{{ t('dashboard', 'Change background image') }}</h3>
-				<BackgroundSettings :background="background" @update:background="updateBackground" />
+				<BackgroundSettings :background="background"
+					:theming-default-background="themingDefaultBackground"
+					@update:background="updateBackground" />
 
 				<h3>{{ t('dashboard', 'Weather service') }}</h3>
 				<p>
 					{{ t('dashboard', 'For your privacy, the weather data is requested by your Nextcloud server on your behalf so the weather service receives no personal information.') }}
 				</p>
 				<p class="credits--end">
-					<a href="https://api.met.no/doc/TermsOfService" target="_blank" rel="noopener">{{ t('dashboard', 'Weather data from Met.no') }}</a>, <a href="https://wiki.osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">{{ t('dashboard', 'geocoding with Nominatim') }}</a>, <a href="https://www.opentopodata.org/#public-api" target="_blank" rel="noopener">{{ t('dashboard', 'elevation data from OpenTopoData') }}</a>.
+					<a href="https://api.met.no/doc/TermsOfService" target="_blank" rel="noopener">{{ t('dashboard', 'Weather data from Met.no') }}</a>,
+					<a href="https://wiki.osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">{{ t('dashboard', 'geocoding with Nominatim') }}</a>,
+					<a href="https://www.opentopodata.org/#public-api" target="_blank" rel="noopener">{{ t('dashboard', 'elevation data from OpenTopoData') }}</a>.
 				</p>
 			</div>
 		</Modal>
@@ -93,11 +97,11 @@ import { generateUrl } from '@nextcloud/router'
 import isMobile from './mixins/isMobile'
 import BackgroundSettings from './components/BackgroundSettings'
 import getBackgroundUrl from './helpers/getBackgroundUrl'
-import prefixWithBaseUrl from './helpers/prefixWithBaseUrl'
 
 const panels = loadState('dashboard', 'panels')
 const firstRun = loadState('dashboard', 'firstRun')
 const background = loadState('dashboard', 'background')
+const themingDefaultBackground = loadState('dashboard', 'themingDefaultBackground')
 const version = loadState('dashboard', 'version')
 const shippedBackgroundList = loadState('dashboard', 'shippedBackgrounds')
 const statusInfo = {
@@ -140,16 +144,17 @@ export default {
 			appStoreUrl: generateUrl('/settings/apps/dashboard'),
 			statuses: {},
 			background,
+			themingDefaultBackground,
 			version,
-			defaultBackground: window.OCA.Accessibility.theme === 'dark' ? prefixWithBaseUrl('flickr-148302424@N05-36591009215.jpg?v=1') : prefixWithBaseUrl('flickr-paszczak000-8715851521.jpg?v=1'),
 		}
 	},
 	computed: {
 		backgroundImage() {
-			return getBackgroundUrl(this.background, this.version)
+			return getBackgroundUrl(this.background, this.version, this.themingDefaultBackground)
 		},
 		backgroundStyle() {
-			if (this.background.match(/#[0-9A-Fa-f]{6}/g)) {
+			if ((this.background === 'default' && this.themingDefaultBackground === 'backgroundColor')
+				|| this.background.match(/#[0-9A-Fa-f]{6}/g)) {
 				return null
 			}
 			return {
@@ -178,7 +183,7 @@ export default {
 			return (status) => !(status in this.enabledStatuses) || this.enabledStatuses[status]
 		},
 		sortedAllStatuses() {
-			return Object.keys(this.allCallbacksStatus).slice().sort((a, b) => a > b)
+			return Object.keys(this.allCallbacksStatus).slice().sort(this.sortStatuses)
 		},
 		sortedPanels() {
 			return Object.values(this.panels).sort((a, b) => {
@@ -191,7 +196,7 @@ export default {
 			})
 		},
 		sortedRegisteredStatus() {
-			return this.registeredStatus.slice().sort((a, b) => a > b)
+			return this.registeredStatus.slice().sort(this.sortStatuses)
 		},
 	},
 	watch: {
@@ -215,6 +220,7 @@ export default {
 	},
 	mounted() {
 		this.updateGlobalStyles()
+		this.updateSkipLink()
 		window.addEventListener('scroll', this.handleScroll)
 
 		setInterval(() => {
@@ -321,6 +327,10 @@ export default {
 				document.body.classList.remove('dashboard--dark')
 			}
 		},
+		updateSkipLink() {
+			// Make sure "Skip to main content" link points to the app content
+			document.getElementsByClassName('skip-navigation')[0].setAttribute('href', '#app-dashboard')
+		},
 		updateStatusCheckbox(app, checked) {
 			if (checked) {
 				this.enableStatus(app)
@@ -344,6 +354,15 @@ export default {
 				})
 			}
 			this.saveStatuses()
+		},
+		sortStatuses(a, b) {
+			const al = a.toLowerCase()
+			const bl = b.toLowerCase()
+			return al > bl
+				? 1
+				: al < bl
+					? -1
+					: 0
 		},
 		handleScroll() {
 			if (window.scrollY > 70) {
@@ -382,7 +401,7 @@ export default {
 		text-align: center;
 		font-size: 32px;
 		line-height: 130%;
-		padding: 120px 16px 0px;
+		padding: 10vh 16px 0px;
 	}
 }
 
@@ -491,7 +510,7 @@ export default {
 }
 
 .edit-panels,
-.statuses ::v-deep .action-item > button,
+.statuses ::v-deep .action-item .action-item__menutoggle,
 .statuses ::v-deep .action-item.action-item--open .action-item__menutoggle {
 	background-color: var(--color-background-translucent);
 	-webkit-backdrop-filter: var(--background-blur);
@@ -551,7 +570,7 @@ export default {
 	// Adjust design of 'Get more widgets' button
 	.button {
 		display: inline-block;
-		padding: 12px 24px;
+		padding: 10px 16px;
 		margin: 0;
 	}
 

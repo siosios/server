@@ -86,7 +86,7 @@ class CleanUpTest extends TestCase {
 					'id' => $query->expr()->literal('file'.$i),
 					'timestamp' => $query->expr()->literal($i),
 					'location' => $query->expr()->literal('.'),
-					'user' => $query->expr()->literal('user'.$i%2)
+					'user' => $query->expr()->literal('user'.$i % 2)
 				])->execute();
 		}
 		$getAllQuery = $this->dbConnection->getQueryBuilder();
@@ -124,9 +124,13 @@ class CleanUpTest extends TestCase {
 			// if the delete operation was execute only files from user1
 			// should be left.
 			$query = $this->dbConnection->getQueryBuilder();
-			$result = $query->select('user')
-				->from($this->trashTable)
-				->execute()->fetchAll();
+			$query->select('user')
+				->from($this->trashTable);
+
+			$qResult = $query->execute();
+			$result = $qResult->fetchAll();
+			$qResult->closeCursor();
+
 			$this->assertSame(5, count($result));
 			foreach ($result as $r) {
 				$this->assertSame('user1', $r['user']);

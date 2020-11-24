@@ -66,7 +66,7 @@ class OC_DB_StatementWrapper {
 	 * @param array $input
 	 * @return \OC_DB_StatementWrapper|int|bool
 	 */
-	public function execute($input= []) {
+	public function execute($input = []) {
 		$this->lastArguments = $input;
 		if (count($input) > 0) {
 			$result = $this->statement->execute($input);
@@ -102,6 +102,15 @@ class OC_DB_StatementWrapper {
 	 */
 	public function fetchOne($column = 0) {
 		return $this->statement->fetchColumn($column);
+	}
+
+	/**
+	 * Closes the cursor, enabling the statement to be executed again.
+	 *
+	 * @deprecated Use Result::free() instead.
+	 */
+	public function closeCursor(): void {
+		$this->statement->closeCursor();
 	}
 
 	/**

@@ -475,6 +475,9 @@ class OC_Helper {
 	/**
 	 * Calculate the disc space for the given path
 	 *
+	 * BEWARE: this requires that Util::setupFS() was called
+	 * already !
+	 *
 	 * @param string $path
 	 * @param \OCP\Files\FileInfo $rootInfo (optional)
 	 * @return array
@@ -545,6 +548,11 @@ class OC_Helper {
 		if ($owner) {
 			$ownerDisplayName = $owner->getDisplayName();
 		}
+		if (substr_count($mount->getMountPoint(), '/') < 3) {
+			$mountPoint = '';
+		} else {
+			[,,,$mountPoint] = explode('/', $mount->getMountPoint(), 4);
+		}
 
 		return [
 			'free' => $free,
@@ -554,7 +562,8 @@ class OC_Helper {
 			'relative' => $relative,
 			'owner' => $ownerId,
 			'ownerDisplayName' => $ownerDisplayName,
-			'mountType' => $mount->getMountType()
+			'mountType' => $mount->getMountType(),
+			'mountPoint' => trim($mountPoint, '/'),
 		];
 	}
 

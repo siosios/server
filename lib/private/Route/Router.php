@@ -33,6 +33,7 @@
 
 namespace OC\Route;
 
+use OC\AppFramework\Routing\RouteParser;
 use OCP\AppFramework\App;
 use OCP\ILogger;
 use OCP\Route\IRouter;
@@ -174,14 +175,6 @@ class Router implements IRouter {
 			$this->root->addCollection($collection);
 		}
 		\OC::$server->getEventLogger()->end('loadroutes' . $requestedApp);
-	}
-
-	/**
-	 * @return string
-	 * @deprecated
-	 */
-	public function getCacheKey() {
-		return '';
 	}
 
 	/**
@@ -426,8 +419,14 @@ class Router implements IRouter {
 	 */
 	private function setupRoutes($routes, $appName) {
 		if (is_array($routes)) {
-			$application = $this->getApplicationClass($appName);
-			$application->registerRoutes($this, $routes);
+			$routeParser = new RouteParser();
+
+			$defaultRoutes = $routeParser->parseDefaultRoutes($routes, $appName);
+			$ocsRoutes = $routeParser->parseOCSRoutes($routes, $appName);
+
+			$this->root->addCollection($defaultRoutes);
+			$ocsRoutes->addPrefix('/ocsapp');
+			$this->root->addCollection($ocsRoutes);
 		}
 	}
 

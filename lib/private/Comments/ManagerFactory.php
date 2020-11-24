@@ -54,10 +54,6 @@ class ManagerFactory implements ICommentsManagerFactory {
 	 * @since 9.0.0
 	 */
 	public function getManager() {
-		return new Manager(
-			$this->serverContainer->getDatabaseConnection(),
-			$this->serverContainer->getLogger(),
-			$this->serverContainer->getConfig()
-		);
+		return $this->serverContainer->get(Manager::class);
 	}
 }

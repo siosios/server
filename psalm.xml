@@ -7,6 +7,9 @@
 	xsi:schemaLocation="https://getpsalm.org/schema/config"
     errorBaseline="build/psalm-baseline.xml"
 >
+	<plugins>
+		<plugin filename="build/psalm/AppFrameworkTainter.php" />
+	</plugins>
 	<projectFiles>
 		<directory name="apps"/>
 		<directory name="core"/>
@@ -79,7 +82,6 @@
 				<referencedVariable name="$l"/>
 				<referencedVariable name="$theme"/>
 				<!-- false positive: https://github.com/nextcloud/server/blob/cb057829f72c70e819f456edfadbb29d72dba832/lib/private/Console/Application.php#L92 -->
-				<file name="apps/*/appinfo/register_command.php" />
 				<file name="core/register_command.php" />
 			</errorLevel>
 		</UndefinedGlobalVariable>

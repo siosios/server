@@ -688,6 +688,7 @@ class VersioningTest extends \Test\TestCase {
 	}
 
 	public function testRestoreMovedShare() {
+		$this->markTestSkipped('Unreliable test');
 		$this->loginAsUser(self::TEST_VERSIONS_USER);
 
 		$userHome = \OC::$server->getUserFolder(self::TEST_VERSIONS_USER);
@@ -944,7 +945,7 @@ class VersioningTest extends \Test\TestCase {
 	 */
 	public static function loginHelper($user, $create = false) {
 		if ($create) {
-			$backend  = new \Test\Util\User\Dummy();
+			$backend = new \Test\Util\User\Dummy();
 			$backend->createUser($user, $user);
 			\OC::$server->getUserManager()->registerBackend($backend);
 		}

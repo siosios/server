@@ -53,7 +53,7 @@ script('settings', [
 						<label for="uploadavatar" class="inlineblock button icon-upload svg" id="uploadavatarbutton" title="<?php p($l->t('Upload new')); ?>"></label>
 						<div class="inlineblock button icon-folder svg" id="selectavatar" title="<?php p($l->t('Select from Files')); ?>"></div>
 						<div class="hidden button icon-delete svg" id="removeavatar" title="<?php p($l->t('Remove image')); ?>"></div>
-						<input type="file" name="files[]" id="uploadavatar" class="hiddenuploadfield">
+						<input type="file" name="files[]" id="uploadavatar" class="hiddenuploadfield" accept="image/*">
 						<p><em><?php p($l->t('png or jpg, max. 20 MB')); ?></em></p>
 					<?php else: ?>
 						<?php p($l->t('Picture provided by original account')); ?>
@@ -138,7 +138,7 @@ script('settings', [
 						</span>
 					</div>
 				</h3>
-				<div class="verify <?php if ($_['email'] === ''  || $_['emailScope'] !== 'public') {
+				<div class="verify <?php if ($_['email'] === '' || $_['emailScope'] !== 'public') {
 									p('hidden');
 								} ?>">
 					<img id="verify-email" title="<?php p($_['emailMessage']); ?>" data-status="<?php p($_['emailVerification']) ?>" src="
@@ -238,7 +238,7 @@ script('settings', [
 					</div>
 				</h3>
 				<?php if ($_['lookupServerUploadEnabled']) { ?>
-				<div class="verify <?php if ($_['website'] === ''  || $_['websiteScope'] !== 'public') {
+				<div class="verify <?php if ($_['website'] === '' || $_['websiteScope'] !== 'public') {
 						p('hidden');
 					} ?>">
 					<img id="verify-website" title="<?php p($_['websiteMessage']); ?>" data-status="<?php p($_['websiteVerification']) ?>" src="
@@ -293,7 +293,7 @@ script('settings', [
 					</div>
 				</h3>
 				<?php if ($_['lookupServerUploadEnabled']) { ?>
-				<div class="verify <?php if ($_['twitter'] === ''  || $_['twitterScope'] !== 'public') {
+				<div class="verify <?php if ($_['twitter'] === '' || $_['twitterScope'] !== 'public') {
 						p('hidden');
 					} ?>">
 					<img id="verify-twitter" title="<?php p($_['twitterMessage']); ?>" data-status="<?php p($_['twitterVerification']) ?>" src="

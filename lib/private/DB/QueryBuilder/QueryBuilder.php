@@ -42,6 +42,7 @@ use OC\DB\QueryBuilder\FunctionBuilder\OCIFunctionBuilder;
 use OC\DB\QueryBuilder\FunctionBuilder\PgSqlFunctionBuilder;
 use OC\DB\QueryBuilder\FunctionBuilder\SqliteFunctionBuilder;
 use OC\SystemConfig;
+use OCP\DB\QueryBuilder\ILiteral;
 use OCP\DB\QueryBuilder\IParameter;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\DB\QueryBuilder\IQueryFunction;
@@ -365,7 +366,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * Gets the maximum number of results the query object was set to retrieve (the "limit").
 	 * Returns NULL if {@link setMaxResults} was not applied to this query builder.
 	 *
-	 * @return integer The maximum number of results.
+	 * @return int|null The maximum number of results.
 	 */
 	public function getMaxResults() {
 		return $this->queryBuilder->getMaxResults();
@@ -435,8 +436,14 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return $this This QueryBuilder instance.
 	 */
 	public function selectDistinct($select) {
+		if (!is_array($select)) {
+			$select = [$select];
+		}
+
+		$quotedSelect = $this->helper->quoteColumnNames($select);
+
 		$this->queryBuilder->addSelect(
-			'DISTINCT ' . $this->helper->quoteColumnName($select)
+			'DISTINCT ' . implode(', ', $quotedSelect)
 		);
 
 		return $this;
@@ -695,7 +702,7 @@ class QueryBuilder implements IQueryBuilder {
 	 * </code>
 	 *
 	 * @param string $key The column to set.
-	 * @param IParameter|string $value The value, expression, placeholder, etc.
+	 * @param ILiteral|IParameter|IQueryFunction|string $value The value, expression, placeholder, etc.
 	 *
 	 * @return $this This QueryBuilder instance.
 	 */
@@ -868,14 +875,14 @@ class QueryBuilder implements IQueryBuilder {
 	 * </code>
 	 *
 	 * @param string $column The column into which the value should be inserted.
-	 * @param string $value The value that should be inserted into the column.
+	 * @param IParameter|string $value The value that should be inserted into the column.
 	 *
 	 * @return $this This QueryBuilder instance.
 	 */
 	public function setValue($column, $value) {
 		$this->queryBuilder->setValue(
 			$this->helper->quoteColumnName($column),
-			$value
+			(string) $value
 		);
 
 		return $this;

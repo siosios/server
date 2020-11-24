@@ -272,7 +272,7 @@
 					}
 					if (data.phpSupported && data.phpSupported.version.substr(0, 3) === '7.2') {
 						messages.push({
-							msg: t('core', 'Nextcloud 19 is the last release supporting PHP 7.2. Nextcloud 20 requires at least PHP 7.3.'),
+							msg: t('core', 'Nextcloud 20 is the last release supporting PHP 7.2. Nextcloud 21 requires at least PHP 7.3.'),
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						})
 					}
@@ -357,6 +357,21 @@
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						})
 					}
+					if (data.missingPrimaryKeys.length > 0) {
+						var listOfMissingPrimaryKeys = "";
+						data.missingPrimaryKeys.forEach(function(element){
+							listOfMissingPrimaryKeys += "<li>";
+							listOfMissingPrimaryKeys += t('core', 'Missing primary key on table "{tableName}".', element);
+							listOfMissingPrimaryKeys += "</li>";
+						});
+						messages.push({
+							msg: t(
+								'core',
+								'The database is missing some primary keys. Due to the fact that adding primary keys on big tables could take some time they were not added automatically. By running "occ db:add-missing-primary-keys" those missing primary keys could be added manually while the instance keeps running.'
+							) + "<ul>" + listOfMissingPrimaryKeys + "</ul>",
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						})
+					}
 					if (data.missingColumns.length > 0) {
 						var listOfMissingColumns = "";
 						data.missingColumns.forEach(function(element){
@@ -382,6 +397,15 @@
 								'core',
 								'This instance is missing some recommended PHP modules. For improved performance and better compatibility it is highly recommended to install them.'
 							) + "<ul><code>" + listOfRecommendedPHPModules + "</code></ul>",
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						})
+					}
+					if (data.imageMagickLacksSVGSupport) {
+						messages.push({
+							msg: t(
+								'core',
+								'Module php-imagick in this instance has no SVG support. For better compatibility it is recommended to install it.'
+							),
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						})
 					}
@@ -416,18 +440,6 @@
 							),
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
 						})
-					}
-					if (data.isPHPMailerUsed) {
-						messages.push({
-							msg: t(
-								'core',
-								'Use of the the built in php mailer is no longer supported. <a target="_blank" rel="noreferrer noopener" href="{docLink}">Please update your email server settings ↗<a/>.',
-								{
-									docLink: data.mailSettingsDocumentation,
-								}
-							),
-							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
-						});
 					}
 					if (!data.isMemoryLimitSufficient) {
 						messages.push({
@@ -491,6 +503,7 @@
 					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\PhpDefaultCharset', messages)
 					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\PhpOutputBuffering', messages)
 					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\LegacySSEKeyFormat', messages)
+					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\CheckUserCertificates', messages)
 
 				} else {
 					messages.push({
@@ -522,6 +535,15 @@
 			var message = setupCheck.description;
 			if (setupCheck.linkToDocumentation) {
 				message += ' ' + t('core', 'For more details see the <a target="_blank" rel="noreferrer noopener" href="{docLink}">documentation</a>.', {docLink: setupCheck.linkToDocumentation});
+			}
+			if (setupCheck.elements) {
+				message += '<br><ul>'
+				setupCheck.elements.forEach(function(element){
+					message += '<li>';
+					message += element
+					message += '</li>';
+				});
+				message += '</ul>'
 			}
 
 			if (!setupCheck.pass) {

@@ -33,28 +33,25 @@ use OC\Authentication\Token\IProvider;
 use OCP\Authentication\Exceptions\CredentialsUnavailableException;
 use OCP\Authentication\LoginCredentials\ICredentials;
 use OCP\Authentication\LoginCredentials\IStore;
-use OCP\ILogger;
 use OCP\ISession;
 use OCP\Session\Exceptions\SessionNotAvailableException;
 use OCP\Util;
+use Psr\Log\LoggerInterface;
 
 class Store implements IStore {
 
 	/** @var ISession */
 	private $session;
 
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	private $logger;
 
 	/** @var IProvider|null */
 	private $tokenProvider;
 
-	/**
-	 * @param ISession $session
-	 * @param ILogger $logger
-	 * @param IProvider $tokenProvider
-	 */
-	public function __construct(ISession $session, ILogger $logger, IProvider $tokenProvider = null) {
+	public function __construct(ISession $session,
+								LoggerInterface $logger,
+								IProvider $tokenProvider = null) {
 		$this->session = $session;
 		$this->logger = $logger;
 		$this->tokenProvider = $tokenProvider;
@@ -112,8 +109,13 @@ class Store implements IStore {
 		}
 
 		if ($trySession && $this->session->exists('login_credentials')) {
-			$creds = json_decode($this->session->get('login_credentials'));
-			return new Credentials($creds->uid, $creds->loginName, $creds->password);
+			/** @var array $creds */
+			$creds = json_decode($this->session->get('login_credentials'), true);
+			return new Credentials(
+				$creds['uid'],
+				$creds['loginName'] ?? $this->session->get('loginname') ?? $creds['uid'], // Pre 20 didn't have a loginName property, hence fall back to the session value and then to the UID
+				$creds['password']
+			);
 		}
 
 		// If we reach this line, an exception was thrown.

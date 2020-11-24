@@ -58,8 +58,8 @@ use OCP\Lock\ILockingProvider;
 use OCP\User;
 
 class Storage {
-	public const DEFAULTENABLED=true;
-	public const DEFAULTMAXSIZE=50; // unit: percentage; 50% of available disk space/quota
+	public const DEFAULTENABLED = true;
+	public const DEFAULTMAXSIZE = 50; // unit: percentage; 50% of available disk space/quota
 	public const VERSIONS_ROOT = 'files_versions/';
 
 	public const DELETE_TRIGGER_MASTER_REMOVED = 0;
@@ -351,7 +351,7 @@ class Storage {
 			$versionCreated = true;
 		}
 
-		$fileToRestore =  'files_versions' . $filename . '.v' . $revision;
+		$fileToRestore = 'files_versions' . $filename . '.v' . $revision;
 
 		// Restore encrypted version of the old file for the newly restored file
 		// This has to happen manually here since the file is manually copied below
@@ -496,13 +496,13 @@ class Storage {
 		$expiration = self::getExpiration();
 		$threshold = $expiration->getMaxAgeAsTimestamp();
 		$versions = self::getAllVersions($uid);
-		if (!$threshold || !array_key_exists('all', $versions)) {
+		if (!$threshold || empty($versions['all'])) {
 			return;
 		}
 
 		$toDelete = [];
 		foreach (array_reverse($versions['all']) as $key => $version) {
-			if ((int)$version['version'] <$threshold) {
+			if ((int)$version['version'] < $threshold) {
 				$toDelete[$key] = $version;
 			} else {
 				//Versions are sorted by time - nothing mo to iterate.
@@ -578,7 +578,10 @@ class Storage {
 		// newest version first
 		krsort($versions);
 
-		$result = [];
+		$result = [
+			'all' => [],
+			'by_file' => [],
+		];
 
 		foreach ($versions as $key => $value) {
 			$size = $view->filesize(self::VERSIONS_ROOT.'/'.$value['path'].'.v'.$value['timestamp']);
@@ -775,7 +778,7 @@ class Storage {
 
 			// if still not enough free space we rearrange the versions from all files
 			if ($availableSpace <= 0) {
-				$result = Storage::getAllVersions($uid);
+				$result = self::getAllVersions($uid);
 				$allVersions = $result['all'];
 
 				foreach ($result['by_file'] as $versions) {
@@ -799,7 +802,7 @@ class Storage {
 			// Check if enough space is available after versions are rearranged.
 			// If not we delete the oldest versions until we meet the size limit for versions,
 			// but always keep the two latest versions
-			$numOfVersions = count($allVersions) -2 ;
+			$numOfVersions = count($allVersions) - 2 ;
 			$i = 0;
 			// sort oldest first and make sure that we start at the first element
 			ksort($allVersions);

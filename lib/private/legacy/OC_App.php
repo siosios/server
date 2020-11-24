@@ -80,6 +80,9 @@ class OC_App {
 	/**
 	 * clean the appId
 	 *
+	 * @psalm-taint-escape file
+	 * @psalm-taint-escape include
+	 *
 	 * @param string $app AppId that needs to be cleaned
 	 * @return string
 	 */
@@ -94,7 +97,7 @@ class OC_App {
 	 * @return bool
 	 */
 	public static function isAppLoaded(string $app): bool {
-		return in_array($app, self::$loadedApps, true);
+		return isset(self::$loadedApps[$app]);
 	}
 
 	/**
@@ -118,16 +121,19 @@ class OC_App {
 
 		// Add each apps' folder as allowed class path
 		foreach ($apps as $app) {
-			$path = self::getAppPath($app);
-			if ($path !== false) {
-				self::registerAutoloading($app, $path);
+			// If the app is already loaded then autoloading it makes no sense
+			if (!isset(self::$loadedApps[$app])) {
+				$path = self::getAppPath($app);
+				if ($path !== false) {
+					self::registerAutoloading($app, $path);
+				}
 			}
 		}
 
 		// prevent app.php from printing output
 		ob_start();
 		foreach ($apps as $app) {
-			if (($types === [] or self::isType($app, $types)) && !in_array($app, self::$loadedApps)) {
+			if (!isset(self::$loadedApps[$app]) && ($types === [] || self::isType($app, $types))) {
 				self::loadApp($app);
 			}
 		}
@@ -143,7 +149,7 @@ class OC_App {
 	 * @throws Exception
 	 */
 	public static function loadApp(string $app) {
-		self::$loadedApps[] = $app;
+		self::$loadedApps[$app] = true;
 		$appPath = self::getAppPath($app);
 		if ($appPath === false) {
 			return;
@@ -511,6 +517,8 @@ class OC_App {
 	/**
 	 * Get the directory for the given app.
 	 * If the app is defined in multiple directories, the first one is taken. (false if not found)
+	 *
+	 * @psalm-taint-specialize
 	 *
 	 * @param string $appId
 	 * @return string|false
@@ -1118,7 +1126,7 @@ class OC_App {
 					$similarLangFallback = $option['@value'];
 				} elseif (strpos($attributeLang, $similarLang . '_') === 0) {
 					if ($similarLangFallback === false) {
-						$similarLangFallback =  $option['@value'];
+						$similarLangFallback = $option['@value'];
 					}
 				}
 			} else {

@@ -225,6 +225,7 @@ class Version13000Date20170718121200 extends SimpleMigrationStep {
 			$table->addIndex(['storage', 'mimepart'], 'fs_storage_mimepart');
 			$table->addIndex(['storage', 'size', 'fileid'], 'fs_storage_size');
 			$table->addIndex(['mtime'], 'fs_mtime');
+			$table->addIndex(['size'], 'fs_size');
 		}
 
 		if (!$schema->hasTable('group_user')) {
@@ -672,7 +673,8 @@ class Version13000Date20170718121200 extends SimpleMigrationStep {
 				'default' => 0,
 				'unsigned' => true,
 			]);
-			$table->addUniqueIndex(['objecttype', 'objectid', 'systemtagid'], 'mapping');
+			$table->setPrimaryKey(['objecttype', 'objectid', 'systemtagid'], 'som_pk');
+//			$table->addUniqueIndex(['objecttype', 'objectid', 'systemtagid'], 'mapping');
 		}
 
 		if (!$schema->hasTable('systemtag_group')) {
@@ -807,25 +809,26 @@ class Version13000Date20170718121200 extends SimpleMigrationStep {
 				'default' => '',
 			]);
 			$table->addIndex(['object_type', 'object_id'], 'comments_marker_object_index');
-			$table->addUniqueIndex(['user_id', 'object_type', 'object_id'], 'comments_marker_index');
+			$table->setPrimaryKey(['user_id', 'object_type', 'object_id'], 'crm_pk');
+//			$table->addUniqueIndex(['user_id', 'object_type', 'object_id'], 'comments_marker_index');
 		}
 
-		if (!$schema->hasTable('credentials')) {
-			$table = $schema->createTable('credentials');
-			$table->addColumn('user', 'string', [
-				'notnull' => true,
-				'length' => 64,
-			]);
-			$table->addColumn('identifier', 'string', [
-				'notnull' => true,
-				'length' => 64,
-			]);
-			$table->addColumn('credentials', 'text', [
-				'notnull' => false,
-			]);
-			$table->setPrimaryKey(['user', 'identifier']);
-			$table->addIndex(['user'], 'credentials_user');
-		}
+//		if (!$schema->hasTable('credentials')) {
+//			$table = $schema->createTable('credentials');
+//			$table->addColumn('user', 'string', [
+//				'notnull' => false,
+//				'length' => 64,
+//			]);
+//			$table->addColumn('identifier', 'string', [
+//				'notnull' => true,
+//				'length' => 64,
+//			]);
+//			$table->addColumn('credentials', 'text', [
+//				'notnull' => false,
+//			]);
+//			$table->setPrimaryKey(['user', 'identifier']);
+//			$table->addIndex(['user'], 'credentials_user');
+//		}
 
 		if (!$schema->hasTable('admin_sections')) {
 			$table = $schema->createTable('admin_sections');

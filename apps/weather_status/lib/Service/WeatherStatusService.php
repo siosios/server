@@ -105,7 +105,7 @@ class WeatherStatusService {
 								IUserManager $userManager,
 								IAppManager $appManager,
 								ICacheFactory $cacheFactory,
-								string $userId) {
+								?string $userId) {
 		$this->config = $config;
 		$this->userId = $userId;
 		$this->l10n = $l10n;
@@ -130,6 +130,26 @@ class WeatherStatusService {
 	 */
 	public function setMode(int $mode): array {
 		$this->config->setUserValue($this->userId, Application::APP_ID, 'mode', strval($mode));
+		return ['success' => true];
+	}
+
+	/**
+	 * Get favorites list
+	 * @param array $favorites
+	 * @return array success state
+	 */
+	public function getFavorites(): array {
+		$favoritesJson = $this->config->getUserValue($this->userId, Application::APP_ID, 'favorites', '');
+		return json_decode($favoritesJson, true) ?: [];
+	}
+
+	/**
+	 * Set favorites list
+	 * @param array $favorites
+	 * @return array success state
+	 */
+	public function setFavorites(array $favorites): array {
+		$this->config->setUserValue($this->userId, Application::APP_ID, 'favorites', json_encode($favorites));
 		return ['success' => true];
 	}
 

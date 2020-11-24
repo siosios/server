@@ -105,6 +105,9 @@ class PersonalInfo implements ISettings {
 		$user = $this->userManager->get($uid);
 		$userData = $this->accountManager->getUser($user);
 
+		// make sure FS is setup before querying storage related stuff...
+		\OC_Util::setupFS($user->getUID());
+
 		$storageInfo = \OC_Helper::getStorageInfo('/');
 		if ($storageInfo['quota'] === FileInfo::SPACE_UNLIMITED) {
 			$totalSpace = $this->l->t('Unlimited');
@@ -134,8 +137,8 @@ class PersonalInfo implements ISettings {
 			'phoneScope' => $userData[AccountManager::PROPERTY_PHONE]['scope'],
 			'address' => $userData[AccountManager::PROPERTY_ADDRESS]['value'],
 			'addressScope' => $userData[AccountManager::PROPERTY_ADDRESS]['scope'],
-			'website' =>  $userData[AccountManager::PROPERTY_WEBSITE]['value'],
-			'websiteScope' =>  $userData[AccountManager::PROPERTY_WEBSITE]['scope'],
+			'website' => $userData[AccountManager::PROPERTY_WEBSITE]['value'],
+			'websiteScope' => $userData[AccountManager::PROPERTY_WEBSITE]['scope'],
 			'websiteVerification' => $userData[AccountManager::PROPERTY_WEBSITE]['verified'],
 			'twitter' => $userData[AccountManager::PROPERTY_TWITTER]['value'],
 			'twitterScope' => $userData[AccountManager::PROPERTY_TWITTER]['scope'],

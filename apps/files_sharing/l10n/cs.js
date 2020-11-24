@@ -169,6 +169,7 @@ OC.L10N.register(
     "Password protection" : "Ochrana heslem",
     "Enter a password" : "Zadejte heslo",
     "Expiration date (enforced)" : "Datum skončení platnosti (vynuceno)",
+    "Create share" : "Vytvořit sdílení",
     "Cancel" : "Storno",
     "Share label" : "Štítek sdílení",
     "Read only" : "Pouze pro čtení",
@@ -186,10 +187,7 @@ OC.L10N.register(
     "Error, please enter proper password and/or expiration date" : "Chyba – zadejte správné heslo a/nebo datum skončení platnosti",
     "No recommendations. Start typing." : "Žádná doporučení. Pište",
     "Resharing is not allowed" : "Příjemcům tohoto sdílení není dovoleno ho nasdílet dál dalším",
-    "Name or email address …" : "Jméno nebo e-mailová adresa…",
-    "Name or federated cloud ID …" : "Jméno nebo identifikátor v rámci sdruženého cloudu…",
-    "Name, federated cloud ID or email address …" : "Jméno, identifikátor v rámci sdruženého cloudu, nebo e-mailová adresa…",
-    "Name …" : "Jméno…",
+    "Name or email …" : "Jméno nebo e-mail…",
     "Searching …" : "Hledání...",
     "No elements found." : "Nenalezeny žádné prvky.",
     "Search globally" : "Hledat všude",
@@ -232,7 +230,7 @@ OC.L10N.register(
     "Uploading files" : "Nahrávání souborů",
     "Uploaded files:" : "Nahrané soubory:",
     "By uploading files, you agree to the %1$sterms of service%2$s." : "Nahráním souborů vyjadřujete souhlas s %1$svšeobecnými podmínkami%2$s.",
-    "could not delete share" : "nelze smazat sdílení",
+    "Name, email, or federated cloud ID …" : "Jméno, e-mail nebo identifikátor ve federovaném cloudu …",
     "Uploading files…" : "Nahrávání souborů…"
 },
 "nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n >= 2 && n <= 4 && n % 1 == 0) ? 1: (n % 1 != 0 ) ? 2 : 3;");

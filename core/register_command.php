@@ -101,6 +101,7 @@ if (\OC::$server->getConfig()->getSystemValue('installed', false)) {
 	$application->add(new OC\Core\Command\Db\ConvertFilecacheBigInt(\OC::$server->getDatabaseConnection()));
 	$application->add(new OC\Core\Command\Db\AddMissingIndices(\OC::$server->getDatabaseConnection(), \OC::$server->getEventDispatcher()));
 	$application->add(new OC\Core\Command\Db\AddMissingColumns(\OC::$server->getDatabaseConnection(), \OC::$server->getEventDispatcher()));
+	$application->add(new OC\Core\Command\Db\AddMissingPrimaryKeys(\OC::$server->getDatabaseConnection(), \OC::$server->getEventDispatcher()));
 	$application->add(new OC\Core\Command\Db\Migrations\StatusCommand(\OC::$server->getDatabaseConnection()));
 	$application->add(new OC\Core\Command\Db\Migrations\MigrateCommand(\OC::$server->getDatabaseConnection()));
 	$application->add(new OC\Core\Command\Db\Migrations\GenerateCommand(\OC::$server->getDatabaseConnection(), \OC::$server->getAppManager()));
@@ -183,9 +184,9 @@ if (\OC::$server->getConfig()->getSystemValue('installed', false)) {
 	$application->add(new OC\Core\Command\Group\AddUser(\OC::$server->getUserManager(), \OC::$server->getGroupManager()));
 	$application->add(new OC\Core\Command\Group\RemoveUser(\OC::$server->getUserManager(), \OC::$server->getGroupManager()));
 
-	$application->add(new OC\Core\Command\Security\ListCertificates(\OC::$server->getCertificateManager(null), \OC::$server->getL10N('core')));
-	$application->add(new OC\Core\Command\Security\ImportCertificate(\OC::$server->getCertificateManager(null)));
-	$application->add(new OC\Core\Command\Security\RemoveCertificate(\OC::$server->getCertificateManager(null)));
+	$application->add(new OC\Core\Command\Security\ListCertificates(\OC::$server->getCertificateManager(), \OC::$server->getL10N('core')));
+	$application->add(new OC\Core\Command\Security\ImportCertificate(\OC::$server->getCertificateManager()));
+	$application->add(new OC\Core\Command\Security\RemoveCertificate(\OC::$server->getCertificateManager()));
 	$application->add(new OC\Core\Command\Security\ResetBruteforceAttempts(\OC::$server->getBruteForceThrottler()));
 } else {
 	$application->add(\OC::$server->get(\OC\Core\Command\Maintenance\Install::class));

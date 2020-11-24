@@ -35,8 +35,8 @@ use OCP\Accounts\IAccount;
 use OCP\Accounts\IAccountManager;
 use OCP\BackgroundJob\IJobList;
 use OCP\IDBConnection;
-use OCP\ILogger;
 use OCP\IUser;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use function json_decode;
@@ -64,20 +64,13 @@ class AccountManager implements IAccountManager {
 	/** @var IJobList */
 	private $jobList;
 
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	private $logger;
 
-	/**
-	 * AccountManager constructor.
-	 *
-	 * @param IDBConnection $connection
-	 * @param EventDispatcherInterface $eventDispatcher
-	 * @param IJobList $jobList
-	 */
 	public function __construct(IDBConnection $connection,
 								EventDispatcherInterface $eventDispatcher,
 								IJobList $jobList,
-								ILogger $logger) {
+								LoggerInterface $logger) {
 		$this->connection = $connection;
 		$this->eventDispatcher = $eventDispatcher;
 		$this->jobList = $jobList;
@@ -134,19 +127,21 @@ class AccountManager implements IAccountManager {
 	public function getUser(IUser $user) {
 		$uid = $user->getUID();
 		$query = $this->connection->getQueryBuilder();
-		$query->select('data')->from($this->table)
+		$query->select('data')
+			->from($this->table)
 			->where($query->expr()->eq('uid', $query->createParameter('uid')))
 			->setParameter('uid', $uid);
-		$query->execute();
-		$result = $query->execute()->fetchAll();
+		$result = $query->execute();
+		$accountData = $result->fetchAll();
+		$result->closeCursor();
 
-		if (empty($result)) {
+		if (empty($accountData)) {
 			$userData = $this->buildDefaultUserRecord($user);
 			$this->insertNewUser($user, $userData);
 			return $userData;
 		}
 
-		$userDataArray = json_decode($result[0]['data'], true);
+		$userDataArray = json_decode($accountData[0]['data'], true);
 		$jsonError = json_last_error();
 		if ($userDataArray === null || $userDataArray === [] || $jsonError !== JSON_ERROR_NONE) {
 			$this->logger->critical("User data of $uid contained invalid JSON (error $jsonError), hence falling back to a default user record");

@@ -930,7 +930,11 @@ const Dialogs = {
 					closeButton: null,
 					close: function() {
 						self._fileexistsshown = false
-						$(this).ocdialog('destroy').remove()
+						try {
+							$(this).ocdialog('destroy').remove()
+						} catch (e) {
+							// ignore
+						}
 					}
 				})
 
@@ -1159,6 +1163,8 @@ const Dialogs = {
 				self.$filePicker.find('.emptycontent').hide()
 				self.$fileListHeader.show()
 			}
+
+			self.$filelist.empty();
 
 			$.each(files, function(idx, entry) {
 				entry.icon = OC.MimeType.getIconUrl(entry.mimetype)

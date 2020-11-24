@@ -147,15 +147,17 @@ class UserPlugin implements ISearchPlugin {
 
 
 			if (
-				strtolower($uid) === $lowerSearch ||
+				$lowerSearch !== '' && (strtolower($uid) === $lowerSearch ||
 				strtolower($userDisplayName) === $lowerSearch ||
-				strtolower($userEmail) === $lowerSearch
+				strtolower($userEmail) === $lowerSearch)
 			) {
 				if (strtolower($uid) === $lowerSearch) {
 					$foundUserById = true;
 				}
 				$result['exact'][] = [
 					'label' => $userDisplayName,
+					'subline' => $status['message'] ?? '',
+					'icon' => 'icon-user',
 					'value' => [
 						'shareType' => IShare::TYPE_USER,
 						'shareWith' => $uid,
@@ -178,6 +180,8 @@ class UserPlugin implements ISearchPlugin {
 				if ($addToWideResults) {
 					$result['wide'][] = [
 						'label' => $userDisplayName,
+						'subline' => $status['message'] ?? '',
+						'icon' => 'icon-user',
 						'value' => [
 							'shareType' => IShare::TYPE_USER,
 							'shareWith' => $uid,
@@ -217,6 +221,8 @@ class UserPlugin implements ISearchPlugin {
 
 					$result['exact'][] = [
 						'label' => $user->getDisplayName(),
+						'icon' => 'icon-user',
+						'subline' => $status['message'] ?? '',
 						'value' => [
 							'shareType' => IShare::TYPE_USER,
 							'shareWith' => $user->getUID(),

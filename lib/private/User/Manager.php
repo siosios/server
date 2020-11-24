@@ -365,6 +365,7 @@ class Manager extends PublicEmitter implements IUserManager {
 			throw new \InvalidArgumentException($l->t('The username is already being used'));
 		}
 
+		/** @depreacted 21.0.0 use CreateUserEvent event with the IEventDispatcher instead */
 		$this->emit('\OC\User', 'preCreateUser', [$uid, $password]);
 		$this->eventDispatcher->dispatchTyped(new CreateUserEvent($uid, $password));
 		$state = $backend->createUser($uid, $password);
@@ -373,6 +374,7 @@ class Manager extends PublicEmitter implements IUserManager {
 		}
 		$user = $this->getUserObject($uid, $backend);
 		if ($user instanceof IUser) {
+			/** @depreacted 21.0.0 use UserCreatedEvent event with the IEventDispatcher instead */
 			$this->emit('\OC\User', 'postCreateUser', [$user, $password]);
 			$this->eventDispatcher->dispatchTyped(new UserCreatedEvent($user, $password));
 		}
@@ -547,6 +549,7 @@ class Manager extends PublicEmitter implements IUserManager {
 
 	/**
 	 * @param \Closure $callback
+	 * @psalm-param \Closure(\OCP\IUser):?bool $callback
 	 * @since 11.0.0
 	 */
 	public function callForSeenUsers(\Closure $callback) {

@@ -138,7 +138,10 @@ class CardDavBackend implements BackendInterface, SyncSupport {
 			->from('addressbooks')
 			->where($query->expr()->eq('principaluri', $query->createNamedParameter($principalUri)));
 
-		return (int)$query->execute()->fetchColumn();
+		$result = $query->execute();
+		$column = (int) $result->fetchColumn();
+		$result->closeCursor();
+		return $column;
 	}
 
 	/**
@@ -374,9 +377,6 @@ class CardDavBackend implements BackendInterface, SyncSupport {
 			'{' . Plugin::NS_CARDDAV . '}addressbook-description',
 		];
 
-		/**
-		 * @suppress SqlInjectionChecker
-		 */
 		$propPatch->handle($supportedProperties, function ($mutations) use ($addressBookId) {
 			$updates = [];
 			foreach ($mutations as $property => $newValue) {
@@ -1047,7 +1047,7 @@ class CardDavBackend implements BackendInterface, SyncSupport {
 
 		$query2 = $this->db->getQueryBuilder();
 
-		$addressBookOr =  $query2->expr()->orX();
+		$addressBookOr = $query2->expr()->orX();
 		foreach ($addressBookIds as $addressBookId) {
 			$addressBookOr->add($query2->expr()->eq('cp.addressbookid', $query2->createNamedParameter($addressBookId)));
 		}

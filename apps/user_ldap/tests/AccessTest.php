@@ -48,10 +48,10 @@ use OCA\User_LDAP\User\OfflineUser;
 use OCA\User_LDAP\User\User;
 use OCP\IAvatarManager;
 use OCP\IConfig;
-use OCP\IDBConnection;
 use OCP\Image;
 use OCP\IUserManager;
 use OCP\Notification\IManager as INotificationManager;
+use OCP\Share\IManager;
 use Test\TestCase;
 
 /**
@@ -64,6 +64,8 @@ use Test\TestCase;
 class AccessTest extends TestCase {
 	/** @var UserMapping|\PHPUnit\Framework\MockObject\MockObject */
 	protected $userMapper;
+	/** @var IManager|\PHPUnit\Framework\MockObject\MockObject */
+	protected $shareManager;
 	/** @var Connection|\PHPUnit\Framework\MockObject\MockObject */
 	private $connection;
 	/** @var LDAP|\PHPUnit\Framework\MockObject\MockObject */
@@ -84,9 +86,10 @@ class AccessTest extends TestCase {
 		$this->ldap = $this->createMock(LDAP::class);
 		$this->userManager = $this->createMock(Manager::class);
 		$this->helper = $this->createMock(Helper::class);
-		$this->config  = $this->createMock(IConfig::class);
+		$this->config = $this->createMock(IConfig::class);
 		$this->userMapper = $this->createMock(UserMapping::class);
 		$this->ncUserManager = $this->createMock(IUserManager::class);
+		$this->shareManager = $this->createMock(IManager::class);
 
 		$this->access = new Access(
 			$this->connection,
@@ -100,7 +103,7 @@ class AccessTest extends TestCase {
 	}
 
 	private function getConnectorAndLdapMock() {
-		$lw  = $this->createMock(ILDAPWrapper::class);
+		$lw = $this->createMock(ILDAPWrapper::class);
 		$connector = $this->getMockBuilder(Connection::class)
 			->setConstructorArgs([$lw, null, null])
 			->getMock();
@@ -111,11 +114,11 @@ class AccessTest extends TestCase {
 				$this->createMock(LogWrapper::class),
 				$this->createMock(IAvatarManager::class),
 				$this->createMock(Image::class),
-				$this->createMock(IDBConnection::class),
 				$this->createMock(IUserManager::class),
-				$this->createMock(INotificationManager::class)])
+				$this->createMock(INotificationManager::class),
+				$this->shareManager])
 			->getMock();
-		$helper = new Helper(\OC::$server->getConfig());
+		$helper = new Helper(\OC::$server->getConfig(), \OC::$server->getDatabaseConnection());
 
 		return [$lw, $connector, $um, $helper];
 	}

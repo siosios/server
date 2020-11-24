@@ -371,7 +371,6 @@ class OC {
 
 		$oldTheme = $systemConfig->getValue('theme');
 		$systemConfig->setValue('theme', '');
-		OC_Util::addScript('config'); // needed for web root
 		OC_Util::addScript('update');
 
 		/** @var \OC\App\AppManager $appManager */
@@ -530,7 +529,7 @@ class OC {
 		if (count($_COOKIE) > 0) {
 			$requestUri = $request->getScriptName();
 			$processingScript = explode('/', $requestUri);
-			$processingScript = $processingScript[count($processingScript)-1];
+			$processingScript = $processingScript[count($processingScript) - 1];
 
 			// index.php routes are handled in the middleware
 			if ($processingScript === 'index.php') {
@@ -642,7 +641,7 @@ class OC {
 
 		/** @var \OC\AppFramework\Bootstrap\Coordinator $bootstrapCoordinator */
 		$bootstrapCoordinator = \OC::$server->query(\OC\AppFramework\Bootstrap\Coordinator::class);
-		$bootstrapCoordinator->runRegistration();
+		$bootstrapCoordinator->runInitialRegistration();
 
 		\OC::$server->getEventLogger()->start('init_session', 'Initialize session');
 		OC_App::loadApps(['session']);
@@ -854,11 +853,12 @@ class OC {
 	}
 
 	private static function registerAccountHooks() {
-		$hookHandler = new \OC\Accounts\Hooks(\OC::$server->getLogger());
+		$hookHandler = \OC::$server->get(\OC\Accounts\Hooks::class);
 		\OCP\Util::connectHook('OC_User', 'changeUser', $hookHandler, 'changeUserHook');
 	}
 
 	private static function registerAppRestrictionsHooks() {
+		/** @var \OC\Group\Manager $groupManager */
 		$groupManager = self::$server->query(\OCP\IGroupManager::class);
 		$groupManager->listen('\OC\Group', 'postDelete', function (\OCP\IGroup $group) {
 			$appManager = self::$server->getAppManager();
@@ -1005,8 +1005,7 @@ class OC {
 					OC_App::loadApps(['filesystem', 'logging']);
 					OC_App::loadApps();
 				}
-				OC_Util::setupFS();
-				OC::$server->getRouter()->match(\OC::$server->getRequest()->getRawPathInfo());
+				OC::$server->get(\OC\Route\Router::class)->match(\OC::$server->getRequest()->getRawPathInfo());
 				return;
 			} catch (Symfony\Component\Routing\Exception\ResourceNotFoundException $e) {
 				//header('HTTP/1.0 404 Not Found');

@@ -55,6 +55,7 @@ class OC_DB {
 	 * @param bool|null $isManipulation
 	 * @throws \OC\DatabaseException
 	 * @return OC_DB_StatementWrapper prepared SQL query
+	 * @deprecated 21.0.0 Please use \OCP\IDBConnection::getQueryBuilder() instead
 	 *
 	 * SQL query via Doctrine prepare(), needs to be execute()'d!
 	 */
@@ -68,13 +69,12 @@ class OC_DB {
 
 		// return the result
 		try {
-			$result =$connection->prepare($query, $limit, $offset);
+			$result = $connection->prepare($query, $limit, $offset);
 		} catch (\Doctrine\DBAL\DBALException $e) {
 			throw new \OC\DatabaseException($e->getMessage());
 		}
 		// differentiate between query and manipulation
-		$result = new OC_DB_StatementWrapper($result, $isManipulation);
-		return $result;
+		return new OC_DB_StatementWrapper($result, $isManipulation);
 	}
 
 	/**
@@ -85,22 +85,27 @@ class OC_DB {
 	 * @return bool
 	 */
 	public static function isManipulation($sql) {
+		$sql = trim($sql);
 		$selectOccurrence = stripos($sql, 'SELECT');
-		if ($selectOccurrence !== false && $selectOccurrence < 10) {
+		if ($selectOccurrence === 0) {
 			return false;
 		}
 		$insertOccurrence = stripos($sql, 'INSERT');
-		if ($insertOccurrence !== false && $insertOccurrence < 10) {
+		if ($insertOccurrence === 0) {
 			return true;
 		}
 		$updateOccurrence = stripos($sql, 'UPDATE');
-		if ($updateOccurrence !== false && $updateOccurrence < 10) {
+		if ($updateOccurrence === 0) {
 			return true;
 		}
 		$deleteOccurrence = stripos($sql, 'DELETE');
-		if ($deleteOccurrence !== false && $deleteOccurrence < 10) {
+		if ($deleteOccurrence === 0) {
 			return true;
 		}
+
+		// This is triggered with "SHOW VERSION" and some more, so until we made a list, we keep this out.
+		// \OC::$server->getLogger()->logException(new \Exception('Can not detect if query is manipulating: ' . $sql));
+
 		return false;
 	}
 
@@ -112,6 +117,7 @@ class OC_DB {
 	 * @param array $parameters
 	 * @return OC_DB_StatementWrapper
 	 * @throws \OC\DatabaseException
+	 * @deprecated 21.0.0 Please use \OCP\IDBConnection::getQueryBuilder() instead
 	 */
 	public static function executeAudited($stmt, array $parameters = []) {
 		if (is_string($stmt)) {

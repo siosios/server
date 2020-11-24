@@ -14,6 +14,7 @@ use OC\Memcache\ArrayCache;
 use OCA\Encryption\AppInfo\Application;
 use OCA\Encryption\KeyManager;
 use OCA\Encryption\Users\Setup;
+use OCP\Encryption\IManager;
 
 /**
  * Enables encryption
@@ -60,11 +61,12 @@ trait EncryptionTrait {
 		\OC_Util::setupFS($name);
 		$container = $this->encryptionApp->getContainer();
 		/** @var KeyManager $keyManager */
-		$keyManager = $container->query('KeyManager');
+		$keyManager = $container->query(KeyManager::class);
 		/** @var Setup $userSetup */
-		$userSetup = $container->query('UserSetup');
+		$userSetup = $container->query(Setup::class);
 		$userSetup->setupUser($name, $password);
-		$this->encryptionApp->setUp();
+		$encryptionManager = $container->query(IManager::class);
+		$this->encryptionApp->setUp($encryptionManager);
 		$keyManager->init($name, $password);
 	}
 

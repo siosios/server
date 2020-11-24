@@ -68,14 +68,14 @@ class Search implements ISearch {
 			foreach ($this->pluginList[$type] as $plugin) {
 				/** @var ISearchPlugin $searchPlugin */
 				$searchPlugin = $this->c->resolve($plugin);
-				$hasMoreResults |= $searchPlugin->search($search, $limit, $offset, $searchResult);
+				$hasMoreResults = $searchPlugin->search($search, $limit, $offset, $searchResult) || $hasMoreResults;
 			}
 		}
 
 		// Get from lookup server, not a separate share type
 		if ($lookup) {
 			$searchPlugin = $this->c->resolve(LookupPlugin::class);
-			$hasMoreResults |= $searchPlugin->search($search, $limit, $offset, $searchResult);
+			$hasMoreResults = $searchPlugin->search($search, $limit, $offset, $searchResult) || $hasMoreResults;
 		}
 
 		// sanitizing, could go into the plugins as well
@@ -91,9 +91,10 @@ class Search implements ISearch {
 			$searchResult->unsetResult($emailType);
 		}
 
-		// if we have an exact local user match, there is no need to show the remote and email matches
+		// if we have an exact local user match with an email-a-like query,
+		// there is no need to show the remote and email matches.
 		$userType = new SearchResultType('users');
-		if ($searchResult->hasExactIdMatch($userType)) {
+		if (strpos($search, '@') !== false && $searchResult->hasExactIdMatch($userType)) {
 			$searchResult->unsetResult($remoteType);
 			$searchResult->unsetResult($emailType);
 		}

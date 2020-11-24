@@ -90,10 +90,10 @@ abstract class AbstractDatabase {
 		$dbTablePrefix = isset($config['dbtableprefix']) ? $config['dbtableprefix'] : 'oc_';
 
 		$this->config->setValues([
-			'dbname'		=> $dbName,
-			'dbhost'		=> $dbHost,
+			'dbname' => $dbName,
+			'dbhost' => $dbHost,
 			'dbport' => $dbPort,
-			'dbtableprefix'	=> $dbTablePrefix,
+			'dbtableprefix' => $dbTablePrefix,
 		]);
 
 		$this->dbUser = $dbUser;
@@ -150,6 +150,6 @@ abstract class AbstractDatabase {
 			return;
 		}
 		$ms = new MigrationService('core', \OC::$server->getDatabaseConnection());
-		$ms->migrate();
+		$ms->migrate('latest', true);
 	}
 }

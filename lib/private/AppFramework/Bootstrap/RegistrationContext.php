@@ -69,6 +69,9 @@ class RegistrationContext {
 	/** @var array[] */
 	private $alternativeLogins = [];
 
+	/** @var array[] */
+	private $initialStates = [];
+
 	/** @var ILogger */
 	private $logger;
 
@@ -164,6 +167,13 @@ class RegistrationContext {
 					$class
 				);
 			}
+
+			public function registerInitialStateProvider(string $class): void {
+				$this->context->registerInitialState(
+					$this->appId,
+					$class
+				);
+			}
 		};
 	}
 
@@ -193,7 +203,7 @@ class RegistrationContext {
 			"appId" => $appId,
 			"name" => $name,
 			"factory" => $factory,
-			"sharred" => $shared,
+			"shared" => $shared,
 		];
 	}
 
@@ -243,11 +253,18 @@ class RegistrationContext {
 		];
 	}
 
+	public function registerInitialState(string $appId, string $class): void {
+		$this->initialStates[] = [
+			'appId' => $appId,
+			'class' => $class,
+		];
+	}
+
 	/**
 	 * @param App[] $apps
 	 */
 	public function delegateCapabilityRegistrations(array $apps): void {
-		foreach ($this->capabilities as $registration) {
+		while (($registration = array_shift($this->capabilities)) !== null) {
 			try {
 				$apps[$registration['appId']]
 					->getContainer()
@@ -266,7 +283,7 @@ class RegistrationContext {
 	 * @param App[] $apps
 	 */
 	public function delegateCrashReporterRegistrations(array $apps, Registry $registry): void {
-		foreach ($this->crashReporters as $registration) {
+		while (($registration = array_shift($this->crashReporters)) !== null) {
 			try {
 				$registry->registerLazy($registration['class']);
 			} catch (Throwable $e) {
@@ -283,7 +300,7 @@ class RegistrationContext {
 	 * @param App[] $apps
 	 */
 	public function delegateDashboardPanelRegistrations(array $apps, IManager $dashboardManager): void {
-		foreach ($this->dashboardPanels as $panel) {
+		while (($panel = array_shift($this->dashboardPanels)) !== null) {
 			try {
 				$dashboardManager->lazyRegisterWidget($panel['class']);
 			} catch (Throwable $e) {
@@ -297,7 +314,7 @@ class RegistrationContext {
 	}
 
 	public function delegateEventListenerRegistrations(IEventDispatcher $eventDispatcher): void {
-		foreach ($this->eventListeners as $registration) {
+		while (($registration = array_shift($this->eventListeners)) !== null) {
 			try {
 				if (isset($registration['priority'])) {
 					$eventDispatcher->addServiceListener(
@@ -325,7 +342,7 @@ class RegistrationContext {
 	 * @param App[] $apps
 	 */
 	public function delegateContainerRegistrations(array $apps): void {
-		foreach ($this->services as $registration) {
+		while (($registration = array_shift($this->services)) !== null) {
 			try {
 				/**
 				 * Register the service and convert the callable into a \Closure if necessary
@@ -385,7 +402,7 @@ class RegistrationContext {
 	 * @param App[] $apps
 	 */
 	public function delegateMiddlewareRegistrations(array $apps): void {
-		foreach ($this->middlewares as $middleware) {
+		while (($middleware = array_shift($this->middlewares)) !== null) {
 			try {
 				$apps[$middleware['appId']]
 					->getContainer()
@@ -412,5 +429,12 @@ class RegistrationContext {
 	 */
 	public function getAlternativeLogins(): array {
 		return $this->alternativeLogins;
+	}
+
+	/**
+	 * @erturn array[]
+	 */
+	public function getInitialStates(): array {
+		return $this->initialStates;
 	}
 }

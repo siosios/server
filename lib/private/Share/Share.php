@@ -194,6 +194,7 @@ class Share extends Constants {
 			}
 			$shares[] = $row;
 		}
+		$result->closeCursor();
 
 		//if didn't found a result than let's look for a group share.
 		if (empty($shares) && $user !== null) {
@@ -355,13 +356,13 @@ class Share extends Constants {
 
 		// Pass all the vars we have for now, they may be useful
 		$hookParams = [
-			'id'            => $item['id'],
-			'itemType'      => $item['item_type'],
-			'itemSource'    => $item['item_source'],
-			'shareType'     => $shareType,
-			'shareWith'     => $shareWith,
-			'itemParent'    => $item['parent'],
-			'uidOwner'      => $item['uid_owner'],
+			'id' => $item['id'],
+			'itemType' => $item['item_type'],
+			'itemSource' => $item['item_source'],
+			'shareType' => $shareType,
+			'shareWith' => $shareWith,
+			'itemParent' => $item['parent'],
+			'uidOwner' => $item['uid_owner'],
 		];
 		if ($item['item_type'] === 'file' || $item['item_type'] === 'folder') {
 			$hookParams['fileSource'] = $item['file_source'];
@@ -474,7 +475,7 @@ class Share extends Constants {
 	 */
 	public static function getItems($itemType, $item = null, $shareType = null, $shareWith = null,
 									$uidOwner = null, $format = self::FORMAT_NONE, $parameters = null, $limit = -1,
-									$includeCollections = false, $itemShareWithBySource = false, $checkExpireDate  = true) {
+									$includeCollections = false, $itemShareWithBySource = false, $checkExpireDate = true) {
 		if (\OC::$server->getConfig()->getAppValue('core', 'shareapi_enabled', 'yes') != 'yes') {
 			return [];
 		}
@@ -687,14 +688,20 @@ class Share extends Constants {
 			// Remove root from file source paths if retrieving own shared items
 			if (isset($uidOwner) && isset($row['path'])) {
 				if (isset($row['parent'])) {
-					$query = \OC_DB::prepare('SELECT `file_target` FROM `*PREFIX*share` WHERE `id` = ?');
-					$parentResult = $query->execute([$row['parent']]);
-					if ($result === false) {
+					$query = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+					$query->select('file_target')
+						->from('share')
+						->where($query->expr()->eq('id', $query->createNamedParameter($row['parent'])));
+
+					$parentResult = $query->execute();
+					$parentRow = $parentResult->fetch();
+					$parentResult->closeCursor();
+
+					if ($parentRow === false) {
 						\OCP\Util::writeLog('OCP\Share', 'Can\'t select parent: ' .
 							\OC_DB::getErrorMessage() . ', select=' . $select . ' where=' . $where,
 							ILogger::ERROR);
 					} else {
-						$parentRow = $parentResult->fetchRow();
 						$tmpPath = $parentRow['file_target'];
 						// find the right position where the row path continues from the target path
 						$pos = strrpos($row['path'], $parentRow['file_target']);

@@ -49,10 +49,12 @@ use OC\AppFramework\Http;
 use OC\DB\Connection;
 use OC\DB\MissingColumnInformation;
 use OC\DB\MissingIndexInformation;
+use OC\DB\MissingPrimaryKeyInformation;
 use OC\DB\SchemaWrapper;
 use OC\IntegrityCheck\Checker;
 use OC\Lock\NoopLockingProvider;
 use OC\MemoryInfo;
+use OCA\Settings\SetupChecks\CheckUserCertificates;
 use OCA\Settings\SetupChecks\LegacySSEKeyFormat;
 use OCA\Settings\SetupChecks\PhpDefaultCharset;
 use OCA\Settings\SetupChecks\PhpOutputBuffering;
@@ -451,6 +453,15 @@ Raw output
 		return $indexInfo->getListOfMissingIndexes();
 	}
 
+	protected function hasMissingPrimaryKeys(): array {
+		$info = new MissingPrimaryKeyInformation();
+		// Dispatch event so apps can also hint for pending index updates if needed
+		$event = new GenericEvent($info);
+		$this->dispatcher->dispatch(IDBConnection::CHECK_MISSING_PRIMARY_KEYS_EVENT, $event);
+
+		return $info->getListOfMissingPrimaryKeys();
+	}
+
 	protected function hasMissingColumns(): array {
 		$indexInfo = new MissingColumnInformation();
 		// Dispatch event so apps can also hint for pending index updates if needed
@@ -520,10 +531,6 @@ Raw output
 		}
 
 		return [];
-	}
-
-	protected function isPHPMailerUsed(): bool {
-		return $this->config->getSystemValue('mail_smtpmode', 'smtp') === 'php';
 	}
 
 	protected function hasOpcacheLoaded(): bool {
@@ -618,6 +625,7 @@ Raw output
 			'authtoken' => ['id'],
 			'bruteforce_attempts' => ['id'],
 			'filecache' => ['fileid', 'storage', 'parent', 'mimetype', 'mimepart', 'mtime', 'storage_mtime'],
+			'filecache_extended' => ['fileid'],
 			'file_locks' => ['id'],
 			'jobs' => ['id'],
 			'mimetypes' => ['id'],
@@ -684,6 +692,10 @@ Raw output
 		return false;
 	}
 
+	protected function imageMagickLacksSVGSupport(): bool {
+		return extension_loaded('imagick') && count(\Imagick::queryFormats('SVG')) === 0;
+	}
+
 	/**
 	 * @return DataResponse
 	 */
@@ -691,6 +703,8 @@ Raw output
 		$phpDefaultCharset = new PhpDefaultCharset();
 		$phpOutputBuffering = new PhpOutputBuffering();
 		$legacySSEKeyFormat = new LegacySSEKeyFormat($this->l10n, $this->config, $this->urlGenerator);
+		$checkUserCertificates = new CheckUserCertificates($this->l10n, $this->config, $this->urlGenerator);
+
 		return new DataResponse(
 			[
 				'isGetenvServerWorking' => !empty(getenv('PATH')),
@@ -718,12 +732,11 @@ Raw output
 				'phpOpcacheDocumentation' => $this->urlGenerator->linkToDocs('admin-php-opcache'),
 				'isSettimelimitAvailable' => $this->isSettimelimitAvailable(),
 				'hasFreeTypeSupport' => $this->hasFreeTypeSupport(),
+				'missingPrimaryKeys' => $this->hasMissingPrimaryKeys(),
 				'missingIndexes' => $this->hasMissingIndexes(),
 				'missingColumns' => $this->hasMissingColumns(),
 				'isSqliteUsed' => $this->isSqliteUsed(),
 				'databaseConversionDocumentation' => $this->urlGenerator->linkToDocs('admin-db-conversion'),
-				'isPHPMailerUsed' => $this->isPHPMailerUsed(),
-				'mailSettingsDocumentation' => $this->urlGenerator->getAbsoluteURL('index.php/settings/admin'),
 				'isMemoryLimitSufficient' => $this->memoryInfo->isMemoryLimitSufficient(),
 				'appDirsWithDifferentOwner' => $this->getAppDirsWithDifferentOwner(),
 				'recommendedPHPModules' => $this->hasRecommendedPHPModules(),
@@ -731,9 +744,11 @@ Raw output
 				'isMysqlUsedWithoutUTF8MB4' => $this->isMysqlUsedWithoutUTF8MB4(),
 				'isEnoughTempSpaceAvailableIfS3PrimaryStorageIsUsed' => $this->isEnoughTempSpaceAvailableIfS3PrimaryStorageIsUsed(),
 				'reverseProxyGeneratedURL' => $this->urlGenerator->getAbsoluteURL('index.php'),
+				'imageMagickLacksSVGSupport' => $this->imageMagickLacksSVGSupport(),
 				PhpDefaultCharset::class => ['pass' => $phpDefaultCharset->run(), 'description' => $phpDefaultCharset->description(), 'severity' => $phpDefaultCharset->severity()],
 				PhpOutputBuffering::class => ['pass' => $phpOutputBuffering->run(), 'description' => $phpOutputBuffering->description(), 'severity' => $phpOutputBuffering->severity()],
 				LegacySSEKeyFormat::class => ['pass' => $legacySSEKeyFormat->run(), 'description' => $legacySSEKeyFormat->description(), 'severity' => $legacySSEKeyFormat->severity(), 'linkToDocumentation' => $legacySSEKeyFormat->linkToDocumentation()],
+				CheckUserCertificates::class => ['pass' => $checkUserCertificates->run(), 'description' => $checkUserCertificates->description(), 'severity' => $checkUserCertificates->severity(), 'elements' => $checkUserCertificates->elements()],
 			]
 		);
 	}

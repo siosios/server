@@ -31,10 +31,11 @@ use OC\Authentication\LoginCredentials\Store;
 use OC\Authentication\Token\IProvider;
 use OC\Authentication\Token\IToken;
 use OCP\Authentication\Exceptions\CredentialsUnavailableException;
-use OCP\ILogger;
 use OCP\ISession;
 use OCP\Session\Exceptions\SessionNotAvailableException;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
+use function json_encode;
 
 class StoreTest extends TestCase {
 
@@ -44,7 +45,7 @@ class StoreTest extends TestCase {
 	/** @var IProvider|\PHPUnit\Framework\MockObject\MockObject */
 	private $tokenProvider;
 
-	/** @var ILogger|\PHPUnit\Framework\MockObject\MockObject */
+	/** @var LoggerInterface|\PHPUnit\Framework\MockObject\MockObject */
 	private $logger;
 
 	/** @var Store */
@@ -55,7 +56,7 @@ class StoreTest extends TestCase {
 
 		$this->session = $this->createMock(ISession::class);
 		$this->tokenProvider = $this->createMock(IProvider::class);
-		$this->logger = $this->createMock(ILogger::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->store = new Store($this->session, $this->logger, $this->tokenProvider);
 	}
@@ -138,6 +139,81 @@ class StoreTest extends TestCase {
 		$this->expectException(CredentialsUnavailableException::class);
 
 		$this->store->getLoginCredentials();
+	}
+
+	public function testGetLoginCredentialsPartialCredentialsAndSessionName() {
+		$uid = 'id987';
+		$user = 'user987';
+		$password = '7389374';
+
+		$this->session->expects($this->once())
+			->method('getId')
+			->willReturn('sess2233');
+		$this->tokenProvider->expects($this->once())
+			->method('getToken')
+			->with('sess2233')
+			->will($this->throwException(new InvalidTokenException()));
+		$this->session->expects($this->once())
+			->method('exists')
+			->with($this->equalTo('login_credentials'))
+			->willReturn(true);
+		$this->session->expects($this->exactly(2))
+			->method('get')
+			->willReturnMap([
+				[
+					'login_credentials',
+					json_encode([
+						'uid' => $uid,
+						'password' => $password,
+					])
+				],
+				[
+					'loginname',
+					$user,
+				],
+			]);
+		$expected = new Credentials($uid, $user, $password);
+
+		$actual = $this->store->getLoginCredentials();
+
+		$this->assertEquals($expected, $actual);
+	}
+
+	public function testGetLoginCredentialsPartialCredentials() {
+		$uid = 'id987';
+		$password = '7389374';
+
+		$this->session->expects($this->once())
+			->method('getId')
+			->willReturn('sess2233');
+		$this->tokenProvider->expects($this->once())
+			->method('getToken')
+			->with('sess2233')
+			->will($this->throwException(new InvalidTokenException()));
+		$this->session->expects($this->once())
+			->method('exists')
+			->with($this->equalTo('login_credentials'))
+			->willReturn(true);
+		$this->session->expects($this->exactly(2))
+			->method('get')
+			->willReturnMap([
+				[
+					'login_credentials',
+					json_encode([
+						'uid' => $uid,
+						'password' => $password,
+					])
+				],
+				[
+					'loginname',
+					null,
+				],
+			]);
+		$expected = new Credentials($uid, $uid, $password);
+
+		$actual = $this->store->getLoginCredentials();
+
+		$this->assertEquals($expected, $actual);
 	}
 
 	public function testGetLoginCredentialsInvalidTokenLoginCredentials() {

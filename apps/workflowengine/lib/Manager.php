@@ -147,10 +147,10 @@ class Manager implements IManager {
 	public function getAllConfiguredEvents() {
 		$query = $this->connection->getQueryBuilder();
 
-		$query->selectDistinct('class')
-			->addSelect('entity', 'events')
+		$query->select('class', 'entity', $query->expr()->castColumn('events', IQueryBuilder::PARAM_STR))
 			->from('flow_operations')
-			->where($query->expr()->neq('events', $query->createNamedParameter('[]'), IQueryBuilder::PARAM_STR));
+			->where($query->expr()->neq('events', $query->createNamedParameter('[]'), IQueryBuilder::PARAM_STR))
+			->groupBy('class', 'entity', $query->expr()->castColumn('events', IQueryBuilder::PARAM_STR));
 
 		$result = $query->execute();
 		$operations = [];
@@ -158,7 +158,7 @@ class Manager implements IManager {
 			$eventNames = \json_decode($row['events']);
 
 			$operation = $row['class'];
-			$entity =  $row['entity'];
+			$entity = $row['entity'];
 
 			$operations[$operation] = $operations[$row['class']] ?? [];
 			$operations[$operation][$entity] = $operations[$operation][$entity] ?? [];
@@ -492,6 +492,11 @@ class Manager implements IManager {
 		if (count($checks) === 0) {
 			throw new \UnexpectedValueException($this->l->t('At least one check needs to be provided'));
 		}
+
+		if (strlen((string)$operation) > IManager::MAX_OPERATION_VALUE_BYTES) {
+			throw new \UnexpectedValueException($this->l->t('The provided operation data is too long'));
+		}
+
 		$instance->validateOperation($name, $checks, $operation);
 
 		foreach ($checks as $check) {
@@ -514,6 +519,10 @@ class Manager implements IManager {
 				&& !in_array($entity, $instance->supportedEntities())
 			) {
 				throw new \UnexpectedValueException($this->l->t('Check %s is not allowed with this entity', [$class]));
+			}
+
+			if (strlen((string)$check['value']) > IManager::MAX_CHECK_VALUE_BYTES) {
+				throw new \UnexpectedValueException($this->l->t('The provided check value is too long'));
 			}
 
 			$instance->validateCheck($check['operator'], $check['value']);
@@ -695,7 +704,7 @@ class Manager implements IManager {
 	}
 
 	/**
-	 * @return IEntity[]
+	 * @return ICheck[]
 	 */
 	protected function getBuildInChecks(): array {
 		try {

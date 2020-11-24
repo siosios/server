@@ -66,6 +66,11 @@ class Factory implements IFactory {
 	/**
 	 * @var array
 	 */
+	protected $localeCache = [];
+
+	/**
+	 * @var array
+	 */
 	protected $availableLocales = [];
 
 	/**
@@ -391,12 +396,14 @@ class Factory implements IFactory {
 			return true;
 		}
 
-		$locales = $this->findAvailableLocales();
-		$userLocale = array_filter($locales, function ($value) use ($locale) {
-			return $locale === $value['code'];
-		});
+		if ($this->localeCache === []) {
+			$locales = $this->findAvailableLocales();
+			foreach ($locales as $l) {
+				$this->localeCache[$l['code']] = true;
+			}
+		}
 
-		return !empty($userLocale);
+		return isset($this->localeCache[$locale]);
 	}
 
 	/**

@@ -26,6 +26,8 @@
 			:is-no-user="share.type !== SHARE_TYPES.SHARE_TYPE_USER"
 			:user="share.shareWith"
 			:display-name="share.shareWithDisplayName"
+			:tooltip-message="share.type === SHARE_TYPES.SHARE_TYPE_USER ? share.shareWith : ''"
+			:menu-position="'left'"
 			:url="share.shareWithAvatar" />
 		<div v-tooltip.auto="tooltip" class="sharing-entry__desc">
 			<h5>{{ title }}</h5>
@@ -70,6 +72,7 @@
 
 				<!-- reshare permission -->
 				<ActionCheckbox
+					v-if="config.isResharingAllowed"
 					ref="canReshare"
 					:checked.sync="canReshare"
 					:value="permissionsShare"
@@ -79,9 +82,9 @@
 
 				<!-- expiration date -->
 				<ActionCheckbox :checked.sync="hasExpirationDate"
-					:disabled="config.isDefaultExpireDateEnforced || saving"
+					:disabled="config.isDefaultInternalExpireDateEnforced || saving"
 					@uncheck="onExpirationDisable">
-					{{ config.isDefaultExpireDateEnforced
+					{{ config.isDefaultInternalExpireDateEnforced
 						? t('files_sharing', 'Expiration date enforced')
 						: t('files_sharing', 'Set expiration date') }}
 				</ActionCheckbox>

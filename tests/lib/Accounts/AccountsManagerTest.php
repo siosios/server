@@ -25,9 +25,9 @@ use OC\Accounts\Account;
 use OC\Accounts\AccountManager;
 use OCP\Accounts\IAccountManager;
 use OCP\BackgroundJob\IJobList;
-use OCP\ILogger;
 use OCP\IUser;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Test\TestCase;
@@ -52,7 +52,7 @@ class AccountsManagerTest extends TestCase {
 	/** @var string accounts table name */
 	private $table = 'accounts';
 
-	/** @var ILogger|MockObject */
+	/** @var LoggerInterface|MockObject */
 	private $logger;
 
 	protected function setUp(): void {
@@ -60,7 +60,7 @@ class AccountsManagerTest extends TestCase {
 		$this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
 		$this->connection = \OC::$server->getDatabaseConnection();
 		$this->jobList = $this->createMock(IJobList::class);
-		$this->logger = $this->createMock(ILogger::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 	}
 
 	protected function tearDown(): void {
@@ -248,7 +248,10 @@ class AccountsManagerTest extends TestCase {
 			->where($query->expr()->eq('uid', $query->createParameter('uid')))
 			->setParameter('uid', $uid);
 		$query->execute();
-		$result = $query->execute()->fetchAll();
+
+		$qResult = $query->execute();
+		$result = $qResult->fetchAll();
+		$qResult->closeCursor();
 
 		if (!empty($result)) {
 			return json_decode($result[0]['data'], true);
