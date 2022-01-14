@@ -29,7 +29,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Core\Controller;
 
 use OC\Setup;
@@ -104,7 +103,6 @@ class SetupController {
 		];
 		$parameters = array_merge($defaults, $post);
 
-		\OC_Util::addScript('setup');
 		\OC_Template::printGuestPage('', 'installation', $parameters);
 	}
 
@@ -121,12 +119,12 @@ class SetupController {
 		}
 
 		if ($installRecommended) {
-			$urlGenerator = \OC::$server->getURLGenerator();
-			$location = $urlGenerator->getAbsoluteURL('index.php/core/apps/recommended');
-			header('Location: ' . $location);
+			header('Location: ' . \OC::$server->getURLGenerator()->getAbsoluteURL('index.php/core/apps/recommended'));
+			exit();
+		} else {
+			header('Location: ' . \OC::$server->getURLGenerator()->linkToDefaultPageUrl());
 			exit();
 		}
-		\OC_Util::redirectToDefaultPage();
 	}
 
 	public function loadAutoConfig($post) {

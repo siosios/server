@@ -27,20 +27,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
-/**
- * Public interface of ownCloud for apps to use.
- * Config interface
- *
- */
-
 // use OCP namespace for all classes that are considered public.
-// This means that they should be used by apps instead of the internal ownCloud classes
+// This means that they should be used by apps instead of the internal Nextcloud classes
 
 namespace OCP;
 
 /**
- * Access to all the configuration options ownCloud offers
+ * Access to all the configuration options Nextcloud offers.
  * @since 6.0.0
  */
 interface IConfig {
@@ -54,6 +47,7 @@ interface IConfig {
 	 *
 	 * @param array $configs Associative array with `key => value` pairs
 	 *                       If value is null, the config key will be deleted
+	 * @throws HintException if config file is read-only
 	 * @since 8.0.0
 	 */
 	public function setSystemValues(array $configs);
@@ -63,6 +57,7 @@ interface IConfig {
 	 *
 	 * @param string $key the key of the value, under which will be saved
 	 * @param mixed $value the value that should be stored
+	 * @throws HintException if config file is read-only
 	 * @since 8.0.0
 	 */
 	public function setSystemValue($key, $value);

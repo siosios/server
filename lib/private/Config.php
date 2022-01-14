@@ -12,13 +12,14 @@
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Philipp Schaffrath <github@philipp.schaffrath.email>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license AGPL-3.0
  *
@@ -35,8 +36,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC;
+
+use OCP\HintException;
 
 /**
  * This class is responsible for reading and writing config.php, the very basic
@@ -55,6 +57,8 @@ class Config {
 	protected $configFilePath;
 	/** @var string */
 	protected $configFileName;
+	/** @var bool */
+	protected $isReadOnly;
 
 	/**
 	 * @param string $configDir Path to the config dir, needs to end with '/'
@@ -65,6 +69,7 @@ class Config {
 		$this->configFilePath = $this->configDir.$fileName;
 		$this->configFileName = $fileName;
 		$this->readData();
+		$this->isReadOnly = $this->getValue('config_is_read_only', false);
 	}
 
 	/**
@@ -107,6 +112,7 @@ class Config {
 	 *
 	 * @param array $configs Associative array with `key => value` pairs
 	 *                       If value is null, the config key will be deleted
+	 * @throws HintException
 	 */
 	public function setValues(array $configs) {
 		$needsUpdate = false;
@@ -129,6 +135,7 @@ class Config {
 	 *
 	 * @param string $key key
 	 * @param mixed $value value
+	 * @throws HintException
 	 */
 	public function setValue($key, $value) {
 		if ($this->set($key, $value)) {
@@ -143,8 +150,11 @@ class Config {
 	 * @param string $key key
 	 * @param mixed $value value
 	 * @return bool True if the file needs to be updated, false otherwise
+	 * @throws HintException
 	 */
 	protected function set($key, $value) {
+		$this->checkReadOnly();
+
 		if (!isset($this->cache[$key]) || $this->cache[$key] !== $value) {
 			// Add change
 			$this->cache[$key] = $value;
@@ -156,7 +166,9 @@ class Config {
 
 	/**
 	 * Removes a key from the config and removes it from config.php if required
+	 *
 	 * @param string $key
+	 * @throws HintException
 	 */
 	public function deleteKey($key) {
 		if ($this->delete($key)) {
@@ -170,8 +182,11 @@ class Config {
 	 *
 	 * @param string $key
 	 * @return bool True if the file needs to be updated, false otherwise
+	 * @throws HintException
 	 */
 	protected function delete($key) {
+		$this->checkReadOnly();
+
 		if (isset($this->cache[$key])) {
 			// Delete key from cache
 			unset($this->cache[$key]);
@@ -237,6 +252,8 @@ class Config {
 	 * @throws \Exception If no file lock can be acquired
 	 */
 	private function writeData() {
+		$this->checkReadOnly();
+
 		// Create a php file ...
 		$content = "<?php\n";
 		$content .= '$CONFIG = ';
@@ -270,6 +287,17 @@ class Config {
 
 		if (function_exists('opcache_invalidate')) {
 			@opcache_invalidate($this->configFilePath, true);
+		}
+	}
+
+	/**
+	 * @throws HintException
+	 */
+	private function checkReadOnly(): void {
+		if ($this->isReadOnly) {
+			throw new HintException(
+				'Config is set to be read-only via option "config_is_read_only".',
+				'Unset "config_is_read_only" to allow changes to the config file.');
 		}
 	}
 }

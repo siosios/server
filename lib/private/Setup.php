@@ -28,7 +28,8 @@
  * @author Serge Martin <edb@sigluy.net>
  * @author Simounet <contact@simounet.net>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Valdnet <47037905+Valdnet@users.noreply.github.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -45,23 +46,21 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC;
 
 use bantu\IniGetWrapper\IniGetWrapper;
 use Exception;
 use InvalidArgumentException;
 use OC\App\AppStore\Bundles\BundleFetcher;
-use OC\Authentication\Token\DefaultTokenCleanupJob;
-use OC\Authentication\Token\DefaultTokenProvider;
+use OC\Authentication\Token\PublicKeyTokenProvider;
 use OC\Log\Rotate;
 use OC\Preview\BackgroundCleanupJob;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Defaults;
 use OCP\IGroup;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\Security\ISecureRandom;
+use Psr\Log\LoggerInterface;
 
 class Setup {
 	/** @var SystemConfig */
@@ -72,28 +71,19 @@ class Setup {
 	protected $l10n;
 	/** @var Defaults */
 	protected $defaults;
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	protected $logger;
 	/** @var ISecureRandom */
 	protected $random;
 	/** @var Installer */
 	protected $installer;
 
-	/**
-	 * @param SystemConfig $config
-	 * @param IniGetWrapper $iniWrapper
-	 * @param IL10N $l10n
-	 * @param Defaults $defaults
-	 * @param ILogger $logger
-	 * @param ISecureRandom $random
-	 * @param Installer $installer
-	 */
 	public function __construct(
 		SystemConfig $config,
 		IniGetWrapper $iniWrapper,
 		IL10N $l10n,
 		Defaults $defaults,
-		ILogger $logger,
+		LoggerInterface $logger,
 		ISecureRandom $random,
 		Installer $installer
 	) {
@@ -140,7 +130,10 @@ class Setup {
 	 * @return array
 	 */
 	protected function getAvailableDbDriversForPdo() {
-		return \PDO::getAvailableDrivers();
+		if (class_exists(\PDO::class)) {
+			return \PDO::getAvailableDrivers();
+		}
+		return [];
 	}
 
 	/**
@@ -233,9 +226,10 @@ class Setup {
 			try {
 				$util = new \OC_Util();
 				$htAccessWorking = $util->isHtaccessWorking(\OC::$server->getConfig());
-			} catch (\OC\HintException $e) {
+			} catch (\OCP\HintException $e) {
 				$errors[] = [
 					'error' => $e->getMessage(),
+					'exception' => $e,
 					'hint' => $e->getHint(),
 				];
 				$htAccessWorking = false;
@@ -247,7 +241,7 @@ class Setup {
 				'error' => $this->l10n->t(
 					'Mac OS X is not supported and %s will not work properly on this platform. ' .
 					'Use it at your own risk! ',
-					[$this->defaults->getName()]
+					[$this->defaults->getProductName()]
 				),
 				'hint' => $this->l10n->t('For the best results, please consider using a GNU/Linux server instead.'),
 			];
@@ -258,7 +252,7 @@ class Setup {
 				'error' => $this->l10n->t(
 					'It seems that this %s instance is running on a 32-bit PHP environment and the open_basedir has been configured in php.ini. ' .
 					'This will lead to problems with files over 4 GB and is highly discouraged.',
-					[$this->defaults->getName()]
+					[$this->defaults->getProductName()]
 				),
 				'hint' => $this->l10n->t('Please remove the open_basedir setting within your php.ini or switch to 64-bit PHP.'),
 			];
@@ -311,7 +305,7 @@ class Setup {
 
 		// validate the data directory
 		if ((!is_dir($dataDir) && !mkdir($dataDir)) || !is_writable($dataDir)) {
-			$error[] = $l->t("Can't create or write into the data directory %s", [$dataDir]);
+			$error[] = $l->t("Cannot create or write into the data directory %s", [$dataDir]);
 		}
 
 		if (!empty($error)) {
@@ -360,12 +354,14 @@ class Setup {
 		} catch (\OC\DatabaseSetupException $e) {
 			$error[] = [
 				'error' => $e->getMessage(),
+				'exception' => $e,
 				'hint' => $e->getHint(),
 			];
 			return $error;
 		} catch (Exception $e) {
 			$error[] = [
 				'error' => 'Error while trying to create admin user: ' . $e->getMessage(),
+				'exception' => $e,
 				'hint' => '',
 			];
 			return $error;
@@ -376,6 +372,7 @@ class Setup {
 		} catch (Exception $e) {
 			$error[] = [
 				'error' => 'Error while trying to initialise the database: ' . $e->getMessage(),
+				'exception' => $e,
 				'hint' => '',
 			];
 			return $error;
@@ -427,12 +424,15 @@ class Setup {
 			//and we are done
 			$config->setSystemValue('installed', true);
 
+			$bootstrapCoordinator = \OC::$server->query(\OC\AppFramework\Bootstrap\Coordinator::class);
+			$bootstrapCoordinator->runInitialRegistration();
+
 			// Create a session token for the newly created user
 			// The token provider requires a working db, so it's not injected on setup
 			/* @var $userSession User\Session */
 			$userSession = \OC::$server->getUserSession();
-			$defaultTokenProvider = \OC::$server->query(DefaultTokenProvider::class);
-			$userSession->setTokenProvider($defaultTokenProvider);
+			$provider = \OC::$server->query(PublicKeyTokenProvider::class);
+			$userSession->setTokenProvider($provider);
 			$userSession->login($username, $password);
 			$userSession->createSessionToken($request, $userSession->getUser()->getUID(), $username, $password);
 
@@ -441,7 +441,7 @@ class Setup {
 
 			// Set email for admin
 			if (!empty($options['adminemail'])) {
-				$config->setUserValue($user->getUID(), 'settings', 'email', $options['adminemail']);
+				$user->setSystemEMailAddress($options['adminemail']);
 			}
 		}
 
@@ -450,7 +450,6 @@ class Setup {
 
 	public static function installBackgroundJobs() {
 		$jobList = \OC::$server->getJobList();
-		$jobList->add(DefaultTokenCleanupJob::class);
 		$jobList->add(Rotate::class);
 		$jobList->add(BackgroundCleanupJob::class);
 	}
@@ -479,7 +478,7 @@ class Setup {
 			if (!filter_var($webRoot, FILTER_VALIDATE_URL)) {
 				throw new InvalidArgumentException('invalid value for overwrite.cli.url');
 			}
-			$webRoot = rtrim(parse_url($webRoot, PHP_URL_PATH), '/');
+			$webRoot = rtrim((parse_url($webRoot, PHP_URL_PATH) ?? ''), '/');
 		} else {
 			$webRoot = !empty(\OC::$WEBROOT) ? \OC::$WEBROOT : '/';
 		}
@@ -507,7 +506,7 @@ class Setup {
 			\OC::$server->get(IniGetWrapper::class),
 			\OC::$server->getL10N('lib'),
 			\OC::$server->query(Defaults::class),
-			\OC::$server->getLogger(),
+			\OC::$server->get(LoggerInterface::class),
 			\OC::$server->getSecureRandom(),
 			\OC::$server->query(Installer::class)
 		);
@@ -529,20 +528,13 @@ class Setup {
 			$content .= "\n  Options -MultiViews";
 			$content .= "\n  RewriteRule ^core/js/oc.js$ index.php [PT,E=PATH_INFO:$1]";
 			$content .= "\n  RewriteRule ^core/preview.png$ index.php [PT,E=PATH_INFO:$1]";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !\\.(css|js|svg|gif|png|html|ttf|woff2?|ico|jpg|jpeg|map|webm|mp4|mp3|ogg|wav)$";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !core/img/favicon.ico$";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !core/img/manifest.json$";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/remote.php";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/public.php";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/cron.php";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/core/ajax/update.php";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/status.php";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/ocs/v1.php";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/ocs/v2.php";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/robots.txt";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/updater/";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/ocs-provider/";
-			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/ocm-provider/";
+			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !\\.(css|js|svg|gif|png|html|ttf|woff2?|ico|jpg|jpeg|map|webm|mp4|mp3|ogg|wav|wasm|tflite)$";
+			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/core/ajax/update\\.php";
+			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/core/img/(favicon\\.ico|manifest\\.json)$";
+			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/(cron|public|remote|status)\\.php";
+			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/ocs/v(1|2)\\.php";
+			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/robots\\.txt";
+			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/(ocm-provider|ocs-provider|updater)/";
 			$content .= "\n  RewriteCond %{REQUEST_URI} !^/\\.well-known/(acme-challenge|pki-validation)/.*";
 			$content .= "\n  RewriteCond %{REQUEST_FILENAME} !/richdocumentscode(_arm64)?/proxy.php$";
 			$content .= "\n  RewriteRule . index.php [PT,E=PATH_INFO:$1]";

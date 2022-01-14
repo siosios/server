@@ -1,6 +1,3 @@
-<?php
-script(\OCA\Files\AppInfo\Application::APP_ID, 'dist/files-app-settings');
-?>
 <div id="app-navigation">
 	<ul class="with-icon">
 
@@ -43,6 +40,11 @@ script(\OCA\Files\AppInfo\Application::APP_ID, 'dist/files-app-settings');
 				<input class="checkbox" id="showhiddenfilesToggle"
 					   checked="checked" type="checkbox">
 				<label for="showhiddenfilesToggle"><?php p($l->t('Show hidden files')); ?></label>
+			</div>
+			<div id="files-setting-cropimagepreviews">
+				<input class="checkbox" id="cropimagepreviewsToggle"
+					   checked="checked" type="checkbox">
+				<label for="cropimagepreviewsToggle"><?php p($l->t('Crop image previews')); ?></label>
 			</div>
 			<label for="webdavurl"><?php p($l->t('WebDAV')); ?></label>
 			<input id="webdavurl" type="text" readonly="readonly"
@@ -88,7 +90,10 @@ function NavigationListElements($item, $l, $pinned) {
 		NavigationElementMenu($item);
 	if (isset($item['sublist'])) {
 		?>
-			<button class="collapse app-navigation-noclose" <?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>></button>
+			<button class="collapse app-navigation-noclose"
+				aria-label="<?php p($l->t('Toggle %1$s sublist', $item['name'])) ?>"
+				<?php if (sizeof($item['sublist']) == 0) { ?> style="display: none" <?php } ?>>
+			</button>
 			<ul id="sublist-<?php p($item['id']); ?>">
 				<?php
 				foreach ($item['sublist'] as $item) {

@@ -23,14 +23,13 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\Security\Bruteforce;
 
 use OC\Security\Normalizer\IpAddress;
@@ -67,6 +66,8 @@ class Throttler {
 	private $logger;
 	/** @var IConfig */
 	private $config;
+	/** @var bool */
+	private $hasAttemptsDeleted = false;
 
 	/**
 	 * @param IDBConnection $db
@@ -231,7 +232,7 @@ class Throttler {
 			$maxAgeHours = 48;
 		}
 
-		if ($ip === '') {
+		if ($ip === '' || $this->hasAttemptsDeleted) {
 			return 0;
 		}
 
@@ -307,7 +308,9 @@ class Throttler {
 			->andWhere($qb->expr()->eq('action', $qb->createNamedParameter($action)))
 			->andWhere($qb->expr()->eq('metadata', $qb->createNamedParameter(json_encode($metadata))));
 
-		$qb->execute();
+		$qb->executeStatement();
+
+		$this->hasAttemptsDeleted = true;
 	}
 
 	/**

@@ -3,17 +3,18 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
  *
+ * @author acsfer <carlos@reendex.com>
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Brice Maron <brice@bmaron.net>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Frank Karlitschek <frank@karlitschek.de>
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Kamil Domanski <kdomanski@kdemail.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Markus Staab <markus.staab@redaxo.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -36,7 +37,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC;
 
 use Doctrine\DBAL\Exception\TableExistsException;
@@ -44,14 +44,17 @@ use OC\App\AppStore\Bundles\Bundle;
 use OC\App\AppStore\Fetcher\AppFetcher;
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\Archive\TAR;
+use OC\DB\Connection;
+use OC\DB\MigrationService;
 use OC_App;
-use OC_DB;
 use OC_Helper;
+use OCP\HintException;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\ILogger;
 use OCP\ITempManager;
 use phpseclib\File\X509;
+use Psr\Log\LoggerInterface;
 
 /**
  * This class provides the functionality needed to install, update and remove apps
@@ -63,7 +66,7 @@ class Installer {
 	private $clientService;
 	/** @var ITempManager */
 	private $tempManager;
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	private $logger;
 	/** @var IConfig */
 	private $config;
@@ -74,18 +77,11 @@ class Installer {
 	/** @var bool */
 	private $isCLI;
 
-	/**
-	 * @param AppFetcher $appFetcher
-	 * @param IClientService $clientService
-	 * @param ITempManager $tempManager
-	 * @param ILogger $logger
-	 * @param IConfig $config
-	 */
 	public function __construct(
 		AppFetcher $appFetcher,
 		IClientService $clientService,
 		ITempManager $tempManager,
-		ILogger $logger,
+		LoggerInterface $logger,
 		IConfig $config,
 		bool $isCLI
 	) {
@@ -112,9 +108,13 @@ class Installer {
 		}
 
 		$basedir = $app['path'].'/'.$appId;
-		$info = OC_App::getAppInfo($basedir.'/appinfo/info.xml', true);
+
+		if (is_file($basedir . '/appinfo/database.xml')) {
+			throw new \Exception('The appinfo/database.xml file is not longer supported. Used in ' . $appId);
+		}
 
 		$l = \OC::$server->getL10N('core');
+		$info = OC_App::getAppInfo($basedir.'/appinfo/info.xml', true, $l->getLanguageCode());
 
 		if (!is_array($info)) {
 			throw new \Exception(
@@ -150,16 +150,9 @@ class Installer {
 		}
 
 		//install the database
-		if (is_file($basedir.'/appinfo/database.xml')) {
-			if (\OC::$server->getConfig()->getAppValue($info['id'], 'installed_version') === null) {
-				OC_DB::createDbFromStructure($basedir.'/appinfo/database.xml');
-			} else {
-				OC_DB::updateDbFromStructure($basedir.'/appinfo/database.xml');
-			}
-		} else {
-			$ms = new \OC\DB\MigrationService($info['id'], \OC::$server->getDatabaseConnection());
-			$ms->migrate('latest', true);
-		}
+		$ms = new MigrationService($info['id'], \OC::$server->get(Connection::class));
+		$ms->migrate('latest', !$previousVersion);
+
 		if ($previousVersion) {
 			OC_App::executeRepairSteps($appId, $info['repair-steps']['post-migration']);
 		}
@@ -169,8 +162,7 @@ class Installer {
 		//run appinfo/install.php
 		self::includeAppScript($basedir . '/appinfo/install.php');
 
-		$appData = OC_App::getAppInfo($appId);
-		OC_App::executeRepairSteps($appId, $appData['repair-steps']['install']);
+		OC_App::executeRepairSteps($appId, $info['repair-steps']['install']);
 
 		//set the installed version
 		\OC::$server->getConfig()->setAppValue($info['id'], 'installed_version', OC_App::getAppVersion($info['id'], false));
@@ -201,9 +193,8 @@ class Installer {
 			try {
 				$this->downloadApp($appId, $allowUnstable);
 			} catch (\Exception $e) {
-				$this->logger->logException($e, [
-					'level' => ILogger::ERROR,
-					'app' => 'core',
+				$this->logger->error($e->getMessage(), [
+					'exception' => $e,
 				]);
 				return false;
 			}
@@ -211,6 +202,18 @@ class Installer {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Split the certificate file in individual certs
+	 *
+	 * @param string $cert
+	 * @return string[]
+	 */
+	private function splitCerts(string $cert): array {
+		preg_match_all('([\-]{3,}[\S\ ]+?[\-]{3,}[\S\s]+?[\-]{3,}[\S\ ]+?[\-]{3,})', $cert, $matches);
+
+		return $matches[0];
 	}
 
 	/**
@@ -229,12 +232,18 @@ class Installer {
 			if ($app['id'] === $appId) {
 				// Load the certificate
 				$certificate = new X509();
-				$certificate->loadCA(file_get_contents(__DIR__ . '/../../resources/codesigning/root.crt'));
+				$rootCrt = file_get_contents(__DIR__ . '/../../resources/codesigning/root.crt');
+				$rootCrts = $this->splitCerts($rootCrt);
+				foreach ($rootCrts as $rootCrt) {
+					$certificate->loadCA($rootCrt);
+				}
 				$loadedCertificate = $certificate->loadX509($app['certificate']);
 
 				// Verify if the certificate has been revoked
 				$crl = new X509();
-				$crl->loadCA(file_get_contents(__DIR__ . '/../../resources/codesigning/root.crt'));
+				foreach ($rootCrts as $rootCrt) {
+					$crl->loadCA($rootCrt);
+				}
 				$crl->loadCRL(file_get_contents(__DIR__ . '/../../resources/codesigning/root.crl'));
 				if ($crl->validateSignature() !== true) {
 					throw new \Exception('Could not validate CRL signature');
@@ -284,99 +293,95 @@ class Installer {
 				$tempFile = $this->tempManager->getTemporaryFile('.tar.gz');
 				$timeout = $this->isCLI ? 0 : 120;
 				$client = $this->clientService->newClient();
-				$client->get($app['releases'][0]['download'], ['save_to' => $tempFile, 'timeout' => $timeout]);
+				$client->get($app['releases'][0]['download'], ['sink' => $tempFile, 'timeout' => $timeout]);
 
 				// Check if the signature actually matches the downloaded content
 				$certificate = openssl_get_publickey($app['certificate']);
 				$verified = (bool)openssl_verify(file_get_contents($tempFile), base64_decode($app['releases'][0]['signature']), $certificate, OPENSSL_ALGO_SHA512);
-				openssl_free_key($certificate);
+				// PHP 8+ deprecates openssl_free_key and automatically destroys the key instance when it goes out of scope
+				if ((PHP_VERSION_ID < 80000)) {
+					openssl_free_key($certificate);
+				}
 
 				if ($verified === true) {
 					// Seems to match, let's proceed
 					$extractDir = $this->tempManager->getTemporaryFolder();
 					$archive = new TAR($tempFile);
 
-					if ($archive) {
-						if (!$archive->extract($extractDir)) {
-							$errorMessage = 'Could not extract app ' . $appId;
+					if (!$archive->extract($extractDir)) {
+						$errorMessage = 'Could not extract app ' . $appId;
 
-							$archiveError = $archive->getError();
-							if ($archiveError instanceof \PEAR_Error) {
-								$errorMessage .= ': ' . $archiveError->getMessage();
-							}
-
-							throw new \Exception($errorMessage);
-						}
-						$allFiles = scandir($extractDir);
-						$folders = array_diff($allFiles, ['.', '..']);
-						$folders = array_values($folders);
-
-						if (count($folders) > 1) {
-							throw new \Exception(
-								sprintf(
-									'Extracted app %s has more than 1 folder',
-									$appId
-								)
-							);
+						$archiveError = $archive->getError();
+						if ($archiveError instanceof \PEAR_Error) {
+							$errorMessage .= ': ' . $archiveError->getMessage();
 						}
 
-						// Check if appinfo/info.xml has the same app ID as well
-						$loadEntities = libxml_disable_entity_loader(false);
-						$xml = simplexml_load_file($extractDir . '/' . $folders[0] . '/appinfo/info.xml');
-						libxml_disable_entity_loader($loadEntities);
-						if ((string)$xml->id !== $appId) {
-							throw new \Exception(
-								sprintf(
-									'App for id %s has a wrong app ID in info.xml: %s',
-									$appId,
-									(string)$xml->id
-								)
-							);
-						}
+						throw new \Exception($errorMessage);
+					}
+					$allFiles = scandir($extractDir);
+					$folders = array_diff($allFiles, ['.', '..']);
+					$folders = array_values($folders);
 
-						// Check if the version is lower than before
-						$currentVersion = OC_App::getAppVersion($appId);
-						$newVersion = (string)$xml->version;
-						if (version_compare($currentVersion, $newVersion) === 1) {
-							throw new \Exception(
-								sprintf(
-									'App for id %s has version %s and tried to update to lower version %s',
-									$appId,
-									$currentVersion,
-									$newVersion
-								)
-							);
-						}
-
-						$baseDir = OC_App::getInstallPath() . '/' . $appId;
-						// Remove old app with the ID if existent
-						OC_Helper::rmdirr($baseDir);
-						// Move to app folder
-						if (@mkdir($baseDir)) {
-							$extractDir .= '/' . $folders[0];
-							OC_Helper::copyr($extractDir, $baseDir);
-						}
-						OC_Helper::copyr($extractDir, $baseDir);
-						OC_Helper::rmdirr($extractDir);
-						return;
-					} else {
+					if (count($folders) > 1) {
 						throw new \Exception(
 							sprintf(
-								'Could not extract app with ID %s to %s',
-								$appId,
-								$extractDir
+								'Extracted app %s has more than 1 folder',
+								$appId
 							)
 						);
 					}
-				} else {
-					// Signature does not match
-					throw new \Exception(
-						sprintf(
-							'App with id %s has invalid signature',
-							$appId
-						)
-					);
+
+					// Check if appinfo/info.xml has the same app ID as well
+					if ((PHP_VERSION_ID < 80000)) {
+						$loadEntities = libxml_disable_entity_loader(false);
+						$xml = simplexml_load_file($extractDir . '/' . $folders[0] . '/appinfo/info.xml');
+						libxml_disable_entity_loader($loadEntities);
+					} else {
+						$xml = simplexml_load_file($extractDir . '/' . $folders[0] . '/appinfo/info.xml');
+					}
+					if ((string)$xml->id !== $appId) {
+						throw new \Exception(
+							sprintf(
+								'App for id %s has a wrong app ID in info.xml: %s',
+								$appId,
+								(string)$xml->id
+							)
+						);
+					}
+
+					// Check if the version is lower than before
+					$currentVersion = OC_App::getAppVersion($appId);
+					$newVersion = (string)$xml->version;
+					if (version_compare($currentVersion, $newVersion) === 1) {
+						throw new \Exception(
+							sprintf(
+								'App for id %s has version %s and tried to update to lower version %s',
+								$appId,
+								$currentVersion,
+								$newVersion
+							)
+						);
+					}
+
+					$baseDir = OC_App::getInstallPath() . '/' . $appId;
+					// Remove old app with the ID if existent
+					OC_Helper::rmdirr($baseDir);
+					// Move to app folder
+					if (@mkdir($baseDir)) {
+						$extractDir .= '/' . $folders[0];
+						OC_Helper::copyr($extractDir, $baseDir);
+					}
+					OC_Helper::copyr($extractDir, $baseDir);
+					OC_Helper::rmdirr($extractDir);
+					return;
 				}
+				// Signature does not match
+				throw new \Exception(
+					sprintf(
+						'App with id %s has invalid signature',
+						$appId
+					)
+				);
 			}
 		}
 
@@ -581,20 +586,11 @@ class Installer {
 		$appPath = OC_App::getAppPath($app);
 		\OC_App::registerAutoloading($app, $appPath);
 
-		if (is_file("$appPath/appinfo/database.xml")) {
-			try {
-				OC_DB::createDbFromStructure("$appPath/appinfo/database.xml");
-			} catch (TableExistsException $e) {
-				throw new HintException(
-					'Failed to enable app ' . $app,
-					'Please ask for help via one of our <a href="https://nextcloud.com/support/" target="_blank" rel="noreferrer noopener">support channels</a>.',
-					0, $e
-				);
-			}
-		} else {
-			$ms = new \OC\DB\MigrationService($app, \OC::$server->getDatabaseConnection());
-			$ms->migrate('latest', true);
-		}
+		$config = \OC::$server->getConfig();
+
+		$ms = new MigrationService($app, \OC::$server->get(Connection::class));
+		$previousVersion = $config->getAppValue($app, 'installed_version', false);
+		$ms->migrate('latest', !$previousVersion);
 
 		//run appinfo/install.php
 		self::includeAppScript("$appPath/appinfo/install.php");
@@ -606,8 +602,6 @@ class Installer {
 		\OC_App::setupBackgroundJobs($info['background-jobs']);
 
 		OC_App::executeRepairSteps($app, $info['repair-steps']['install']);
-
-		$config = \OC::$server->getConfig();
 
 		$config->setAppValue($app, 'installed_version', OC_App::getAppVersion($app));
 		if (array_key_exists('ocsid', $info)) {

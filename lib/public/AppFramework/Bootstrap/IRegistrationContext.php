@@ -8,6 +8,7 @@ declare(strict_types=1);
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Julius Härtl <jus@bitgrid.net>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -18,7 +19,7 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
@@ -29,8 +30,14 @@ declare(strict_types=1);
 namespace OCP\AppFramework\Bootstrap;
 
 use OCP\AppFramework\IAppContainer;
+use OCP\Authentication\TwoFactorAuth\IProvider;
+use OCP\Calendar\ICalendarProvider;
+use OCP\Capabilities\ICapability;
 use OCP\EventDispatcher\IEventDispatcher;
+use OCP\Files\Template\ICustomTemplateProvider;
 use OCP\IContainer;
+use OCP\Notification\INotifier;
+use OCP\Preview\IProviderV2;
 
 /**
  * The context object passed to IBootstrap::register
@@ -42,6 +49,7 @@ interface IRegistrationContext {
 
 	/**
 	 * @param string $capability
+	 * @psalm-param class-string<ICapability> $capability
 	 * @see IAppContainer::registerCapability
 	 *
 	 * @since 20.0.0
@@ -69,6 +77,7 @@ interface IRegistrationContext {
 	 * @since 20.0.0
 	 */
 	public function registerDashboardWidget(string $widgetClass): void;
+
 	/**
 	 * Register a service
 	 *
@@ -118,7 +127,8 @@ interface IRegistrationContext {
 	 * @psalm-param string|class-string<T> $event preferably the fully-qualified class name of the Event sub class to listen for
 	 * @param string $listener fully qualified class name (or ::class notation) of a \OCP\EventDispatcher\IEventListener that can be built by the DI container
 	 * @psalm-param class-string<\OCP\EventDispatcher\IEventListener<T>> $listener fully qualified class name that can be built by the DI container
-	 * @param int $priority
+	 * @param int $priority The higher this value, the earlier an event
+	 *                      listener will be triggered in the chain (defaults to 0)
 	 *
 	 * @see IEventDispatcher::addServiceListener()
 	 *
@@ -180,4 +190,78 @@ interface IRegistrationContext {
 	 * @since 21.0.0
 	 */
 	public function registerInitialStateProvider(string $class): void;
+
+	/**
+	 * Register a well known protocol handler
+	 *
+	 * It is allowed to register more than one handler per app.
+	 *
+	 * @param string $class
+	 * @psalm-param class-string<\OCP\Http\WellKnown\IHandler> $class
+	 *
+	 * @return void
+	 *
+	 * @since 21.0.0
+	 */
+	public function registerWellKnownHandler(string $class): void;
+
+	/**
+	 * Register a custom template provider class that is able to inject custom templates
+	 * in addition to the user defined ones
+	 *
+	 * @param string $providerClass
+	 * @psalm-param class-string<ICustomTemplateProvider> $providerClass
+	 * @since 21.0.0
+	 */
+	public function registerTemplateProvider(string $providerClass): void;
+
+	/**
+	 * Register an INotifier class
+	 *
+	 * @param string $notifierClass
+	 * @psalm-param class-string<INotifier> $notifierClass
+	 * @since 22.0.0
+	 */
+	public function registerNotifierService(string $notifierClass): void;
+
+	/**
+	 * Register a two-factor provider
+	 *
+	 * @param string $twoFactorProviderClass
+	 * @psalm-param class-string<IProvider> $twoFactorProviderClass
+	 * @since 22.0.0
+	 */
+	public function registerTwoFactorProvider(string $twoFactorProviderClass): void;
+
+	/**
+	 * Register a preview provider
+	 *
+	 * It is allowed to register more than one provider per app.
+	 *
+	 * @param string $previewProviderClass
+	 * @param string $mimeTypeRegex
+	 * @psalm-param class-string<IProviderV2> $previewProviderClass
+	 * @since 23.0.0
+	 */
+	public function registerPreviewProvider(string $previewProviderClass, string $mimeTypeRegex): void;
+
+	/**
+	 * Register a calendar provider
+	 *
+	 * @param string $class
+	 * @psalm-param class-string<ICalendarProvider> $class
+	 * @since 23.0.0
+	 */
+	public function registerCalendarProvider(string $class): void;
+
+	/**
+	 * Register an implementation of \OCP\Profile\ILinkAction that
+	 * will handle the implementation of a profile link action
+	 *
+	 * @param string $actionClass
+	 * @psalm-param class-string<\OCP\Profile\ILinkAction> $actionClass
+	 * @return void
+	 * @since 23.0.0
+	 */
+	public function registerProfileLinkAction(string $actionClass): void;
 }

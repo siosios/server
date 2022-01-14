@@ -14,23 +14,23 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\DB;
 
+use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use OCP\DB\ISchemaWrapper;
-use OCP\IDBConnection;
 
 class SchemaWrapper implements ISchemaWrapper {
 
-	/** @var IDBConnection|Connection */
+	/** @var Connection */
 	protected $connection;
 
 	/** @var Schema */
@@ -39,10 +39,7 @@ class SchemaWrapper implements ISchemaWrapper {
 	/** @var array */
 	protected $tablesToDelete = [];
 
-	/**
-	 * @param IDBConnection $connection
-	 */
-	public function __construct(IDBConnection $connection) {
+	public function __construct(Connection $connection) {
 		$this->connection = $connection;
 		$this->schema = $this->connection->createSchema();
 	}
@@ -133,5 +130,16 @@ class SchemaWrapper implements ISchemaWrapper {
 	 */
 	public function getTables() {
 		return $this->schema->getTables();
+	}
+
+	/**
+	 * Gets the DatabasePlatform for the database.
+	 *
+	 * @return AbstractPlatform
+	 *
+	 * @throws Exception
+	 */
+	public function getDatabasePlatform() {
+		return $this->connection->getDatabasePlatform();
 	}
 }

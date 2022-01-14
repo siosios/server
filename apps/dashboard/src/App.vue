@@ -11,6 +11,7 @@
 
 		<Draggable v-model="layout"
 			class="panels"
+			v-bind="{swapThreshold: 0.30, delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3}"
 			handle=".panel--header"
 			@end="saveLayout">
 			<div v-for="panelId in layout" :key="panels[panelId].id" class="panel">
@@ -51,6 +52,7 @@
 				<Draggable v-model="layout"
 					class="panels"
 					tag="ol"
+					v-bind="{swapThreshold: 0.30, delay: 500, delayOnTouchOnly: true, touchStartThreshold: 3}"
 					handle=".draggable"
 					@end="saveLayout">
 					<li v-for="panel in sortedPanels" :key="panel.id">
@@ -65,7 +67,7 @@
 					</li>
 				</Draggable>
 
-				<a v-if="isAdmin" :href="appStoreUrl" class="button">{{ t('dashboard', 'Get more widgets from the app store') }}</a>
+				<a v-if="isAdmin" :href="appStoreUrl" class="button">{{ t('dashboard', 'Get more widgets from the App Store') }}</a>
 
 				<h3>{{ t('dashboard', 'Change background image') }}</h3>
 				<BackgroundSettings :background="background"
@@ -90,7 +92,7 @@
 import Vue from 'vue'
 import { loadState } from '@nextcloud/initial-state'
 import { getCurrentUser } from '@nextcloud/auth'
-import { Modal } from '@nextcloud/vue'
+import Modal from '@nextcloud/vue/dist/Components/Modal'
 import Draggable from 'vuedraggable'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
@@ -163,18 +165,43 @@ export default {
 		},
 		greeting() {
 			const time = this.timer.getHours()
-			const shouldShowName = this.displayName && this.uid !== this.displayName
 
-			if (time > 18) {
-				return { text: shouldShowName ? t('dashboard', 'Good evening, {name}', { name: this.displayName }) : t('dashboard', 'Good evening') }
+			// Determine part of the day
+			let partOfDay
+			if (time >= 22 || time < 5) {
+				partOfDay = 'night'
+			} else if (time >= 18) {
+				partOfDay = 'evening'
+			} else if (time >= 12) {
+				partOfDay = 'afternoon'
+			} else {
+				partOfDay = 'morning'
 			}
-			if (time > 12) {
-				return { text: shouldShowName ? t('dashboard', 'Good afternoon, {name}', { name: this.displayName }) : t('dashboard', 'Good afternoon') }
+
+			// Define the greetings
+			const good = {
+				morning: {
+					generic: t('dashboard', 'Good morning'),
+					withName: t('dashboard', 'Good morning, {name}', { name: this.displayName }, undefined, { escape: false }),
+				},
+				afternoon: {
+					generic: t('dashboard', 'Good afternoon'),
+					withName: t('dashboard', 'Good afternoon, {name}', { name: this.displayName }, undefined, { escape: false }),
+				},
+				evening: {
+					generic: t('dashboard', 'Good evening'),
+					withName: t('dashboard', 'Good evening, {name}', { name: this.displayName }, undefined, { escape: false }),
+				},
+				night: {
+					// Don't use "Good night" as it's not a greeting
+					generic: t('dashboard', 'Hello'),
+					withName: t('dashboard', 'Hello, {name}', { name: this.displayName }, undefined, { escape: false }),
+				},
 			}
-			if (time > 5) {
-				return { text: shouldShowName ? t('dashboard', 'Good morning, {name}', { name: this.displayName }) : t('dashboard', 'Good morning') }
-			}
-			return { text: shouldShowName ? t('dashboard', 'Good night, {name}', { name: this.displayName }) : t('dashboard', 'Good night') }
+
+			// Figure out which greeting to show
+			const shouldShowName = this.displayName && this.uid !== this.displayName
+			return { text: shouldShowName ? good[partOfDay].withName : good[partOfDay].generic }
 		},
 		isActive() {
 			return (panel) => this.layout.indexOf(panel.id) > -1
@@ -239,7 +266,7 @@ export default {
 		 * Method to register panels that will be called by the integrating apps
 		 *
 		 * @param {string} app The unique app id for the widget
-		 * @param {function} callback The callback function to register a panel which gets the DOM element passed as parameter
+		 * @param {Function} callback The callback function to register a panel which gets the DOM element passed as parameter
 		 */
 		register(app, callback) {
 			Vue.set(this.callbacks, app, callback)
@@ -378,6 +405,7 @@ export default {
 <style lang="scss" scoped>
 #app-dashboard {
 	width: 100%;
+	min-height: 100vh;
 	background-size: cover;
 	background-position: center center;
 	background-repeat: no-repeat;

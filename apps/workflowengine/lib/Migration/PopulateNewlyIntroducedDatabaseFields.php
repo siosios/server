@@ -1,10 +1,12 @@
 <?php
 
 declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2019 Arthur Schiwon <blizzz@arthur-schiwon.de>
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -15,17 +17,16 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\WorkflowEngine\Migration;
 
-use Doctrine\DBAL\Driver\Statement;
+use OCP\DB\IResult;
 use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\IRepairStep;
@@ -52,17 +53,17 @@ class PopulateNewlyIntroducedDatabaseFields implements IRepairStep {
 		$result->closeCursor();
 	}
 
-	protected function populateScopeTable(Statement $ids): void {
+	protected function populateScopeTable(IResult $ids): void {
 		$qb = $this->dbc->getQueryBuilder();
 
 		$insertQuery = $qb->insert('flow_operations_scope');
-		while ($id = $ids->fetchColumn(0)) {
+		while ($id = $ids->fetchOne()) {
 			$insertQuery->values(['operation_id' => $qb->createNamedParameter($id), 'type' => IManager::SCOPE_ADMIN]);
 			$insertQuery->execute();
 		}
 	}
 
-	protected function getIdsWithoutScope(): Statement {
+	protected function getIdsWithoutScope(): IResult {
 		$qb = $this->dbc->getQueryBuilder();
 		$selectQuery = $qb->select('o.id')
 			->from('flow_operations', 'o')
@@ -71,6 +72,8 @@ class PopulateNewlyIntroducedDatabaseFields implements IRepairStep {
 		// The left join operation is not necessary, usually, but it's a safe-guard
 		// in case the repair step is executed multiple times for whatever reason.
 
-		return $selectQuery->execute();
+		/** @var IResult $result */
+		$result = $selectQuery->execute();
+		return $result;
 	}
 }

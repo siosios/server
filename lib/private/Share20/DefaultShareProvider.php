@@ -2,6 +2,7 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
@@ -14,7 +15,7 @@
  * @author phisch <git@philippschaffrath.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -31,7 +32,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Share20;
 
 use OC\Files\Cache\Cache;
@@ -202,6 +202,10 @@ class DefaultShareProvider implements IShareProvider {
 		// Set the file target
 		$qb->setValue('file_target', $qb->createNamedParameter($share->getTarget()));
 
+		if ($share->getNote() !== '') {
+			$qb->setValue('note', $qb->createNamedParameter($share->getNote()));
+		}
+
 		// Set the time this share was created
 		$qb->setValue('stime', $qb->createNamedParameter(time()));
 
@@ -222,7 +226,7 @@ class DefaultShareProvider implements IShareProvider {
 		$cursor->closeCursor();
 
 		if ($data === false) {
-			throw new ShareNotFound();
+			throw new ShareNotFound('Newly created share could not be found');
 		}
 
 		$mailSendValue = $share->getMailSend();
@@ -469,7 +473,8 @@ class DefaultShareProvider implements IShareProvider {
 			}
 
 			if (!$group->inGroup($user)) {
-				throw new ProviderException('Recipient not in receiving group');
+				// nothing left to do
+				return;
 			}
 
 			// Try to fetch user specific share
@@ -665,7 +670,7 @@ class DefaultShareProvider implements IShareProvider {
 			);
 		}
 
-		$qb->innerJoin('s', 'filecache' ,'f', $qb->expr()->eq('s.file_source', 'f.fileid'));
+		$qb->innerJoin('s', 'filecache', 'f', $qb->expr()->eq('s.file_source', 'f.fileid'));
 		$qb->andWhere($qb->expr()->eq('f.parent', $qb->createNamedParameter($node->getId())));
 
 		$qb->orderBy('id');
@@ -1362,7 +1367,7 @@ class DefaultShareProvider implements IShareProvider {
 		$best = [];
 		$bestDepth = 0;
 		foreach ($shares as $id => $share) {
-			$depth = substr_count($share['file_target'], '/');
+			$depth = substr_count(($share['file_target'] ?? ''), '/');
 			if (empty($best) || $depth < $bestDepth) {
 				$bestDepth = $depth;
 				$best = [

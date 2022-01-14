@@ -1,9 +1,13 @@
 /**
  * @copyright Copyright (c) 2018 John Molakvoæ <skjnldsv@protonmail.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sujith Haridasan <sujith.h@gmail.com>
  *
- * @license GNU AGPL version 3 or any later version
+ * @license AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -58,13 +62,13 @@ export default {
 	 *     .catch((error) => {throw error;});
 	 * }).catch((error) => {requireAdmin OR API failure});
 	 *
-	 * @returns {Promise}
+	 * @return {Promise}
 	 */
 	requireAdmin() {
 		return confirmPassword()
 	},
-	get(url) {
-		return axios.get(sanitize(url))
+	get(url, options) {
+		return axios.get(sanitize(url), options)
 	},
 	post(url, data) {
 		return axios.post(sanitize(url), data)

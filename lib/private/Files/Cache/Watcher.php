@@ -7,7 +7,7 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -24,7 +24,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Files\Cache;
 
 use OCP\Files\Cache\ICacheEntry;
@@ -89,7 +88,14 @@ class Watcher implements IWatcher {
 		}
 		if ($cachedEntry === false || $this->needsUpdate($path, $cachedEntry)) {
 			$this->update($path, $cachedEntry);
-			return true;
+
+			if ($cachedEntry === false) {
+				return true;
+			} else {
+				// storage backends can sometimes return false positives, only return true if the scanner actually found a change
+				$newEntry = $this->cache->get($path);
+				return $newEntry->getStorageMTime() > $cachedEntry->getStorageMTime();
+			}
 		} else {
 			return false;
 		}

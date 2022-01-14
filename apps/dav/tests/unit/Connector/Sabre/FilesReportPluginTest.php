@@ -7,7 +7,7 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -24,7 +24,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\DAV\Tests\unit\Connector\Sabre;
 
 use OC\Files\View;
@@ -230,6 +229,9 @@ class FilesReportPluginTest extends \Test\TestCase {
 		$reportTargetNode = $this->getMockBuilder(Directory::class)
 			->disableOriginalConstructor()
 			->getMock();
+		$reportTargetNode->expects($this->any())
+			->method('getPath')
+			->willReturn('');
 
 		$response = $this->getMockBuilder(ResponseInterface::class)
 			->disableOriginalConstructor()
@@ -407,10 +409,9 @@ class FilesReportPluginTest extends \Test\TestCase {
 			new \OCA\DAV\Connector\Sabre\FilesPlugin(
 				$this->tree,
 				$config,
-				$this->getMockBuilder(IRequest::class)
-					->disableOriginalConstructor()
-					->getMock(),
-				$this->previewManager
+				$this->createMock(IRequest::class),
+				$this->previewManager,
+				$this->createMock(IUserSession::class)
 			)
 		);
 		$this->plugin->initialize($this->server);

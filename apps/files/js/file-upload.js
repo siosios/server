@@ -163,7 +163,7 @@ OC.FileUpload.prototype = {
 	/**
 	 * Returns conflict resolution mode.
 	 *
-	 * @return {int} conflict mode
+	 * @return {number} conflict mode
 	 */
 	getConflictMode: function() {
 		return this._conflictMode || OC.FileUpload.CONFLICT_MODE_DETECT;
@@ -173,7 +173,7 @@ OC.FileUpload.prototype = {
 	 * Set conflict resolution mode.
 	 * See CONFLICT_MODE_* constants.
 	 *
-	 * @param {int} mode conflict mode
+	 * @param {number} mode conflict mode
 	 */
 	setConflictMode: function(mode) {
 		this._conflictMode = mode;
@@ -214,6 +214,12 @@ OC.FileUpload.prototype = {
 		var self = this;
 		var data = this.data;
 		var file = this.getFile();
+
+		// if file is a directory, just create it
+		// files are handled separately
+		if (file.isDirectory) {
+			return this.uploader.ensureFolderExists(OC.joinPaths(this._targetFolder, file.fullPath));
+		}
 
 		if (self.aborted === true) {
 			return $.Deferred().resolve().promise();
@@ -316,26 +322,32 @@ OC.FileUpload.prototype = {
 		);
 	},
 
+	_delete: function() {
+		if (this.data.isChunked) {
+			this._deleteChunkFolder()
+		}
+		this.deleteUpload();
+	},
+
 	/**
 	 * Abort the upload
 	 */
 	abort: function() {
-		if (this.data.isChunked) {
-			this._deleteChunkFolder();
+		if (this.aborted) {
+			return
 		}
-		this.data.abort();
-		this.deleteUpload();
 		this.aborted = true;
+		this._delete();
 	},
 
 	/**
 	 * Fail the upload
 	 */
 	fail: function() {
-		this.deleteUpload();
-		if (this.data.isChunked) {
-			this._deleteChunkFolder();
+		if (this.aborted) {
+			return
 		}
+		this._delete();
 	},
 
 	/**
@@ -345,7 +357,7 @@ OC.FileUpload.prototype = {
 	 */
 	getResponse: function() {
 		var response = this.data.response();
-		if (response.errorThrown) {
+		if (response.errorThrown || response.textStatus === 'error') {
 			// attempt parsing Sabre exception is available
 			var xml = response.jqXHR.responseXML;
 			if (xml && xml.documentElement.localName === 'error' && xml.documentElement.namespaceURI === 'DAV:') {
@@ -377,7 +389,7 @@ OC.FileUpload.prototype = {
 	/**
 	 * Returns the status code from the response
 	 *
-	 * @return {int} status code
+	 * @return {number} status code
 	 */
 	getResponseStatus: function() {
 		if (this.uploader.isXHRUpload()) {
@@ -509,7 +521,7 @@ OC.Uploader.prototype = _.extend({
 	/**
 	 * Returns whether an XHR upload will be used
 	 *
-	 * @return {bool} true if XHR upload will be used,
+	 * @return {boolean} true if XHR upload will be used,
 	 * false for iframe upload
 	 */
 	isXHRUpload: function () {
@@ -586,7 +598,10 @@ OC.Uploader.prototype = _.extend({
 		_.each(uploads, function(upload) {
 			self._uploads[upload.data.uploadId] = upload;
 		});
-		self.totalToUpload = _.reduce(uploads, function(memo, upload) { return memo+upload.getFile().size; }, 0);
+		if (!self._uploading) {
+			self.totalToUpload = 0;
+		}
+		self.totalToUpload += _.reduce(uploads, function(memo, upload) { return memo+upload.getFile().size; }, 0);
 		var semaphore = new OCA.Files.Semaphore(5);
 		var promises = _.map(uploads, function(upload) {
 			return semaphore.acquire().then(function(){
@@ -647,7 +662,7 @@ OC.Uploader.prototype = _.extend({
 	/**
 	 * Returns an upload by id
 	 *
-	 * @param {int} data uploadId
+	 * @param {number} data uploadId
 	 * @return {OC.FileUpload} file upload
 	 */
 	getUpload: function(data) {
@@ -670,7 +685,26 @@ OC.Uploader.prototype = _.extend({
 			return;
 		}
 
-		delete this._uploads[upload.data.uploadId];
+		// defer as some calls/chunks might still be busy failing, so we need
+		// the upload info there still
+		var self = this;
+		var uploadId = upload.data.uploadId;
+		// mark as deleted for the progress bar
+		this._uploads[uploadId].deleted = true;
+		window.setTimeout(function() {
+			delete self._uploads[uploadId];
+		}, 5000)
+	},
+
+	_activeUploadCount: function() {
+		var count = 0;
+		for (var key in this._uploads) {
+			if (!this._uploads[key].deleted) {
+				count++;
+			}
+		}
+
+		return count;
 	},
 
 	showUploadCancelMessage: _.debounce(function() {
@@ -773,6 +807,10 @@ OC.Uploader.prototype = _.extend({
 				// no list to check against
 				return true;
 			}
+			if (upload.getTargetFolder() !== fileList.getCurrentDirectory()) {
+				// not uploading to the current folder
+				return true;
+			}
 			var fileInfo = fileList.findFile(file.name);
 			if (fileInfo) {
 				conflicts.push([
@@ -847,7 +885,7 @@ OC.Uploader.prototype = _.extend({
 	 * Returns whether the given file is known to be a received shared file
 	 *
 	 * @param {Object} file file
-	 * @return {bool} true if the file is a shared file
+	 * @return {boolean} true if the file is a shared file
 	 */
 	_isReceivedSharedFile: function(file) {
 		if (!window.FileList) {
@@ -892,6 +930,7 @@ OC.Uploader.prototype = _.extend({
 		if ($uploadEl.exists()) {
 			this.progressBar.on('cancel', function() {
 				self.cancelUploads();
+				self.showUploadCancelMessage();
 			});
 
 			this.fileUploadParam = {
@@ -899,7 +938,7 @@ OC.Uploader.prototype = _.extend({
 				dropZone: options.dropZone, // restrict dropZone to content div
 				autoUpload: false,
 				sequentialUploads: false,
-				limitConcurrentUploads: 10,
+				limitConcurrentUploads: 4,
 				/**
 				 * on first add of every selection
 				 * - check all files of originalFiles array with files in dir
@@ -994,7 +1033,8 @@ OC.Uploader.prototype = _.extend({
 						freeSpace = $('#free_space').val()
 					} else if (upload.getTargetFolder().indexOf(self.fileList.getCurrentDirectory()) === 0) {
 						// Check subdirectory free space if file is uploaded there
-						var targetSubdir = upload._targetFolder.replace(self.fileList.getCurrentDirectory(), '')
+						// Retrieve the folder destination name
+						var targetSubdir = upload._targetFolder.split('/').pop()
 						freeSpace = parseInt(upload.uploader.fileList.getModelForFile(targetSubdir).get('quotaAvailableBytes'))
 					}
 					if (freeSpace >= 0 && selection.totalBytes > freeSpace) {
@@ -1061,6 +1101,10 @@ OC.Uploader.prototype = _.extend({
 					var upload = self.getUpload(data);
 					var status = null;
 					if (upload) {
+						if (upload.aborted) {
+							// uploads might fail with errors from the server when aborted
+							return
+						}
 						status = upload.getResponseStatus();
 					}
 					self.log('fail', e, upload);
@@ -1068,7 +1112,7 @@ OC.Uploader.prototype = _.extend({
 					self.removeUpload(upload);
 
 					if (data.textStatus === 'abort' || data.errorThrown === 'abort') {
-						self.showUploadCancelMessage();
+						return
 					} else if (status === 412) {
 						// file already exists
 						self.showConflict(upload);
@@ -1269,6 +1313,10 @@ OC.Uploader.prototype = _.extend({
 				fileupload.on('fileuploadchunksend', function(e, data) {
 					// modify the request to adjust it to our own chunking
 					var upload = self.getUpload(data);
+					if (!upload) {
+						// likely cancelled
+						return
+					}
 					var range = data.contentRange.split(' ')[1];
 					var chunkId = range.split('/')[0].split('-')[0];
 					data.url = OC.getRootPath() +
@@ -1284,9 +1332,9 @@ OC.Uploader.prototype = _.extend({
 
 					self._pendingUploadDoneCount++;
 
-					upload.done().then(function() {
+					upload.done().always(function() {
 						self._pendingUploadDoneCount--;
-						if (Object.keys(self._uploads).length === 0 && self._pendingUploadDoneCount === 0) {
+						if (self._activeUploadCount() === 0 && self._pendingUploadDoneCount === 0) {
 							// All the uploads ended and there is no pending
 							// operation, so hide the progress bar.
 							// Note that this happens here only with chunked
@@ -1300,9 +1348,13 @@ OC.Uploader.prototype = _.extend({
 							// hides the progress bar in that case).
 							self._hideProgressBar();
 						}
-
+					}).done(function() {
 						self.trigger('done', e, upload);
 					}).fail(function(status, response) {
+						if (upload.aborted) {
+							return
+						}
+
 						var message = response.message;
 						if (status === 507) {
 							// not enough space

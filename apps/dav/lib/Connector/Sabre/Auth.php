@@ -13,9 +13,8 @@
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -32,7 +31,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\DAV\Connector\Sabre;
 
 use Exception;
@@ -244,7 +242,7 @@ class Auth extends AbstractBasic {
 			}
 		}
 
-		if (!$this->userSession->isLoggedIn() && in_array('XMLHttpRequest', explode(',', $request->getHeader('X-Requested-With')))) {
+		if (!$this->userSession->isLoggedIn() && in_array('XMLHttpRequest', explode(',', $request->getHeader('X-Requested-With') ?? ''))) {
 			// do not re-authenticate over ajax, use dummy auth name to prevent browser popup
 			$response->addHeader('WWW-Authenticate','DummyBasic realm="' . $this->realm . '"');
 			$response->setStatus(401);

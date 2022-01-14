@@ -24,7 +24,7 @@ $default-height: 34px;
 
 /* Simple selector to allow easy overriding */
 select,
-button,
+button:not(.button-vue),
 input,
 textarea,
 div[contenteditable=true],
@@ -43,7 +43,7 @@ div[contenteditable=false] {
 /* Default global values */
 div.select2-drop .select2-search input, // TODO: REMOVE WHEN DROPPING SELECT2
 select,
-button, .button,
+button:not(.button-vue), .button,
 input:not([type='range']),
 textarea,
 div[contenteditable=true],
@@ -168,11 +168,11 @@ input {
 
 /* 'Click' inputs */
 select,
-button, .button,
+button:not(.button-vue), .button,
 input[type='button'],
 input[type='submit'],
 input[type='reset'] {
-	padding: 6px 12px;
+	padding: 6px 16px;
 	width: auto;
 	min-height: $default-height;
 	cursor: pointer;
@@ -184,7 +184,7 @@ input[type='reset'] {
 	}
 }
 select,
-button, .button {
+button:not(.button-vue), .button {
 	* {
 		cursor: pointer;
 	}
@@ -197,7 +197,7 @@ button, .button {
 }
 
 /* Buttons */
-button, .button,
+button:not(.button-vue), .button,
 input[type='button'],
 input[type='submit'],
 input[type='reset'] {
@@ -215,7 +215,7 @@ input[type='reset'] {
 		color: #fff !important;
 	}
 }
-button, .button {
+button:not(.button-vue):not(.action-button), .button {
 	> span {
 		/* icon position inside buttons */
 		&[class^='icon-'],
@@ -366,6 +366,12 @@ input {
 			&:focus + label:before {
 				border-color: var(--color-primary-element);
 			}
+			&:focus-visible + label {
+				outline-style: solid;
+				outline-color: var(--color-main-text);
+				outline-width: 1px;
+				outline-offset: 2px;
+			}
 			&:checked + label:before,
 			&.checkbox:indeterminate + label:before {
 			/* ^ :indeterminate have a strange behavior on radio,
@@ -479,6 +485,10 @@ div.select2-drop {
 			text-overflow: ellipsis;
 			span {
 				cursor: pointer;
+				em {
+					cursor: inherit;
+					background: unset;
+				}
 			}
 		}
 		.select2-result,
@@ -885,7 +895,7 @@ div.select2-container {
 }
 
 /* Progressbar */
-progress {
+progress:not(.vue) {
 	display: block;
 	width: 100%;
 	padding: 0;

@@ -8,7 +8,7 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -25,7 +25,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Files_External\Tests\Controller;
 
 use OCA\Files_External\Controller\GlobalStoragesController;
@@ -129,6 +128,36 @@ abstract class StoragesControllerTest extends \Test\TestCase {
 		$data = $response->getData();
 		$this->assertEquals(Http::STATUS_CREATED, $response->getStatus());
 		$this->assertEquals($storageConfig, $data);
+	}
+
+	public function testAddLocalStorageWhenDisabled() {
+		$authMech = $this->getAuthMechMock();
+		$backend = $this->getBackendMock();
+
+		$storageConfig = new StorageConfig(1);
+		$storageConfig->setMountPoint('mount');
+		$storageConfig->setBackend($backend);
+		$storageConfig->setAuthMechanism($authMech);
+		$storageConfig->setBackendOptions([]);
+
+		$this->service->expects($this->never())
+			->method('createStorage');
+		$this->service->expects($this->never())
+			->method('addStorage');
+
+		$response = $this->controller->create(
+			'mount',
+			'local',
+			'\OCA\Files_External\Lib\Auth\NullMechanism',
+			[],
+			[],
+			[],
+			[],
+			null
+		);
+
+		$data = $response->getData();
+		$this->assertEquals(Http::STATUS_FORBIDDEN, $response->getStatus());
 	}
 
 	public function testUpdateStorage() {
@@ -338,7 +367,9 @@ abstract class StoragesControllerTest extends \Test\TestCase {
 		$response = $this->controller->show(1);
 
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
-		$this->assertEquals($storageConfig, $response->getData());
+		$expected = $storageConfig->jsonSerialize();
+		$expected['can_edit'] = false;
+		$this->assertEquals($expected, $response->getData());
 	}
 
 	public function validateStorageProvider() {

@@ -17,14 +17,13 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\L10N;
 
 use OCP\IConfig;
@@ -46,7 +45,7 @@ class LanguageIterator implements ILanguageIterator {
 	/**
 	 * Rewind the Iterator to the first element
 	 */
-	public function rewind() {
+	public function rewind(): void {
 		$this->i = 0;
 	}
 
@@ -113,7 +112,7 @@ class LanguageIterator implements ILanguageIterator {
 	 *
 	 * @since 14.0.0
 	 */
-	public function next() {
+	public function next(): void {
 		++$this->i;
 	}
 

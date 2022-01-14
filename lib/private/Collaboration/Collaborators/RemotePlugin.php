@@ -5,7 +5,7 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Julius Härtl <jus@bitgrid.net>
  *
  * @license GNU AGPL version 3 or any later version
@@ -17,14 +17,13 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\Collaboration\Collaborators;
 
 use OCP\Collaboration\Collaborators\ISearchPlugin;
@@ -68,7 +67,12 @@ class RemotePlugin implements ISearchPlugin {
 		$resultType = new SearchResultType('remotes');
 
 		// Search in contacts
-		$addressBookContacts = $this->contactsManager->search($search, ['CLOUD', 'FN'], ['limit' => $limit, 'offset' => $offset]);
+		$addressBookContacts = $this->contactsManager->search($search, ['CLOUD', 'FN'], [
+			'limit' => $limit,
+			'offset' => $offset,
+			'enumeration' => false,
+			'fullmatch' => false,
+		]);
 		foreach ($addressBookContacts as $contact) {
 			if (isset($contact['isLocalSystemBook'])) {
 				continue;
@@ -87,7 +91,7 @@ class RemotePlugin implements ISearchPlugin {
 						$cloudIdType = $cloudIdData['type'];
 					}
 					try {
-						list($remoteUser, $serverUrl) = $this->splitUserRemote($cloudId);
+						[$remoteUser, $serverUrl] = $this->splitUserRemote($cloudId);
 					} catch (\InvalidArgumentException $e) {
 						continue;
 					}
@@ -103,7 +107,8 @@ class RemotePlugin implements ISearchPlugin {
 							'value' => [
 								'shareType' => IShare::TYPE_USER,
 								'shareWith' => $remoteUser
-							]
+							],
+							'shareWithDisplayNameUnique' => $contact['EMAIL'] !== null && $contact['EMAIL'] !== '' ? $contact['EMAIL'] : $contact['UID'],
 						];
 					}
 
@@ -150,7 +155,7 @@ class RemotePlugin implements ISearchPlugin {
 		 */
 		if (!$searchResult->hasExactIdMatch($resultType) && $this->cloudIdManager->isValidCloudId($search) && $offset === 0) {
 			try {
-				list($remoteUser, $serverUrl) = $this->splitUserRemote($search);
+				[$remoteUser, $serverUrl] = $this->splitUserRemote($search);
 				$localUser = $this->userManager->get($remoteUser);
 				if ($localUser === null || $search !== $localUser->getCloudId()) {
 					$result['exact'][] = [

@@ -1,9 +1,12 @@
 /**
  * @copyright Copyright (c) 2019 John Molakvoæ <skjnldsv@protonmail.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  *
- * @license GNU AGPL version 3 or any later version
+ * @license AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,7 +30,7 @@ import { generateOcsUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 import Share from '../models/Share'
 
-const shareUrl = generateOcsUrl('apps/files_sharing/api/v1', 2) + 'shares'
+const shareUrl = generateOcsUrl('apps/files_sharing/api/v1/shares')
 const headers = {
 	'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
 }
@@ -37,7 +40,7 @@ export default {
 		/**
 		 * Create a new share
 		 *
-		 * @param {Object} data destructuring object
+		 * @param {object} data destructuring object
 		 * @param {string} data.path  path to the file/folder which should be shared
 		 * @param {number} data.shareType  0 = user; 1 = group; 3 = public link; 6 = federated cloud share
 		 * @param {string} data.shareWith  user/group id with which the file should be shared (optional for shareType > 1)
@@ -47,7 +50,7 @@ export default {
 		 * @param {boolean} [data.sendPasswordByTalk=false] send the password via a talk conversation
 		 * @param {string} [data.expireDate=''] expire the shareautomatically after
 		 * @param {string} [data.label=''] custom label
-		 * @returns {Share} the new share
+		 * @return {Share} the new share
 		 * @throws {Error}
 		 */
 		async createShare({ path, permissions, shareType, shareWith, publicUpload, password, sendPasswordByTalk, expireDate, label }) {
@@ -59,7 +62,11 @@ export default {
 				return new Share(request.data.ocs.data)
 			} catch (error) {
 				console.error('Error while creating share', error)
-				OC.Notification.showTemporary(t('files_sharing', 'Error creating the share'), { type: 'error' })
+				const errorMessage = error?.response?.data?.ocs?.meta?.message
+				OC.Notification.showTemporary(
+					errorMessage ? t('files_sharing', 'Error creating the share: {errorMessage}', { errorMessage }) : t('files_sharing', 'Error creating the share'),
+					{ type: 'error' }
+				)
 				throw error
 			}
 		},
@@ -79,7 +86,11 @@ export default {
 				return true
 			} catch (error) {
 				console.error('Error while deleting share', error)
-				OC.Notification.showTemporary(t('files_sharing', 'Error deleting the share'), { type: 'error' })
+				const errorMessage = error?.response?.data?.ocs?.meta?.message
+				OC.Notification.showTemporary(
+					errorMessage ? t('files_sharing', 'Error deleting the share: {errorMessage}', { errorMessage }) : t('files_sharing', 'Error deleting the share'),
+					{ type: 'error' }
+				)
 				throw error
 			}
 		},
@@ -88,7 +99,7 @@ export default {
 		 * Update a share
 		 *
 		 * @param {number} id share id
-		 * @param {Object} properties key-value object of the properties to update
+		 * @param {object} properties key-value object of the properties to update
 		 */
 		async updateShare(id, properties) {
 			try {
@@ -100,7 +111,11 @@ export default {
 			} catch (error) {
 				console.error('Error while updating share', error)
 				if (error.response.status !== 400) {
-					OC.Notification.showTemporary(t('files_sharing', 'Error updating the share'), { type: 'error' })
+					const errorMessage = error?.response?.data?.ocs?.meta?.message
+					OC.Notification.showTemporary(
+						errorMessage ? t('files_sharing', 'Error updating the share: {errorMessage}', { errorMessage }) : t('files_sharing', 'Error updating the share'),
+						{ type: 'error' }
+					)
 				}
 				const message = error.response.data.ocs.meta.message
 				throw new Error(message)

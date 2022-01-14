@@ -16,7 +16,7 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -33,10 +33,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Files\Cache;
 
+use Doctrine\DBAL\Exception;
 use OC\Files\Filesystem;
+use OC\Files\Storage\Wrapper\Jail;
+use OC\Files\Storage\Wrapper\Encoding;
 use OC\Hooks\BasicEmitter;
 use OCP\Files\Cache\IScanner;
 use OCP\Files\ForbiddenException;
@@ -108,7 +110,7 @@ class Scanner extends BasicEmitter implements IScanner {
 	 * *
 	 *
 	 * @param string $path
-	 * @return array an array of metadata of the file
+	 * @return array|null an array of metadata of the file
 	 */
 	protected function getData($path) {
 		$data = $this->storage->getMetaData($path);
@@ -127,7 +129,7 @@ class Scanner extends BasicEmitter implements IScanner {
 	 * @param array|null|false $cacheData existing data in the cache for the file to be scanned
 	 * @param bool $lock set to false to disable getting an additional read lock during scanning
 	 * @param null $data the metadata for the file, as returned by the storage
-	 * @return array an array of metadata of the scanned file
+	 * @return array|null an array of metadata of the scanned file
 	 * @throws \OCP\Lock\LockedException
 	 */
 	public function scanFile($file, $reuseExisting = 0, $parentId = -1, $cacheData = null, $lock = true, $data = null) {
@@ -322,7 +324,7 @@ class Scanner extends BasicEmitter implements IScanner {
 	 * @param bool $recursive
 	 * @param int $reuse
 	 * @param bool $lock set to false to disable getting an additional read lock during scanning
-	 * @return array an array of the meta data of the scanned file or folder
+	 * @return array|null an array of the meta data of the scanned file or folder
 	 */
 	public function scan($path, $recursive = self::SCAN_RECURSIVE, $reuse = -1, $lock = true) {
 		if ($reuse === -1) {
@@ -415,7 +417,20 @@ class Scanner extends BasicEmitter implements IScanner {
 		$childQueue = [];
 		$newChildNames = [];
 		foreach ($newChildren as $fileMeta) {
-			$file = $fileMeta['name'];
+			$permissions = isset($fileMeta['scan_permissions']) ? $fileMeta['scan_permissions'] : $fileMeta['permissions'];
+			if ($permissions === 0) {
+				continue;
+			}
+			$originalFile = $fileMeta['name'];
+			$file = trim(\OC\Files\Filesystem::normalizePath($originalFile), '/');
+			if (trim($originalFile, '/') !== $file) {
+				// encoding mismatch, might require compatibility wrapper
+				\OC::$server->getLogger()->debug('Scanner: Skipping non-normalized file name "'. $originalFile . '" in path "' . $path . '".', ['app' => 'core']);
+				$this->emit('\OC\Files\Cache\Scanner', 'normalizedNameMismatch', [$path ? $path . '/' . $originalFile : $originalFile]);
+				// skip this entry
+				continue;
+			}
+
 			$newChildNames[] = $file;
 			$child = $path ? $path . '/' . $file : $file;
 			try {
@@ -433,7 +448,7 @@ class Scanner extends BasicEmitter implements IScanner {
 						$size += $data['size'];
 					}
 				}
-			} catch (\Doctrine\DBAL\DBALException $ex) {
+			} catch (Exception $ex) {
 				// might happen if inserting duplicate while a scanning
 				// process is running in parallel
 				// log and ignore
@@ -495,19 +510,31 @@ class Scanner extends BasicEmitter implements IScanner {
 	 * walk over any folders that are not fully scanned yet and scan them
 	 */
 	public function backgroundScan() {
-		if (!$this->cache->inCache('')) {
-			$this->runBackgroundScanJob(function () {
-				$this->scan('', self::SCAN_RECURSIVE, self::REUSE_ETAG);
-			}, '');
+		if ($this->storage->instanceOfStorage(Jail::class)) {
+			// for jail storage wrappers (shares, groupfolders) we run the background scan on the source storage
+			// this is mainly done because the jail wrapper doesn't implement `getIncomplete` (because it would be inefficient).
+			//
+			// Running the scan on the source storage might scan more than "needed", but the unscanned files outside the jail will
+			// have to be scanned at some point anyway.
+			$unJailedScanner = $this->storage->getUnjailedStorage()->getScanner();
+			$unJailedScanner->backgroundScan();
 		} else {
-			$lastPath = null;
-			while (($path = $this->cache->getIncomplete()) !== false && $path !== $lastPath) {
-				$this->runBackgroundScanJob(function () use ($path) {
-					$this->scan($path, self::SCAN_RECURSIVE_INCOMPLETE, self::REUSE_ETAG | self::REUSE_SIZE);
-				}, $path);
-				// FIXME: this won't proceed with the next item, needs revamping of getIncomplete()
-				// to make this possible
-				$lastPath = $path;
+			if (!$this->cache->inCache('')) {
+				// if the storage isn't in the cache yet, just scan the root completely
+				$this->runBackgroundScanJob(function () {
+					$this->scan('', self::SCAN_RECURSIVE, self::REUSE_ETAG);
+				}, '');
+			} else {
+				$lastPath = null;
+				// find any path marked as unscanned and run the scanner until no more paths are unscanned (or we get stuck)
+				while (($path = $this->cache->getIncomplete()) !== false && $path !== $lastPath) {
+					$this->runBackgroundScanJob(function () use ($path) {
+						$this->scan($path, self::SCAN_RECURSIVE_INCOMPLETE, self::REUSE_ETAG | self::REUSE_SIZE);
+					}, $path);
+					// FIXME: this won't proceed with the next item, needs revamping of getIncomplete()
+					// to make this possible
+					$lastPath = $path;
+				}
 			}
 		}
 	}

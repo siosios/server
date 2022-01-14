@@ -4,6 +4,7 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -14,14 +15,13 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\User_LDAP\Jobs;
 
 use OC\BackgroundJob\TimedJob;
@@ -38,6 +38,7 @@ use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\IUserManager;
 use OCP\Notification\IManager;
+use Psr\Log\LoggerInterface;
 
 class Sync extends TimedJob {
 	public const MAX_INTERVAL = 12 * 60 * 60; // 12h
@@ -58,6 +59,8 @@ class Sync extends TimedJob {
 	protected $dbc;
 	/** @var  IUserManager */
 	protected $ncUserManager;
+	/** @var  LoggerInterface */
+	protected $logger;
 	/** @var  IManager */
 	protected $notificationManager;
 	/** @var ConnectionFactory */
@@ -314,7 +317,7 @@ class Sync extends TimedJob {
 		if (isset($argument['ldapWrapper'])) {
 			$this->ldap = $argument['ldapWrapper'];
 		} else {
-			$this->ldap = new LDAP();
+			$this->ldap = new LDAP($this->config->getSystemValueString('ldap_log_file'));
 		}
 
 		if (isset($argument['avatarManager'])) {
@@ -333,6 +336,12 @@ class Sync extends TimedJob {
 			$this->ncUserManager = $argument['ncUserManager'];
 		} else {
 			$this->ncUserManager = \OC::$server->getUserManager();
+		}
+
+		if (isset($argument['logger'])) {
+			$this->logger = $argument['logger'];
+		} else {
+			$this->logger = \OC::$server->get(LoggerInterface::class);
 		}
 
 		if (isset($argument['notificationManager'])) {
@@ -365,7 +374,8 @@ class Sync extends TimedJob {
 				$this->userManager,
 				$this->ldapHelper,
 				$this->config,
-				$this->ncUserManager
+				$this->ncUserManager,
+				$this->logger
 			);
 		}
 	}

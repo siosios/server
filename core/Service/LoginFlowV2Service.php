@@ -17,14 +17,13 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\Core\Service;
 
 use OC\Authentication\Exceptions\InvalidTokenException;
@@ -176,6 +175,23 @@ class LoginFlowV2Service {
 			IToken::PERMANENT_TOKEN,
 			IToken::DO_NOT_REMEMBER
 		);
+
+		$data->setLoginName($loginName);
+		$data->setServer($server);
+
+		// Properly encrypt
+		$data->setAppPassword($this->encryptPassword($appPassword, $data->getPublicKey()));
+
+		$this->mapper->update($data);
+		return true;
+	}
+
+	public function flowDoneWithAppPassword(string $loginToken, string $server, string $loginName, string $appPassword): bool {
+		try {
+			$data = $this->mapper->getByLoginToken($loginToken);
+		} catch (DoesNotExistException $e) {
+			return false;
+		}
 
 		$data->setLoginName($loginName);
 		$data->setServer($server);

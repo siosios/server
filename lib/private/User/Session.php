@@ -19,7 +19,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Sandro Lutz <sandro.lutz@temparus.ch>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -36,7 +36,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\User;
 
 use OC;
@@ -124,7 +123,7 @@ class Session implements IUserSession, Emitter {
 	 * @param Manager $manager
 	 * @param ISession $session
 	 * @param ITimeFactory $timeFactory
-	 * @param IProvider $tokenProvider
+	 * @param IProvider|null $tokenProvider
 	 * @param IConfig $config
 	 * @param ISecureRandom $random
 	 * @param ILockdownManager $lockdownManager
@@ -133,7 +132,7 @@ class Session implements IUserSession, Emitter {
 	public function __construct(Manager $manager,
 								ISession $session,
 								ITimeFactory $timeFactory,
-								$tokenProvider,
+								?IProvider $tokenProvider,
 								IConfig $config,
 								ISecureRandom $random,
 								ILockdownManager $lockdownManager,
@@ -599,6 +598,8 @@ class Session implements IUserSession, Emitter {
 
 					return true;
 				}
+				// If credentials were provided, they need to be valid, otherwise we do boom
+				throw new LoginException();
 			} catch (PasswordLoginForbiddenException $ex) {
 				// Nothing to do
 			}
@@ -647,7 +648,7 @@ class Session implements IUserSession, Emitter {
 			// Ignore and use empty string instead
 		}
 
-		$this->manager->emit('\OC\User', 'preLogin', [$uid, $password]);
+		$this->manager->emit('\OC\User', 'preLogin', [$dbToken->getLoginName(), $password]);
 
 		$user = $this->manager->get($uid);
 		if (is_null($user)) {
@@ -680,7 +681,7 @@ class Session implements IUserSession, Emitter {
 			// User does not exist
 			return false;
 		}
-		$name = isset($request->server['HTTP_USER_AGENT']) ? $request->server['HTTP_USER_AGENT'] : 'unknown browser';
+		$name = isset($request->server['HTTP_USER_AGENT']) ? utf8_encode($request->server['HTTP_USER_AGENT']) : 'unknown browser';
 		try {
 			$sessionId = $this->session->getId();
 			$pwd = $this->getPassword($password);
@@ -749,6 +750,7 @@ class Session implements IUserSession, Emitter {
 			}
 
 			$dbToken->setLastCheck($now);
+			$this->tokenProvider->updateToken($dbToken);
 			return true;
 		}
 
@@ -766,6 +768,7 @@ class Session implements IUserSession, Emitter {
 		}
 
 		$dbToken->setLastCheck($now);
+		$this->tokenProvider->updateToken($dbToken);
 		return true;
 	}
 
@@ -787,9 +790,14 @@ class Session implements IUserSession, Emitter {
 
 		// Check if login names match
 		if (!is_null($user) && $dbToken->getLoginName() !== $user) {
-			// TODO: this makes it imposssible to use different login names on browser and client
+			// TODO: this makes it impossible to use different login names on browser and client
 			// e.g. login by e-mail 'user@example.com' on browser for generating the token will not
 			//      allow to use the client token with the login name 'user'.
+			$this->logger->error('App token login name does not match', [
+				'tokenLoginName' => $dbToken->getLoginName(),
+				'sessionLoginName' => $user,
+			]);
+
 			return false;
 		}
 
@@ -832,8 +840,18 @@ class Session implements IUserSession, Emitter {
 			return false;
 		}
 
-		// Set the session variable so we know this is an app password
-		$this->session->set('app_password', $token);
+		try {
+			$dbToken = $this->tokenProvider->getToken($token);
+		} catch (InvalidTokenException $e) {
+			// Can't really happen but better save than sorry
+			return true;
+		}
+
+		// Remember me tokens are not app_passwords
+		if ($dbToken->getRemember() === IToken::DO_NOT_REMEMBER) {
+			// Set the session variable so we know this is an app password
+			$this->session->set('app_password', $token);
+		}
 
 		return true;
 	}

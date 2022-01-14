@@ -24,7 +24,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Files\Storage\Wrapper;
 
 use OCP\Files\Storage\IStorage;
@@ -380,11 +379,15 @@ class Availability extends Wrapper {
 
 	/** {@inheritdoc} */
 	public function hasUpdated($path, $time) {
-		$this->checkAvailability();
+		if (!$this->isAvailable()) {
+			return false;
+		}
 		try {
 			return parent::hasUpdated($path, $time);
 		} catch (StorageNotAvailableException $e) {
-			$this->setUnavailable($e);
+			// set unavailable but don't rethrow
+			$this->setUnavailable(null);
+			return false;
 		}
 	}
 
@@ -450,7 +453,7 @@ class Availability extends Wrapper {
 	/**
 	 * @throws StorageNotAvailableException
 	 */
-	protected function setUnavailable(StorageNotAvailableException $e) {
+	protected function setUnavailable(?StorageNotAvailableException $e): void {
 		$delay = self::RECHECK_TTL_SEC;
 		if ($e instanceof StorageAuthException) {
 			$delay = max(
@@ -460,7 +463,9 @@ class Availability extends Wrapper {
 			);
 		}
 		$this->getStorageCache()->setAvailability(false, $delay);
-		throw $e;
+		if ($e !== null) {
+			throw $e;
+		}
 	}
 
 

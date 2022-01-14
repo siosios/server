@@ -4,11 +4,12 @@
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Maxence Lange <maxence@nextcloud.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -25,11 +26,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Files_Sharing;
 
 use OC\Cache\CappedMemoryCache;
 use OC\Files\View;
+use OCA\Files_Sharing\Event\ShareMountedEvent;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\Config\IMountProvider;
 use OCP\Files\Storage\IStorageFactory;
 use OCP\IConfig;
@@ -54,15 +56,24 @@ class MountProvider implements IMountProvider {
 	 */
 	protected $logger;
 
+	/** @var IEventDispatcher */
+	protected $eventDispatcher;
+
 	/**
 	 * @param \OCP\IConfig $config
 	 * @param IManager $shareManager
 	 * @param ILogger $logger
 	 */
-	public function __construct(IConfig $config, IManager $shareManager, ILogger $logger) {
+	public function __construct(
+		IConfig $config,
+		IManager $shareManager,
+		ILogger $logger,
+		IEventDispatcher $eventDispatcher
+	) {
 		$this->config = $config;
 		$this->shareManager = $shareManager;
 		$this->logger = $logger;
+		$this->eventDispatcher = $eventDispatcher;
 	}
 
 
@@ -78,6 +89,8 @@ class MountProvider implements IMountProvider {
 		$shares = array_merge($shares, $this->shareManager->getSharedWith($user->getUID(), IShare::TYPE_GROUP, null, -1));
 		$shares = array_merge($shares, $this->shareManager->getSharedWith($user->getUID(), IShare::TYPE_CIRCLE, null, -1));
 		$shares = array_merge($shares, $this->shareManager->getSharedWith($user->getUID(), IShare::TYPE_ROOM, null, -1));
+		$shares = array_merge($shares, $this->shareManager->getSharedWith($user->getUID(), IShare::TYPE_DECK, null, -1));
+
 
 		// filter out excluded shares and group shares that includes self
 		$shares = array_filter($shares, function (\OCP\Share\IShare $share) use ($user) {
@@ -123,7 +136,14 @@ class MountProvider implements IMountProvider {
 					$view,
 					$foldersExistCache
 				);
+
+				$event = new ShareMountedEvent($mount);
+				$this->eventDispatcher->dispatchTyped($event);
+
 				$mounts[$mount->getMountPoint()] = $mount;
+				foreach ($event->getAdditionalMounts() as $additionalMount) {
+					$mounts[$additionalMount->getMountPoint()] = $additionalMount;
+				}
 			} catch (\Exception $e) {
 				$this->logger->logException($e);
 				$this->logger->error('Error while trying to create shared mount');

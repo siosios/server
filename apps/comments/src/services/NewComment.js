@@ -3,7 +3,7 @@
  *
  * @author John Molakvoæ <skjnldsv@protonmail.com>
  *
- * @license GNU AGPL version 3 or any later version
+ * @license AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -12,7 +12,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
@@ -31,7 +31,7 @@ import client from './DavClient'
  * @param {string} commentsType the ressource type
  * @param {number} ressourceId the ressource ID
  * @param {string} message the message
- * @returns {Object} the new comment
+ * @return {object} the new comment
  */
 export default async function(commentsType, ressourceId, message) {
 	const ressourcePath = ['', commentsType, ressourceId].join('/')

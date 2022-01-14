@@ -59,7 +59,8 @@
 					v-model="user"
 					type="text"
 					name="user"
-					autocapitalize="off"
+					autocapitalize="none"
+					autocorrect="off"
 					:autocomplete="autoCompleteAllowed ? 'on' : 'off'"
 					:placeholder="t('core', 'Username or email')"
 					:aria-label="t('core', 'Username or email')"
@@ -75,14 +76,16 @@
 					:type="passwordInputType"
 					class="password-with-toggle"
 					name="password"
-					:autocomplete="autoCompleteAllowed ? 'on' : 'off'"
+					autocorrect="off"
+					autocapitalize="none"
+					:autocomplete="autoCompleteAllowed ? 'current-password' : 'off'"
 					:placeholder="t('core', 'Password')"
 					:aria-label="t('core', 'Password')"
 					required>
 				<label for="password"
 					class="infield">{{ t('Password') }}</label>
 				<a href="#" class="toggle-password" @click.stop.prevent="togglePassword">
-					<img :src="toggleIcon">
+					<img :src="toggleIcon" :alt="t('core', 'Toggle password visibility')">
 				</a>
 			</p>
 
@@ -94,7 +97,7 @@
 			</p>
 			<p v-else-if="userDisabled"
 				class="warning userDisabledMsg">
-				{{ t('lib', 'User disabled') }}
+				{{ t('core', 'User disabled') }}
 			</p>
 
 			<p v-if="throttleDelay && throttleDelay > 5000"
@@ -140,7 +143,8 @@ export default {
 			default: '',
 		},
 		redirectUrl: {
-			type: String,
+			type: [String, Boolean],
+			default: false,
 		},
 		errors: {
 			type: Array,
@@ -152,6 +156,7 @@ export default {
 		},
 		throttleDelay: {
 			type: Number,
+			default: 0,
 		},
 		invertedColors: {
 			type: Boolean,

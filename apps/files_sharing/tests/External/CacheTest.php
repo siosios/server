@@ -2,12 +2,13 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -24,13 +25,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Files_Sharing\Tests\External;
 
 use OC\Federation\CloudIdManager;
 use OCA\Files_Sharing\Tests\TestCase;
 use OCP\Contacts\IManager;
 use OCP\Federation\ICloudIdManager;
+use OCP\IURLGenerator;
+use OCP\IUserManager;
 
 /**
  * Class Cache
@@ -66,7 +68,7 @@ class CacheTest extends TestCase {
 
 		$this->contactsManager = $this->createMock(IManager::class);
 
-		$this->cloudIdManager = new CloudIdManager($this->contactsManager);
+		$this->cloudIdManager = new CloudIdManager($this->contactsManager, $this->createMock(IURLGenerator::class), $this->createMock(IUserManager::class));
 		$this->remoteUser = $this->getUniqueID('remoteuser');
 
 		$this->storage = $this->getMockBuilder('\OCA\Files_Sharing\External\Storage')

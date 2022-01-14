@@ -25,7 +25,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Preview;
 
 use OCP\Files\File;
@@ -70,7 +69,7 @@ class SVG extends ProviderV2 {
 
 		//new image object
 		$image = new \OC_Image();
-		$image->loadFromData($svg);
+		$image->loadFromData((string) $svg);
 		//check if image object is valid
 		if ($image->valid()) {
 			$image->scaleDownToFit($maxX, $maxY);

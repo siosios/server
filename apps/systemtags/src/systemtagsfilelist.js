@@ -1,12 +1,27 @@
-/*
+/**
  * Copyright (c) 2016 Vincent Petry <pvince81@owncloud.com>
  *
- * This file is licensed under the Affero General Public License version 3
- * or later.
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
- * See the COPYING-README file.
+ * @license AGPL-3.0-or-later
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 (function() {
 	/**
 	 * @class OCA.SystemTags.FileList
@@ -15,7 +30,7 @@
 	 * @classdesc SystemTags file list.
 	 * Contains a list of files filtered by system tags.
 	 *
-	 * @param {Object} $el container element with existing markup for the #controls and a table
+	 * @param {object} $el container element with existing markup for the #controls and a table
 	 * @param {Array} [options] map of options, see other parameters
 	 * @param {Array.<string>} [options.systemTagIds] array of system tag ids to
 	 * filter by
@@ -33,7 +48,7 @@
 			/**
 			 * Array of system tag ids to filter by
 			 *
-			 * @type Array.<string>
+			 * @type {Array.<string>}
 			 */
 			_systemTagIds: [],
 			_lastUsedTags: [],
@@ -45,8 +60,8 @@
 
 			/**
 			 * @private
-			 * @param {Object} $el container element
-			 * @param {Object} [options] map of options, see other parameters
+			 * @param {object} $el container element
+			 * @param {object} [options] map of options, see other parameters
 			 */
 			initialize($el, options) {
 				OCA.Files.FileList.prototype.initialize.apply(this, arguments)
@@ -122,7 +137,7 @@
 								},
 							})
 						} else {
-							// eslint-disable-next-line standard/no-callback-literal
+							// eslint-disable-next-line node/no-callback-literal
 							callback([])
 						}
 					},
@@ -175,7 +190,7 @@
 			/**
 			 * Autocomplete function for dropdown results
 			 *
-			 * @param {Object} query select2 query object
+			 * @param {object} query select2 query object
 			 */
 			_queryTagsAutocomplete(query) {
 				OC.SystemTags.collection.fetch({

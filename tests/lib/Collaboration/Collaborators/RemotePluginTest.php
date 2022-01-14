@@ -30,6 +30,7 @@ use OCP\Collaboration\Collaborators\SearchResultType;
 use OCP\Contacts\IManager;
 use OCP\Federation\ICloudIdManager;
 use OCP\IConfig;
+use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
@@ -62,7 +63,7 @@ class RemotePluginTest extends TestCase {
 		$this->userManager = $this->createMock(IUserManager::class);
 		$this->config = $this->createMock(IConfig::class);
 		$this->contactsManager = $this->createMock(IManager::class);
-		$this->cloudIdManager = new CloudIdManager($this->contactsManager);
+		$this->cloudIdManager = new CloudIdManager($this->contactsManager, $this->createMock(IURLGenerator::class), $this->createMock(IUserManager::class));
 		$this->searchResult = new SearchResult();
 	}
 
@@ -133,7 +134,7 @@ class RemotePluginTest extends TestCase {
 			->method('search')
 			->willReturn([]);
 
-		list($remoteUser, $remoteUrl) = $this->plugin->splitUserRemote($remote);
+		[$remoteUser, $remoteUrl] = $this->plugin->splitUserRemote($remote);
 		$this->assertSame($expectedUser, $remoteUser);
 		$this->assertSame($expectedUrl, $remoteUrl);
 	}

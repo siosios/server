@@ -29,9 +29,13 @@
 		@close="close"
 		@update:active="setActiveTab"
 		@update:starred="toggleStarred"
-		@[defaultActionListener].stop.prevent="onDefaultAction">
+		@[defaultActionListener].stop.prevent="onDefaultAction"
+		@opening="handleOpening"
+		@opened="handleOpened"
+		@closing="handleClosing"
+		@closed="handleClosed">
 		<!-- TODO: create a standard to allow multiple elements here? -->
-		<template v-if="fileInfo" #primary-actions>
+		<template v-if="fileInfo" #description>
 			<LegacyView v-for="view in views"
 				:key="view.cid"
 				:component="view"
@@ -78,6 +82,9 @@
 import { encodePath } from '@nextcloud/paths'
 import $ from 'jquery'
 import axios from '@nextcloud/axios'
+import { emit } from '@nextcloud/event-bus'
+import moment from '@nextcloud/moment'
+
 import AppSidebar from '@nextcloud/vue/dist/Components/AppSidebar'
 import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 import EmptyContent from '@nextcloud/vue/dist/Components/EmptyContent'
@@ -105,6 +112,7 @@ export default {
 			loading: true,
 			fileInfo: null,
 			starLoading: false,
+			isFullScreen: false,
 		}
 	},
 
@@ -113,7 +121,8 @@ export default {
 		 * Current filename
 		 * This is bound to the Sidebar service and
 		 * is used to load a new file
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		file() {
 			return this.Sidebar.file
@@ -121,7 +130,8 @@ export default {
 
 		/**
 		 * List of all the registered tabs
-		 * @returns {Array}
+		 *
+		 * @return {Array}
 		 */
 		tabs() {
 			return this.Sidebar.tabs
@@ -129,7 +139,8 @@ export default {
 
 		/**
 		 * List of all the registered views
-		 * @returns {Array}
+		 *
+		 * @return {Array}
 		 */
 		views() {
 			return this.Sidebar.views
@@ -137,7 +148,8 @@ export default {
 
 		/**
 		 * Current user dav root path
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		davPath() {
 			const user = OC.getCurrentUser().uid
@@ -146,8 +158,9 @@ export default {
 
 		/**
 		 * Current active tab handler
+		 *
 		 * @param {string} id the tab id to set as active
-		 * @returns {string} the current active tab
+		 * @return {string} the current active tab
 		 */
 		activeTab() {
 			return this.Sidebar.activeTab
@@ -155,7 +168,8 @@ export default {
 
 		/**
 		 * Sidebar subtitle
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		subtitle() {
 			return `${this.size}, ${this.time}`
@@ -163,15 +177,26 @@ export default {
 
 		/**
 		 * File last modified formatted string
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		time() {
 			return OC.Util.relativeModifiedDate(this.fileInfo.mtime)
 		},
 
 		/**
+		 * File last modified full string
+		 *
+		 * @return {string}
+		 */
+		fullTime() {
+			return moment(this.fileInfo.mtime).format('LLL')
+		},
+
+		/**
 		 * File size formatted string
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		size() {
 			return OC.Util.humanFileSize(this.fileInfo.size)
@@ -179,7 +204,8 @@ export default {
 
 		/**
 		 * File background/figure to illustrate the sidebar header
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		background() {
 			return this.getPreviewIfAny(this.fileInfo)
@@ -188,7 +214,7 @@ export default {
 		/**
 		 * App sidebar v-binding object
 		 *
-		 * @returns {Object}
+		 * @return {object}
 		 */
 		appSidebar() {
 			if (this.fileInfo) {
@@ -197,12 +223,17 @@ export default {
 					'star-loading': this.starLoading,
 					active: this.activeTab,
 					background: this.background,
-					class: { 'has-preview': this.fileInfo.hasPreview },
+					class: {
+						'app-sidebar--has-preview': this.fileInfo.hasPreview,
+						'app-sidebar--full': this.isFullScreen,
+					},
 					compact: !this.fileInfo.hasPreview,
 					loading: this.loading,
 					starred: this.fileInfo.isFavourited,
 					subtitle: this.subtitle,
+					subtitleTooltip: this.fullTime,
 					title: this.fileInfo.name,
+					titleTooltip: this.fileInfo.name,
 				}
 			} else if (this.error) {
 				return {
@@ -222,7 +253,7 @@ export default {
 		/**
 		 * Default action object for the current file
 		 *
-		 * @returns {Object}
+		 * @return {object}
 		 */
 		defaultAction() {
 			return this.fileInfo
@@ -239,7 +270,7 @@ export default {
 		 * nothing is listening for a click if there
 		 * is no default action
 		 *
-		 * @returns {string|null}
+		 * @return {string|null}
 		 */
 		defaultActionListener() {
 			return this.defaultAction ? 'figure-click' : null
@@ -254,8 +285,8 @@ export default {
 		/**
 		 * Can this tab be displayed ?
 		 *
-		 * @param {Object} tab a registered tab
-		 * @returns {boolean}
+		 * @param {object} tab a registered tab
+		 * @return {boolean}
 		 */
 		canDisplay(tab) {
 			return tab.enabled(this.fileInfo)
@@ -281,8 +312,8 @@ export default {
 		 * Copied from https://github.com/nextcloud/server/blob/16e0887ec63591113ee3f476e0c5129e20180cde/apps/files/js/filelist.js#L1377
 		 * TODO: We also need this as a standalone library
 		 *
-		 * @param {Object} fileInfo the fileinfo
-		 * @returns {string} Url to the icon for mimeType
+		 * @param {object} fileInfo the fileinfo
+		 * @return {string} Url to the icon for mimeType
 		 */
 		getIconUrl(fileInfo) {
 			const mimeType = fileInfo.mimetype || 'application/octet-stream'
@@ -320,7 +351,7 @@ export default {
 		 * Toggle favourite state
 		 * TODO: better implementation
 		 *
-		 * @param {Boolean} state favourited or not
+		 * @param {boolean} state favourited or not
 		 */
 		async toggleStarred(state) {
 			try {
@@ -376,7 +407,7 @@ export default {
 		 * Open the sidebar for the given file
 		 *
 		 * @param {string} path the file path to load
-		 * @returns {Promise}
+		 * @return {Promise}
 		 * @throws {Error} loading failure
 		 */
 		async open(path) {
@@ -422,12 +453,37 @@ export default {
 			this.Sidebar.file = ''
 			this.resetData()
 		},
+
+		/**
+		 * Allow to set the Sidebar as fullscreen from OCA.Files.Sidebar
+		 *
+		 * @param {boolean} isFullScreen - Wether or not to render the Sidebar in fullscreen.
+		 */
+		setFullScreenMode(isFullScreen) {
+			this.isFullScreen = isFullScreen
+		},
+
+		/**
+		 * Emit SideBar events.
+		 */
+		handleOpening() {
+			emit('files:sidebar:opening')
+		},
+		handleOpened() {
+			emit('files:sidebar:opened')
+		},
+		handleClosing() {
+			emit('files:sidebar:closing')
+		},
+		handleClosed() {
+			emit('files:sidebar:closed')
+		},
 	},
 }
 </script>
 <style lang="scss" scoped>
 .app-sidebar {
-	&.has-preview::v-deep {
+	&--has-preview::v-deep {
 		.app-sidebar-header__figure {
 			background-size: cover;
 		}
@@ -438,6 +494,13 @@ export default {
 				background-size: contain;
 			}
 		}
+	}
+
+	&--full {
+		position: fixed !important;
+		z-index: 2025 !important;
+		top: 0 !important;
+		height: 100% !important;
 	}
 }
 </style>

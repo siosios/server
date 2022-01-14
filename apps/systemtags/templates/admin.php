@@ -19,9 +19,7 @@
  *
  */
 
-script('core', [
-	'dist/systemtags',
-]);
+script('core', 'systemtags');
 
 script('systemtags', 'admin');
 style('systemtags', 'settings');

@@ -21,6 +21,7 @@ class ComposerStaticInitFiles_Sharing
     );
 
     public static $classMap = array (
+        'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'OCA\\Files_Sharing\\Activity\\Filter' => __DIR__ . '/..' . '/../lib/Activity/Filter.php',
         'OCA\\Files_Sharing\\Activity\\Providers\\Base' => __DIR__ . '/..' . '/../lib/Activity/Providers/Base.php',
         'OCA\\Files_Sharing\\Activity\\Providers\\Downloads' => __DIR__ . '/..' . '/../lib/Activity/Providers/Downloads.php',
@@ -51,6 +52,8 @@ class ComposerStaticInitFiles_Sharing
         'OCA\\Files_Sharing\\Controller\\ShareesAPIController' => __DIR__ . '/..' . '/../lib/Controller/ShareesAPIController.php',
         'OCA\\Files_Sharing\\DeleteOrphanedSharesJob' => __DIR__ . '/..' . '/../lib/DeleteOrphanedSharesJob.php',
         'OCA\\Files_Sharing\\Event\\BeforeTemplateRenderedEvent' => __DIR__ . '/..' . '/../lib/Event/BeforeTemplateRenderedEvent.php',
+        'OCA\\Files_Sharing\\Event\\ShareLinkAccessedEvent' => __DIR__ . '/..' . '/../lib/Event/ShareLinkAccessedEvent.php',
+        'OCA\\Files_Sharing\\Event\\ShareMountedEvent' => __DIR__ . '/..' . '/../lib/Event/ShareMountedEvent.php',
         'OCA\\Files_Sharing\\Exceptions\\BrokenPath' => __DIR__ . '/..' . '/../lib/Exceptions/BrokenPath.php',
         'OCA\\Files_Sharing\\Exceptions\\S2SException' => __DIR__ . '/..' . '/../lib/Exceptions/S2SException.php',
         'OCA\\Files_Sharing\\Exceptions\\SharingRightsException' => __DIR__ . '/..' . '/../lib/Exceptions/SharingRightsException.php',
@@ -77,6 +80,9 @@ class ComposerStaticInitFiles_Sharing
         'OCA\\Files_Sharing\\Migration\\OwncloudGuestShareType' => __DIR__ . '/..' . '/../lib/Migration/OwncloudGuestShareType.php',
         'OCA\\Files_Sharing\\Migration\\SetAcceptedStatus' => __DIR__ . '/..' . '/../lib/Migration/SetAcceptedStatus.php',
         'OCA\\Files_Sharing\\Migration\\SetPasswordColumn' => __DIR__ . '/..' . '/../lib/Migration/SetPasswordColumn.php',
+        'OCA\\Files_Sharing\\Migration\\Version11300Date20201120141438' => __DIR__ . '/..' . '/../lib/Migration/Version11300Date20201120141438.php',
+        'OCA\\Files_Sharing\\Migration\\Version21000Date20201223143245' => __DIR__ . '/..' . '/../lib/Migration/Version21000Date20201223143245.php',
+        'OCA\\Files_Sharing\\Migration\\Version22000Date20210216084241' => __DIR__ . '/..' . '/../lib/Migration/Version22000Date20210216084241.php',
         'OCA\\Files_Sharing\\MountProvider' => __DIR__ . '/..' . '/../lib/MountProvider.php',
         'OCA\\Files_Sharing\\Notification\\Listener' => __DIR__ . '/..' . '/../lib/Notification/Listener.php',
         'OCA\\Files_Sharing\\Notification\\Notifier' => __DIR__ . '/..' . '/../lib/Notification/Notifier.php',

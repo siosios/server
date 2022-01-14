@@ -23,7 +23,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\User_LDAP\Command;
 
 use OCA\User_LDAP\Helper;
@@ -92,7 +91,7 @@ class CheckUser extends Command {
 			$uid = $input->getArgument('ocName');
 			$this->isAllowed($input->getOption('force'));
 			$this->confirmUserIsMapped($uid);
-			$exists = $this->backend->userExistsOnLDAP($uid);
+			$exists = $this->backend->userExistsOnLDAP($uid, true);
 			if ($exists === true) {
 				$output->writeln('The user is still available on LDAP.');
 				if ($input->getOption('update')) {

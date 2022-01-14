@@ -3,7 +3,6 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Bart Visscher <bartv@thisnet.nl>
- * @author Bjoern Schiessle <bjoern@schiessle.org>
  * @author Christopher Schäpers <kondou@ts.unde.re>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Clark Tomlinson <fallen013@gmail.com>
@@ -11,7 +10,7 @@
  * @author Guillaume COMPAGNON <gcompagnon@outlook.com>
  * @author Hendrik Leppelsack <hendrik@leppelsack.de>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Julius Haertl <jus@bitgrid.net>
  * @author Julius Härtl <jus@bitgrid.net>
@@ -41,7 +40,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC;
 
 use bantu\IniGetWrapper\IniGetWrapper;
@@ -49,12 +47,15 @@ use OC\Search\SearchQuery;
 use OC\Template\JSCombiner;
 use OC\Template\JSConfigHelper;
 use OC\Template\SCSSCacher;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\Defaults;
 use OCP\IConfig;
 use OCP\IInitialStateService;
 use OCP\INavigationManager;
+use OCP\IUserSession;
 use OCP\Support\Subscription\IRegistry;
+use OCP\UserStatus\IManager as IUserStatusManager;
 use OCP\Util;
 
 class TemplateLayout extends \OC_Template {
@@ -81,10 +82,6 @@ class TemplateLayout extends \OC_Template {
 		/** @var IInitialStateService */
 		$this->initialState = \OC::$server->get(IInitialStateService::class);
 
-		if (Util::isIE()) {
-			Util::addStyle('ie');
-		}
-
 		// Decide which page we show
 		if ($renderAs === TemplateResponse::RENDER_AS_USER) {
 			/** @var INavigationManager */
@@ -99,7 +96,7 @@ class TemplateLayout extends \OC_Template {
 
 			$this->initialState->provideInitialState('core', 'active-app', $this->navigationManager->getActiveEntry());
 			$this->initialState->provideInitialState('unified-search', 'limit-default', SearchQuery::LIMIT_DEFAULT);
-			Util::addScript('dist/unified-search', null, true);
+			Util::addScript('core', 'unified-search', 'core');
 
 			// Add navigation entry
 			$this->assign('application', '');
@@ -123,15 +120,32 @@ class TemplateLayout extends \OC_Template {
 					break;
 				}
 			}
-			$userDisplayName = \OC_User::getDisplayName();
+
+			$userDisplayName = false;
+			$user = \OC::$server->get(IUserSession::class)->getUser();
+			if ($user) {
+				$userDisplayName = $user->getDisplayName();
+			}
 			$this->assign('user_displayname', $userDisplayName);
 			$this->assign('user_uid', \OC_User::getUser());
 
-			if (\OC_User::getUser() === false) {
+			if ($user === null) {
 				$this->assign('userAvatarSet', false);
+				$this->assign('userStatus', false);
 			} else {
 				$this->assign('userAvatarSet', true);
 				$this->assign('userAvatarVersion', $this->config->getUserValue(\OC_User::getUser(), 'avatar', 'version', 0));
+				if (\OC::$server->get(IAppManager::class)->isEnabledForUser('user_status')) {
+					$userStatusManager = \OC::$server->get(IUserStatusManager::class);
+					$userStatuses = $userStatusManager->getUserStatuses([$user->getUID()]);
+					if (array_key_exists($user->getUID(), $userStatuses)) {
+						$this->assign('userStatus', $userStatuses[$user->getUID()]);
+					} else {
+						$this->assign('userStatus', false);
+					}
+				} else {
+					$this->assign('userStatus', false);
+				}
 			}
 
 			// check if app menu icons should be inverted
@@ -154,7 +168,11 @@ class TemplateLayout extends \OC_Template {
 			\OC_Util::addStyle('guest');
 			$this->assign('bodyid', 'body-login');
 
-			$userDisplayName = \OC_User::getDisplayName();
+			$userDisplayName = false;
+			$user = \OC::$server->get(IUserSession::class)->getUser();
+			if ($user) {
+				$userDisplayName = $user->getDisplayName();
+			}
 			$this->assign('user_displayname', $userDisplayName);
 			$this->assign('user_uid', \OC_User::getUser());
 		} elseif ($renderAs === TemplateResponse::RENDER_AS_PUBLIC) {
@@ -191,7 +209,8 @@ class TemplateLayout extends \OC_Template {
 		}
 
 		// Add the js files
-		$jsFiles = self::findJavascriptFiles(\OC_Util::$scripts);
+		// TODO: remove deprecated OC_Util injection
+		$jsFiles = self::findJavascriptFiles(array_merge(\OC_Util::$scripts, Util::getScripts()));
 		$this->assign('jsfiles', []);
 		if ($this->config->getSystemValue('installed', false) && $renderAs != TemplateResponse::RENDER_AS_ERROR) {
 			// this is on purpose outside of the if statement below so that the initial state is prefilled (done in the getConfig() call)

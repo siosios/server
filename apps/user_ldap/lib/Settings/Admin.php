@@ -4,8 +4,8 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -16,24 +16,23 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\User_LDAP\Settings;
 
 use OCA\User_LDAP\Configuration;
 use OCA\User_LDAP\Helper;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IL10N;
-use OCP\Settings\ISettings;
+use OCP\Settings\IDelegatedSettings;
 use OCP\Template;
 
-class Admin implements ISettings {
+class Admin implements IDelegatedSettings {
 	/** @var IL10N */
 	private $l;
 
@@ -98,5 +97,13 @@ class Admin implements ISettings {
 	 */
 	public function getPriority() {
 		return 5;
+	}
+
+	public function getName(): ?string {
+		return null; // Only one setting in this section
+	}
+
+	public function getAuthorizedAppConfig(): array {
+		return []; // Custom controller
 	}
 }

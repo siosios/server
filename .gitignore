@@ -156,5 +156,8 @@ Vagrantfile
 clover.xml
 
 # Tests - dependencies
-tests/acceptance/composer.lock
 tests/acceptance/vendor/
+
+composer.phar
+/lib/composer/bin
+/vendor-bin/**/vendor

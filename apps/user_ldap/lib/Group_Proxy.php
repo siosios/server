@@ -6,6 +6,7 @@
  * @author Christopher Schäpers <kondou@ts.unde.re>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Johannes Leuker <j.leuker@hosting.de>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Vinicius Cubas Brand <vinicius@eita.org.br>
@@ -25,12 +26,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\User_LDAP;
 
+use OCP\Group\Backend\INamedBackend;
 use OCP\Group\Backend\IGetDisplayNameBackend;
 
-class Group_Proxy extends Proxy implements \OCP\GroupInterface, IGroupLDAP, IGetDisplayNameBackend {
+class Group_Proxy extends Proxy implements \OCP\GroupInterface, IGroupLDAP, IGetDisplayNameBackend, INamedBackend {
 	private $backends = [];
 	private $refBackend = null;
 
@@ -289,7 +290,7 @@ class Group_Proxy extends Proxy implements \OCP\GroupInterface, IGroupLDAP, IGet
 	 * The connection needs to be closed manually.
 	 *
 	 * @param string $gid
-	 * @return resource of the LDAP connection
+	 * @return resource|\LDAP\Connection The LDAP connection
 	 */
 	public function getNewLDAPConnection($gid) {
 		return $this->handleRequest($gid, 'getNewLDAPConnection', [$gid]);
@@ -297,5 +298,14 @@ class Group_Proxy extends Proxy implements \OCP\GroupInterface, IGroupLDAP, IGet
 
 	public function getDisplayName(string $gid): string {
 		return $this->handleRequest($gid, 'getDisplayName', [$gid]);
+	}
+
+	/**
+	 * Backend name to be shown in group management
+	 * @return string the name of the backend to be shown
+	 * @since 22.0.0
+	 */
+	public function getBackendName(): string {
+		return 'LDAP';
 	}
 }

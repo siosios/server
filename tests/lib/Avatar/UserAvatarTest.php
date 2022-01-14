@@ -16,7 +16,7 @@ use OCP\Files\NotFoundException;
 use OCP\Files\SimpleFS\ISimpleFile;
 use OCP\IConfig;
 use OCP\IL10N;
-use OCP\ILogger;
+use Psr\Log\LoggerInterface;
 
 class UserAvatarTest extends \Test\TestCase {
 	/** @var Folder | \PHPUnit\Framework\MockObject\MockObject */
@@ -78,9 +78,12 @@ class UserAvatarTest extends \Test\TestCase {
 			}));
 
 		$file->method('getContent')
-			->willReturn($data);
+			->willReturnCallback(function () use (&$data) {
+				return $data;
+			});
 
-		$this->assertEquals($data, $this->avatar->get()->data());
+		$result = $this->avatar->get();
+		$this->assertTrue($result->valid());
 	}
 
 	public function testGetAvatarSizeMatch() {
@@ -255,8 +258,8 @@ class UserAvatarTest extends \Test\TestCase {
 	}
 
 	public function testMixPalette() {
-		$colorFrom = new \OC\Color(0,0,0);
-		$colorTo = new \OC\Color(6,12,18);
+		$colorFrom = new \OC\Color(0, 0, 0);
+		$colorTo = new \OC\Color(6, 12, 18);
 		$steps = 6;
 		$palette = $this->invokePrivate($this->avatar, 'mixPalette', [$steps, $colorFrom, $colorTo]);
 		foreach ($palette as $j => $color) {
@@ -265,7 +268,7 @@ class UserAvatarTest extends \Test\TestCase {
 			$incG = $colorTo->g / $steps * $j;
 			$incB = $colorTo->b / $steps * $j;
 			// ensure everything is equal
-			$this->assertEquals($color, new \OC\Color($incR, $incG,$incB));
+			$this->assertEquals($color, new \OC\Color($incR, $incG, $incB));
 		}
 		$hashToInt = $this->invokePrivate($this->avatar, 'hashToInt', ['abcdef', 18]);
 		$this->assertTrue(gettype($hashToInt) === 'integer');
@@ -286,7 +289,7 @@ class UserAvatarTest extends \Test\TestCase {
 			$this->folder,
 			$l,
 			$user,
-			$this->createMock(ILogger::class),
+			$this->createMock(LoggerInterface::class),
 			$this->config
 		);
 	}

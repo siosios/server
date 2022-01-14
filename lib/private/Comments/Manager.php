@@ -4,10 +4,11 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Joas Schilling <coding@schilljs.com>
- * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Simounet <contact@simounet.net>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  *
  * @license AGPL-3.0
@@ -25,12 +26,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Comments;
 
 use Doctrine\DBAL\Exception\DriverException;
 use Doctrine\DBAL\Exception\InvalidFieldNameException;
-use OCA\Comments\AppInfo\Application;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Comments\CommentsEvent;
 use OCP\Comments\IComment;
@@ -634,6 +633,7 @@ class Manager implements ICommentsManager {
 	 * @since 21.0.0
 	 */
 	public function getNumberOfUnreadCommentsForObjects(string $objectType, array $objectIds, IUser $user, $verb = ''): array {
+		$unreadComments = [];
 		$query = $this->dbConn->getQueryBuilder();
 		$query->select('c.object_id', $query->func()->count('c.id', 'num_comments'))
 			->from('comments', 'c')
@@ -643,7 +643,7 @@ class Manager implements ICommentsManager {
 				$query->expr()->eq('c.object_id', 'm.object_id')
 			))
 			->where($query->expr()->eq('c.object_type', $query->createNamedParameter($objectType)))
-			->andWhere($query->expr()->in('c.object_id', $query->createNamedParameter($objectIds, IQueryBuilder::PARAM_STR_ARRAY)))
+			->andWhere($query->expr()->in('c.object_id', $query->createParameter('ids')))
 			->andWhere($query->expr()->orX(
 				$query->expr()->gt('c.creation_timestamp', 'm.marker_datetime'),
 				$query->expr()->isNull('m.marker_datetime')
@@ -654,12 +654,16 @@ class Manager implements ICommentsManager {
 			$query->andWhere($query->expr()->eq('c.verb', $query->createNamedParameter($verb)));
 		}
 
-		$result = $query->execute();
 		$unreadComments = array_fill_keys($objectIds, 0);
-		while ($row = $result->fetch()) {
-			$unreadComments[$row['object_id']] = (int) $row['num_comments'];
+		foreach (array_chunk($objectIds, 1000) as $chunk) {
+			$query->setParameter('ids', $chunk, IQueryBuilder::PARAM_STR_ARRAY);
+
+			$result = $query->executeQuery();
+			while ($row = $result->fetch()) {
+				$unreadComments[$row['object_id']] = (int) $row['num_comments'];
+			}
+			$result->closeCursor();
 		}
-		$result->closeCursor();
 
 		return $unreadComments;
 	}
@@ -673,6 +677,10 @@ class Manager implements ICommentsManager {
 	 * @since 21.0.0
 	 */
 	public function getNumberOfCommentsForObjectSinceComment(string $objectType, string $objectId, int $lastRead, string $verb = ''): int {
+		if ($verb !== '') {
+			return $this->getNumberOfCommentsWithVerbsForObjectSinceComment($objectType, $objectId, $lastRead, [$verb]);
+		}
+
 		$query = $this->dbConn->getQueryBuilder();
 		$query->select($query->func()->count('id', 'num_messages'))
 			->from('comments')
@@ -680,11 +688,31 @@ class Manager implements ICommentsManager {
 			->andWhere($query->expr()->eq('object_id', $query->createNamedParameter($objectId)))
 			->andWhere($query->expr()->gt('id', $query->createNamedParameter($lastRead)));
 
-		if ($verb !== '') {
-			$query->andWhere($query->expr()->eq('verb', $query->createNamedParameter($verb)));
-		}
+		$result = $query->executeQuery();
+		$data = $result->fetch();
+		$result->closeCursor();
 
-		$result = $query->execute();
+		return (int) ($data['num_messages'] ?? 0);
+	}
+
+	/**
+	 * @param string $objectType
+	 * @param string $objectId
+	 * @param int $lastRead
+	 * @param string[] $verbs
+	 * @return int
+	 * @since 24.0.0
+	 */
+	public function getNumberOfCommentsWithVerbsForObjectSinceComment(string $objectType, string $objectId, int $lastRead, array $verbs): int {
+		$query = $this->dbConn->getQueryBuilder();
+		$query->select($query->func()->count('id', 'num_messages'))
+			->from('comments')
+			->where($query->expr()->eq('object_type', $query->createNamedParameter($objectType)))
+			->andWhere($query->expr()->eq('object_id', $query->createNamedParameter($objectId)))
+			->andWhere($query->expr()->gt('id', $query->createNamedParameter($lastRead)))
+			->andWhere($query->expr()->in('verb', $query->createNamedParameter($verbs, IQueryBuilder::PARAM_STR_ARRAY)));
+
+		$result = $query->executeQuery();
 		$data = $result->fetch();
 		$result->closeCursor();
 
@@ -1304,7 +1332,7 @@ class Manager implements ICommentsManager {
 	 * @since 21.0.0
 	 */
 	public function load(): void {
-		$this->initialStateService->provideInitialState(Application::APP_ID, 'max-message-length', IComment::MAX_MESSAGE_LENGTH);
-		Util::addScript(Application::APP_ID, 'comments-app');
+		$this->initialStateService->provideInitialState('comments', 'max-message-length', IComment::MAX_MESSAGE_LENGTH);
+		Util::addScript('comments', 'comments-app');
 	}
 }

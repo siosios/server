@@ -21,7 +21,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Files_External\Lib;
 
 /**
@@ -168,10 +167,8 @@ class DefinitionParameter implements \JsonSerializable {
 
 	/**
 	 * Serialize into JSON for client-side JS
-	 *
-	 * @return string
 	 */
-	public function jsonSerialize() {
+	public function jsonSerialize(): array {
 		return [
 			'value' => $this->getText(),
 			'flags' => $this->getFlags(),

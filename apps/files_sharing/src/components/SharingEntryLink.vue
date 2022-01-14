@@ -29,6 +29,9 @@
 			<h5 :title="title">
 				{{ title }}
 			</h5>
+			<p v-if="subtitle">
+				{{ subtitle }}
+			</p>
 		</div>
 
 		<!-- clipboard -->
@@ -44,7 +47,7 @@
 		</Actions>
 
 		<!-- pending actions -->
-		<Actions v-if="!loading && (pendingPassword || pendingExpirationDate)"
+		<Actions v-if="!pending && (pendingPassword || pendingExpirationDate)"
 			class="sharing-entry__actions"
 			menu-align="right"
 			:open.sync="open"
@@ -102,7 +105,7 @@
 				}"
 				class="share-link-expire-date"
 				:disabled="saving"
-				:first-day-of-week="firstDay"
+
 				:lang="lang"
 				icon=""
 				type="date"
@@ -128,7 +131,7 @@
 			:open.sync="open"
 			@close="onMenuClose">
 			<template v-if="share">
-				<template v-if="share.canEdit">
+				<template v-if="share.canEdit && canReshare">
 					<!-- Custom Label -->
 					<ActionInput
 						ref="label"
@@ -141,7 +144,7 @@
 						:class="{ error: errors.label }"
 						:disabled="saving"
 						:aria-label="t('files_sharing', 'Share label')"
-						:value="share.newLabel || share.label"
+						:value="share.newLabel !== undefined ? share.newLabel : share.label"
 						icon="icon-edit"
 						maxlength="255"
 						@update:value="onLabelChange"
@@ -175,7 +178,7 @@
 					</template>
 
 					<!-- file -->
-					<ActionCheckbox v-else
+					<ActionCheckbox v-if="!isFolder"
 						:checked.sync="canUpdate"
 						:disabled="saving"
 						@change="queueUpdate('permissions')">
@@ -248,7 +251,6 @@
 						class="share-link-expire-date"
 						:class="{ error: errors.expireDate}"
 						:disabled="saving"
-						:first-day-of-week="firstDay"
 						:lang="lang"
 						:value="share.expireDate"
 						value-type="format"
@@ -282,8 +284,16 @@
 						@submit="onNoteSubmit" />
 				</template>
 
-				<!-- external sharing via url (social...) -->
-				<ActionLink v-for="({icon, url, name}, index) in externalActions"
+				<!-- external actions -->
+				<ExternalShareAction v-for="action in externalLinkActions"
+					:id="action.id"
+					:key="action.id"
+					:action="action"
+					:file-info="fileInfo"
+					:share="share" />
+
+				<!-- external legacy sharing via url (social...) -->
+				<ActionLink v-for="({icon, url, name}, index) in externalLegacyLinkActions"
 					:key="index"
 					:href="url(shareLink)"
 					:icon="icon"
@@ -308,7 +318,7 @@
 			<!-- Create new share -->
 			<ActionButton v-else-if="canReshare"
 				class="new-share-link"
-				icon="icon-add"
+				:icon="loading ? 'icon-loading-small' : 'icon-add'"
 				@click.prevent.stop="onNewLinkShare">
 				{{ t('files_sharing', 'Create a new share link') }}
 			</ActionButton>
@@ -321,24 +331,23 @@
 
 <script>
 import { generateUrl } from '@nextcloud/router'
-import axios from '@nextcloud/axios'
 import Vue from 'vue'
 
 import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 import ActionCheckbox from '@nextcloud/vue/dist/Components/ActionCheckbox'
-import ActionRadio from '@nextcloud/vue/dist/Components/ActionRadio'
 import ActionInput from '@nextcloud/vue/dist/Components/ActionInput'
+import ActionLink from '@nextcloud/vue/dist/Components/ActionLink'
+import ActionRadio from '@nextcloud/vue/dist/Components/ActionRadio'
 import ActionText from '@nextcloud/vue/dist/Components/ActionText'
 import ActionTextEditable from '@nextcloud/vue/dist/Components/ActionTextEditable'
-import ActionLink from '@nextcloud/vue/dist/Components/ActionLink'
 import Actions from '@nextcloud/vue/dist/Components/Actions'
 import Avatar from '@nextcloud/vue/dist/Components/Avatar'
 import Tooltip from '@nextcloud/vue/dist/Directives/Tooltip'
 
+import ExternalShareAction from './ExternalShareAction'
+import GeneratePassword from '../utils/GeneratePassword'
 import Share from '../models/Share'
 import SharesMixin from '../mixins/SharesMixin'
-
-const passwordSet = 'abcdefgijkmnopqrstwxyzABCDEFGHJKLMNPQRSTWXYZ23456789'
 
 export default {
 	name: 'SharingEntryLink',
@@ -353,6 +362,7 @@ export default {
 		ActionText,
 		ActionTextEditable,
 		Avatar,
+		ExternalShareAction,
 	},
 
 	directives: {
@@ -373,11 +383,15 @@ export default {
 			copySuccess: true,
 			copied: false,
 
+			// Are we waiting for password/expiration date
+			pending: false,
+
 			publicUploadRWValue: OC.PERMISSION_UPDATE | OC.PERMISSION_CREATE | OC.PERMISSION_READ | OC.PERMISSION_DELETE,
 			publicUploadRValue: OC.PERMISSION_READ,
 			publicUploadWValue: OC.PERMISSION_CREATE,
 
-			ExternalLinkActions: OCA.Sharing.ExternalLinkActions.state,
+			ExternalLegacyLinkActions: OCA.Sharing.ExternalLinkActions.state,
+			ExternalShareActions: OCA.Sharing.ExternalShareActions.state,
 		}
 	},
 
@@ -386,7 +400,8 @@ export default {
 		 * Return the current share permissions
 		 * We always ignore the SHARE permission as this is used for the
 		 * federated sharing.
-		 * @returns {number}
+		 *
+		 * @return {number}
 		 */
 		sharePermissions() {
 			return this.share.permissions & ~OC.PERMISSION_SHARE
@@ -395,7 +410,8 @@ export default {
 		 * Generate a unique random id for this SharingEntryLink only
 		 * This allows ActionRadios to have the same name prop
 		 * but not to impact others SharingEntryLink
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		randomId() {
 			return Math.random().toString(27).substr(2)
@@ -403,18 +419,29 @@ export default {
 
 		/**
 		 * Link share label
-		 * TODO: allow editing
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		title() {
 			// if we have a valid existing share (not pending)
 			if (this.share && this.share.id) {
 				if (!this.isShareOwner && this.share.ownerDisplayName) {
+					if (this.isEmailShareType) {
+						return t('files_sharing', '{shareWith} by {initiator}', {
+							shareWith: this.share.shareWith,
+							initiator: this.share.ownerDisplayName,
+						})
+					}
 					return t('files_sharing', 'Shared via link by {initiator}', {
 						initiator: this.share.ownerDisplayName,
 					})
 				}
 				if (this.share.label && this.share.label.trim() !== '') {
+					if (this.isEmailShareType) {
+						return t('files_sharing', 'Mail share ({label})', {
+							label: this.share.label.trim(),
+						})
+					}
 					return t('files_sharing', 'Share link ({label})', {
 						label: this.share.label.trim(),
 					})
@@ -427,8 +454,22 @@ export default {
 		},
 
 		/**
+		 * Show the email on a second line if a label is set for mail shares
+		 *
+		 * @return {string}
+		 */
+		subtitle() {
+			if (this.isEmailShareType
+				&& this.title !== this.share.shareWith) {
+				return this.share.shareWith
+			}
+			return null
+		},
+
+		/**
 		 * Does the current share have an expiration date
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		hasExpirationDate: {
 			get() {
@@ -454,7 +495,8 @@ export default {
 
 		/**
 		 * Is the current share password protected ?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isPasswordProtected: {
 			get() {
@@ -463,14 +505,15 @@ export default {
 			},
 			async set(enabled) {
 				// TODO: directly save after generation to make sure the share is always protected
-				Vue.set(this.share, 'password', enabled ? await this.generatePassword() : '')
+				Vue.set(this.share, 'password', enabled ? await GeneratePassword() : '')
 				Vue.set(this.share, 'newPassword', this.share.password)
 			},
 		},
 
 		/**
 		 * Is Talk enabled?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isTalkEnabled() {
 			return OC.appswebroots.spreed !== undefined
@@ -478,7 +521,8 @@ export default {
 
 		/**
 		 * Is it possible to protect the password by Talk?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isPasswordProtectedByTalkAvailable() {
 			return this.isPasswordProtected && this.isTalkEnabled
@@ -486,7 +530,8 @@ export default {
 
 		/**
 		 * Is the current share password protected by Talk?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isPasswordProtectedByTalk: {
 			get() {
@@ -499,7 +544,8 @@ export default {
 
 		/**
 		 * Is the current share an email share ?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isEmailShareType() {
 			return this.share
@@ -525,7 +571,8 @@ export default {
 		 * Pending data.
 		 * If the share still doesn't have an id, it is not synced
 		 * Therefore this is still not valid and requires user input
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		pendingPassword() {
 			return this.config.enforcePasswordForPublicLink && this.share && !this.share.id
@@ -536,7 +583,8 @@ export default {
 
 		/**
 		 * Can the recipient edit the file ?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		canUpdate: {
 			get() {
@@ -558,7 +606,8 @@ export default {
 		/**
 		 * Is the current share a folder ?
 		 * TODO: move to a proper FileInfo model?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isFolder() {
 			return this.fileInfo.type === 'dir'
@@ -567,7 +616,8 @@ export default {
 		/**
 		 * Does the current file/folder have create permissions
 		 * TODO: move to a proper FileInfo model?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		fileHasCreatePermission() {
 			return !!(this.fileInfo.permissions & OC.PERMISSION_CREATE)
@@ -575,7 +625,8 @@ export default {
 
 		/**
 		 * Return the public share link
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		shareLink() {
 			return window.location.protocol + '//' + window.location.host + generateUrl('/s/') + this.share.token
@@ -583,7 +634,8 @@ export default {
 
 		/**
 		 * Clipboard v-tooltip message
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		clipboardTooltip() {
 			if (this.copied) {
@@ -595,11 +647,25 @@ export default {
 		},
 
 		/**
-		 * External aditionnal actions for the menu
-		 * @returns {Array}
+		 * External additionnai actions for the menu
+		 *
+		 * @deprecated use OCA.Sharing.ExternalShareActions
+		 * @return {Array}
 		 */
-		externalActions() {
-			return this.ExternalLinkActions.actions
+		externalLegacyLinkActions() {
+			return this.ExternalLegacyLinkActions.actions
+		},
+
+		/**
+		 * Additional actions for the menu
+		 *
+		 * @return {Array}
+		 */
+		externalLinkActions() {
+			// filter only the registered actions for said link
+			return this.ExternalShareActions.actions
+				.filter(action => action.shareType.includes(OC.Share.SHARE_TYPE_LINK)
+					|| action.shareType.includes(OC.Share.SHARE_TYPE_EMAIL))
 		},
 
 		isPasswordPolicyEnabled() {
@@ -612,6 +678,11 @@ export default {
 		 * Create a new share link and append it to the list
 		 */
 		async onNewLinkShare() {
+			// do not run again if already loading
+			if (this.loading) {
+				return
+			}
+
 			const shareDefaults = {
 				share_type: OC.Share.SHARE_TYPE_LINK,
 			}
@@ -621,14 +692,16 @@ export default {
 				shareDefaults.expiration = this.config.defaultExpirationDateString
 			}
 			if (this.config.enableLinkPasswordByDefault) {
-				shareDefaults.password = await this.generatePassword()
+				shareDefaults.password = await GeneratePassword()
 			}
 
-			// do not push yet if we need a password or an expiration date
+			// do not push yet if we need a password or an expiration date: show pending menu
 			if (this.config.enforcePasswordForPublicLink || this.config.isDefaultExpireDateEnforced) {
-				this.loading = true
+				this.pending = true
+
 				// if a share already exists, pushing it
 				if (this.share && !this.share.id) {
+					// if the share is valid, create it on the server
 					if (this.checkShare(this.share)) {
 						await this.pushNewLinkShare(this.share, true)
 						return true
@@ -642,7 +715,7 @@ export default {
 				// ELSE, show the pending popovermenu
 				// if password enforced, pre-fill with random one
 				if (this.config.enforcePasswordForPublicLink) {
-					shareDefaults.password = await this.generatePassword()
+					shareDefaults.password = await GeneratePassword()
 				}
 
 				// create share & close menu
@@ -654,10 +727,10 @@ export default {
 				// open the menu on the
 				// freshly created share component
 				this.open = false
-				this.loading = false
+				this.pending = false
 				component.open = true
 
-			// Nothing enforced, creating share directly
+			// Nothing is enforced, creating share directly
 			} else {
 				const share = new Share(shareDefaults)
 				await this.pushNewLinkShare(share)
@@ -674,6 +747,11 @@ export default {
 		 */
 		async pushNewLinkShare(share, update) {
 			try {
+				// do nothing if we're already pending creation
+				if (this.loading) {
+					return true
+				}
+
 				this.loading = true
 				this.errors = {}
 
@@ -734,6 +812,7 @@ export default {
 
 		/**
 		 * On permissions change
+		 *
 		 * @param {Event} event js event
 		 */
 		togglePermissions(event) {
@@ -744,7 +823,8 @@ export default {
 
 		/**
 		 * Label changed, let's save it to a different key
-		 * @param {String} label the share label
+		 *
+		 * @param {string} label the share label
 		 */
 		onLabelChange(label) {
 			this.$set(this.share, 'newLabel', label.trim())
@@ -760,35 +840,6 @@ export default {
 				this.queueUpdate('label')
 			}
 		},
-
-		/**
-		 * Generate a valid policy password or
-		 * request a valid password if password_policy
-		 * is enabled
-		 *
-		 * @returns {string} a valid password
-		 */
-		async generatePassword() {
-			// password policy is enabled, let's request a pass
-			if (this.config.passwordPolicy.api && this.config.passwordPolicy.api.generate) {
-				try {
-					const request = await axios.get(this.config.passwordPolicy.api.generate)
-					if (request.data.ocs.data.password) {
-						return request.data.ocs.data.password
-					}
-				} catch (error) {
-					console.info('Error generating password from password_policy', error)
-				}
-			}
-
-			// generate password of 10 length based on passwordSet
-			return Array(10).fill(0)
-				.reduce((prev, curr) => {
-					prev += passwordSet.charAt(Math.floor(Math.random() * passwordSet.length))
-					return prev
-				}, '')
-		},
-
 		async copyLink() {
 			try {
 				await this.$copyText(this.shareLink)
@@ -815,6 +866,7 @@ export default {
 		 * If both co-exists, the password have changed and
 		 * we show it in plain text.
 		 * Then on submit (or menu close), we sync it.
+		 *
 		 * @param {string} password the changed password
 		 */
 		onPasswordChange(password) {
@@ -911,6 +963,9 @@ export default {
 			text-overflow: ellipsis;
 			overflow: hidden;
 			white-space: nowrap;
+		}
+		p {
+			color: var(--color-text-maxcontrast);
 		}
 	}
 

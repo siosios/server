@@ -6,7 +6,6 @@
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
- * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Noveen Sachdeva <noveen.sachdeva@research.iiit.ac.in>
  * @author Robin Appelman <robin@icewind.nl>
@@ -28,7 +27,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\BackgroundJob;
 
 use OCP\AppFramework\QueryException;
@@ -67,28 +65,34 @@ class JobList implements IJobList {
 	 * @param mixed $argument
 	 */
 	public function add($job, $argument = null) {
+		if ($job instanceof IJob) {
+			$class = get_class($job);
+		} else {
+			$class = $job;
+		}
+
+		$argumentJson = json_encode($argument);
+		if (strlen($argumentJson) > 4000) {
+			throw new \InvalidArgumentException('Background job arguments can\'t exceed 4000 characters (json encoded)');
+		}
+
+		$query = $this->connection->getQueryBuilder();
 		if (!$this->has($job, $argument)) {
-			if ($job instanceof IJob) {
-				$class = get_class($job);
-			} else {
-				$class = $job;
-			}
-
-			$argument = json_encode($argument);
-			if (strlen($argument) > 4000) {
-				throw new \InvalidArgumentException('Background job arguments can\'t exceed 4000 characters (json encoded)');
-			}
-
-			$query = $this->connection->getQueryBuilder();
 			$query->insert('jobs')
 				->values([
 					'class' => $query->createNamedParameter($class),
-					'argument' => $query->createNamedParameter($argument),
+					'argument' => $query->createNamedParameter($argumentJson),
 					'last_run' => $query->createNamedParameter(0, IQueryBuilder::PARAM_INT),
 					'last_checked' => $query->createNamedParameter($this->timeFactory->getTime(), IQueryBuilder::PARAM_INT),
 				]);
-			$query->execute();
+		} else {
+			$query->update('jobs')
+				->set('reserved_at', $query->expr()->literal(0, IQueryBuilder::PARAM_INT))
+				->set('last_checked', $query->createNamedParameter($this->timeFactory->getTime(), IQueryBuilder::PARAM_INT))
+				->where($query->expr()->eq('class', $query->createNamedParameter($class)))
+				->andWhere($query->expr()->eq('argument', $query->createNamedParameter($argumentJson)));
 		}
+		$query->executeStatement();
 	}
 
 	/**
@@ -238,19 +242,29 @@ class JobList implements IJobList {
 	 * @return IJob|null
 	 */
 	public function getById($id) {
+		$row = $this->getDetailsById($id);
+
+		if ($row) {
+			return $this->buildJob($row);
+		}
+
+		return null;
+	}
+
+	public function getDetailsById(int $id): ?array {
 		$query = $this->connection->getQueryBuilder();
 		$query->select('*')
 			->from('jobs')
 			->where($query->expr()->eq('id', $query->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-		$result = $query->execute();
+		$result = $query->executeQuery();
 		$row = $result->fetch();
 		$result->closeCursor();
 
 		if ($row) {
-			return $this->buildJob($row);
-		} else {
-			return null;
+			return $row;
 		}
+
+		return null;
 	}
 
 	/**
@@ -331,5 +345,20 @@ class JobList implements IJobList {
 			->set('execution_duration', $query->createNamedParameter($timeTaken, IQueryBuilder::PARAM_INT))
 			->where($query->expr()->eq('id', $query->createNamedParameter($job->getId(), IQueryBuilder::PARAM_INT)));
 		$query->execute();
+	}
+
+	/**
+	 * Reset the $job so it executes on the next trigger
+	 *
+	 * @param IJob $job
+	 * @since 23.0.0
+	 */
+	public function resetBackgroundJob(IJob $job): void {
+		$query = $this->connection->getQueryBuilder();
+		$query->update('jobs')
+			->set('last_run', $query->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+			->set('reserved_at', $query->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+			->where($query->expr()->eq('id', $query->createNamedParameter($job->getId()), IQueryBuilder::PARAM_INT));
+		$query->executeStatement();
 	}
 }

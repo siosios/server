@@ -69,7 +69,7 @@
 						v-click-outside="hideMenu"
 						class="icon-more"
 						:aria-label="t('settings', 'Toggle user actions menu')"
-						@click.prevent="$emit('toggleMenu')" />
+						@click.prevent="toggleMenu" />
 					<div class="popovermenu" :class="{ 'open': openedMenu }" :aria-expanded="openedMenu">
 						<PopoverMenu :menu="userActions" />
 					</div>
@@ -84,7 +84,9 @@
 </template>
 
 <script>
-import { PopoverMenu, Actions, ActionButton } from '@nextcloud/vue'
+import PopoverMenu from '@nextcloud/vue/dist/Components/PopoverMenu'
+import Actions from '@nextcloud/vue/dist/Components/Actions'
+import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 import ClickOutside from 'vue-click-outside'
 import { getCurrentUser } from '@nextcloud/auth'
 import UserRowMixin from '../../mixins/UserRowMixin'
@@ -174,8 +176,11 @@ export default {
 		},
 	},
 	methods: {
+		toggleMenu() {
+			this.$emit('update:openedMenu', !this.openedMenu)
+		},
 		hideMenu() {
-			this.$emit('hideMenu')
+			this.$emit('update:openedMenu', false)
 		},
 		toggleEdit() {
 			this.$emit('update:editing', true)

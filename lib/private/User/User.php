@@ -7,7 +7,7 @@
  * @author Björn Schießle <bjoern@schiessle.org>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Leon Klingele <leon@struktur.de>
@@ -16,7 +16,6 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
  *
  * @license AGPL-3.0
  *
@@ -33,14 +32,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\User;
 
+use InvalidArgumentException;
 use OC\Accounts\AccountManager;
 use OC\Avatar\AvatarManager;
-use OC\Files\Cache\Storage;
 use OC\Hooks\Emitter;
 use OC_Helper;
+use OCP\Accounts\IAccountManager;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Group\Events\BeforeUserRemovedEvent;
 use OCP\Group\Events\UserRemovedEvent;
@@ -50,16 +49,20 @@ use OCP\IImage;
 use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserBackend;
+use OCP\User\Events\BeforeUserDeletedEvent;
+use OCP\User\Events\UserDeletedEvent;
 use OCP\User\GetQuotaEvent;
 use OCP\UserInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 class User implements IUser {
+	/** @var IAccountManager */
+	protected $accountManager;
 	/** @var string */
 	private $uid;
 
-	/** @var string */
+	/** @var string|null */
 	private $displayName;
 
 	/** @var UserInterface|null */
@@ -126,7 +129,7 @@ class User implements IUser {
 	 * @return string
 	 */
 	public function getDisplayName() {
-		if (!isset($this->displayName)) {
+		if ($this->displayName === null) {
 			$displayName = '';
 			if ($this->backend && $this->backend->implementsActions(Backend::GET_DISPLAYNAME)) {
 				// get display name and strip whitespace from the beginning and end of it
@@ -166,21 +169,58 @@ class User implements IUser {
 	}
 
 	/**
-	 * set the email address of the user
-	 *
-	 * @param string|null $mailAddress
-	 * @return void
-	 * @since 9.0.0
+	 * @inheritDoc
 	 */
 	public function setEMailAddress($mailAddress) {
-		$oldMailAddress = $this->getEMailAddress();
+		$this->setSystemEMailAddress($mailAddress);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function setSystemEMailAddress(string $mailAddress): void {
+		$oldMailAddress = $this->getSystemEMailAddress();
+
+		if ($mailAddress === '') {
+			$this->config->deleteUserValue($this->uid, 'settings', 'email');
+		} else {
+			$this->config->setUserValue($this->uid, 'settings', 'email', $mailAddress);
+		}
+
+		$primaryAddress = $this->getPrimaryEMailAddress();
+		if ($primaryAddress === $mailAddress) {
+			// on match no dedicated primary settings is necessary
+			$this->setPrimaryEMailAddress('');
+		}
+
 		if ($oldMailAddress !== $mailAddress) {
-			if ($mailAddress === '') {
-				$this->config->deleteUserValue($this->uid, 'settings', 'email');
-			} else {
-				$this->config->setUserValue($this->uid, 'settings', 'email', $mailAddress);
-			}
 			$this->triggerChange('eMailAddress', $mailAddress, $oldMailAddress);
+		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function setPrimaryEMailAddress(string $mailAddress): void {
+		if ($mailAddress === '') {
+			$this->config->deleteUserValue($this->uid, 'settings', 'primary_email');
+			return;
+		}
+
+		$this->ensureAccountManager();
+		$account = $this->accountManager->getAccount($this);
+		$property = $account->getPropertyCollection(IAccountManager::COLLECTION_EMAIL)
+			->getPropertyByValue($mailAddress);
+
+		if ($property === null || $property->getLocallyVerified() !== IAccountManager::VERIFIED) {
+			throw new InvalidArgumentException('Only verified emails can be set as primary');
+		}
+		$this->config->setUserValue($this->uid, 'settings', 'primary_email', $mailAddress);
+	}
+
+	private function ensureAccountManager() {
+		if (!$this->accountManager instanceof IAccountManager) {
+			$this->accountManager = \OC::$server->get(IAccountManager::class);
 		}
 	}
 
@@ -212,12 +252,13 @@ class User implements IUser {
 	 * @return bool
 	 */
 	public function delete() {
+		/** @deprecated 21.0.0 use BeforeUserDeletedEvent event with the IEventDispatcher instead */
 		$this->legacyDispatcher->dispatch(IUser::class . '::preDelete', new GenericEvent($this));
 		if ($this->emitter) {
+			/** @deprecated 21.0.0 use BeforeUserDeletedEvent event with the IEventDispatcher instead */
 			$this->emitter->emit('\OC\User', 'preDelete', [$this]);
 		}
-		// get the home now because it won't return it after user deletion
-		$homePath = $this->getHome();
+		$this->dispatcher->dispatchTyped(new BeforeUserDeletedEvent($this));
 		$result = $this->backend->deleteUser($this->uid);
 		if ($result) {
 
@@ -236,16 +277,6 @@ class User implements IUser {
 			// Delete the user's keys in preferences
 			\OC::$server->getConfig()->deleteAllUserValues($this->uid);
 
-			// Delete user files in /data/
-			if ($homePath !== false) {
-				// FIXME: this operates directly on FS, should use View instead...
-				// also this is not testable/mockable...
-				\OC_Helper::rmdirr($homePath);
-			}
-
-			// Delete the users entry in the storage table
-			Storage::remove('home::' . $this->uid);
-
 			\OC::$server->getCommentsManager()->deleteReferencesOfActor('users', $this->uid);
 			\OC::$server->getCommentsManager()->deleteReadMarksFromUser($this);
 
@@ -261,10 +292,13 @@ class User implements IUser {
 			$accountManager = \OC::$server->query(AccountManager::class);
 			$accountManager->deleteUser($this);
 
+			/** @deprecated 21.0.0 use UserDeletedEvent event with the IEventDispatcher instead */
 			$this->legacyDispatcher->dispatch(IUser::class . '::postDelete', new GenericEvent($this));
 			if ($this->emitter) {
+				/** @deprecated 21.0.0 use UserDeletedEvent event with the IEventDispatcher instead */
 				$this->emitter->emit('\OC\User', 'postDelete', [$this]);
 			}
+			$this->dispatcher->dispatchTyped(new UserDeletedEvent($this));
 		}
 		return !($result === false);
 	}
@@ -397,7 +431,21 @@ class User implements IUser {
 	 * @since 9.0.0
 	 */
 	public function getEMailAddress() {
+		return $this->getPrimaryEMailAddress() ?? $this->getSystemEMailAddress();
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function getSystemEMailAddress(): ?string {
 		return $this->config->getUserValue($this->uid, 'settings', 'email', null);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function getPrimaryEMailAddress(): ?string {
+		return $this->config->getUserValue($this->uid, 'settings', 'primary_email', null);
 	}
 
 	/**
@@ -418,6 +466,18 @@ class User implements IUser {
 		}
 		if ($quota === 'default') {
 			$quota = $this->config->getAppValue('files', 'default_quota', 'none');
+
+			// if unlimited quota is not allowed => avoid getting 'unlimited' as default_quota fallback value
+			// use the first preset instead
+			$allowUnlimitedQuota = $this->config->getAppValue('files', 'allow_unlimited_quota', '1') === '1';
+			if (!$allowUnlimitedQuota) {
+				$presets = $this->config->getAppValue('files', 'quota_preset', '1 GB, 5 GB, 10 GB');
+				$presets = array_filter(array_map('trim', explode(',', $presets)));
+				$quotaPreset = array_values(array_diff($presets, ['default', 'none']));
+				if (count($quotaPreset) > 0) {
+					$quota = $this->config->getAppValue('files', 'default_quota', $quotaPreset[0]);
+				}
+			}
 		}
 		return $quota;
 	}
@@ -473,7 +533,7 @@ class User implements IUser {
 		$uid = $this->getUID();
 		$server = $this->urlGenerator->getAbsoluteURL('/');
 		$server = rtrim($this->removeProtocolFromUrl($server), '/');
-		return \OC::$server->getCloudIdManager()->getCloudId($uid, $server)->getId();
+		return $uid . '@' . $server;
 	}
 
 	/**

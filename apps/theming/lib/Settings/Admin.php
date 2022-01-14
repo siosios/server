@@ -4,7 +4,7 @@
  *
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Bjoern Schiessle <bjoern@schiessle.org>
- * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -18,14 +18,13 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\Theming\Settings;
 
 use OCA\Theming\ImageManager;
@@ -34,9 +33,9 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IURLGenerator;
-use OCP\Settings\ISettings;
+use OCP\Settings\IDelegatedSettings;
 
-class Admin implements ISettings {
+class Admin implements IDelegatedSettings {
 	/** @var IConfig */
 	private $config;
 	/** @var IL10N */
@@ -106,5 +105,15 @@ class Admin implements ISettings {
 	 */
 	public function getPriority(): int {
 		return 5;
+	}
+
+	public function getName(): ?string {
+		return null; // Only one setting in this section
+	}
+
+	public function getAuthorizedAppConfig(): array {
+		return [
+			'theming' => '/.*/',
+		];
 	}
 }

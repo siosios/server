@@ -3,10 +3,11 @@
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Sujith H <sharidasan@owncloud.com>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -23,7 +24,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 require __DIR__ . '/../../vendor/autoload.php';
 
 use Behat\Behat\Hook\Scope\BeforeScenarioScope;
@@ -97,7 +97,7 @@ class CommandLineContext implements \Behat\Behat\Context\Context {
 	}
 
 	/**
-	 * @When /^transferring ownership from "([^"]+)" to "([^"]+)"/
+	 * @When /^transferring ownership from "([^"]+)" to "([^"]+)"$/
 	 */
 	public function transferringOwnership($user1, $user2) {
 		if ($this->runOcc(['files:transfer-ownership', $user1, $user2]) === 0) {
@@ -109,7 +109,7 @@ class CommandLineContext implements \Behat\Behat\Context\Context {
 	}
 
 	/**
-	 * @When /^transferring ownership of path "([^"]+)" from "([^"]+)" to "([^"]+)"/
+	 * @When /^transferring ownership of path "([^"]+)" from "([^"]+)" to "([^"]+)"$/
 	 */
 	public function transferringOwnershipPath($path, $user1, $user2) {
 		$path = '--path=' . $path;
@@ -121,6 +121,18 @@ class CommandLineContext implements \Behat\Behat\Context\Context {
 		}
 	}
 
+	/**
+	 * @When /^transferring ownership of path "([^"]+)" from "([^"]+)" to "([^"]+)" with received shares$/
+	 */
+	public function transferringOwnershipPathWithIncomingShares($path, $user1, $user2) {
+		$path = '--path=' . $path;
+		if ($this->runOcc(['files:transfer-ownership', $path, $user1, $user2, '--transfer-incoming-shares=1']) === 0) {
+			$this->lastTransferPath = $this->findLastTransferFolderForUser($user1, $user2);
+		} else {
+			// failure
+			$this->lastTransferPath = null;
+		}
+	}
 
 	/**
 	 * @When /^using received transfer folder of "([^"]+)" as dav path$/

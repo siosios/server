@@ -1,7 +1,7 @@
 OC.L10N.register(
     "files_external",
     {
-    "External storages" : "Extern lagring",
+    "External storage" : "Extern lagring",
     "Personal" : "Privat",
     "System" : "System",
     "Grant access" : "Bevilja åtkomst",
@@ -11,7 +11,7 @@ OC.L10N.register(
     "Generate keys" : "Generera nycklar",
     "Error generating key pair" : "Fel vid generering av nyckelpar",
     "All users. Type to select user or group." : "Alla användare. Skriv för att välja användare eller grupp.",
-    "(group)" : "(grupp)",
+    "(Group)" : "(Grupp)",
     "Compatibility with Mac NFD encoding (slow)" : "Kompatibilitet med Mac NFD kodning (slö)",
     "Enable encryption" : "Aktivera kryptering",
     "Enable previews" : "Aktivera förhandsgranskningar",
@@ -102,11 +102,13 @@ OC.L10N.register(
     "SFTP" : "SFTP",
     "Root" : "Root",
     "SFTP with secret key login" : "SFTP-inloggning med hemlig nyckel",
-    "SMB / CIFS" : "SMB / CIFS",
+    "SMB/CIFS" : "SMB/CIFS",
     "Share" : "Dela",
-    "Show hidden files" : "Visa gömda filer",
+    "Show hidden files" : "Visa dolda filer",
+    "Verify ACL access when listing files" : "Verifiera ACL-åtkomst i fil-listningar",
+    "Check the ACL's of each file or folder inside a directory to filter out items where the user has no read permissions, comes with a performance penalty" : "Kontrollera ACL:er för varje fil eller mapp inuti en sökväg för att filtrera bort element för vilka användaren saknar läsbehörighet, innebär en viss prestandaminskning.",
     "Timeout" : "Timeout",
-    "SMB / CIFS using OC login" : "SMB / CIFS använder OC-inloggning",
+    "SMB/CIFS using OC login" : "SMB/CIFS med OC-inloggning",
     "Username as share" : "Användarnamn till utdelning",
     "OpenStack Object Storage" : "OpenStack Object Storage",
     "Service name" : "Namn på tjänst",
@@ -124,7 +126,6 @@ OC.L10N.register(
     "Open documentation" : "Öppna dokumentationen",
     "External storage enables you to mount external storage services and devices as secondary Nextcloud storage devices. You may also allow users to mount their own external storage services." : "Externt lagringsutrymme gör det möjligt att montera externa lagringstjänster och enheter som sekundära Nextcloud-lagringsenheter. Du kan också tillåta användare att montera sina egna externa lagringstjänster.",
     "Folder name" : "Mappnamn",
-    "External storage" : "Extern lagring",
     "Authentication" : "Autentisering",
     "Configuration" : "Konfiguration",
     "Available for" : "Tillgänglig för",
@@ -133,6 +134,9 @@ OC.L10N.register(
     "Advanced settings" : "Avancerade inställningar",
     "Allow users to mount external storage" : "Tillåt användare att montera extern lagring",
     "Global credentials can be used to authenticate with multiple external storages that have the same credentials." : "Globala användaruppgifter kan användas för att autentisera med flera externa lagrings-instanser som använder samma användaruppgifter.",
-    "Saving..." : "Sparar..."
+    "External storages" : "Extern lagring",
+    "(group)" : "(grupp)",
+    "SMB / CIFS" : "SMB / CIFS",
+    "SMB / CIFS using OC login" : "SMB / CIFS använder OC-inloggning"
 },
 "nplurals=2; plural=(n != 1);");

@@ -3,7 +3,7 @@
  *
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
- * @license GNU AGPL version 3 or any later version
+ * @license AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -16,7 +16,8 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 import Vue from 'vue'
@@ -35,6 +36,7 @@ new View({
 	propsData: {
 		initialDevices: devices,
 		isHttps: window.location.protocol === 'https:',
+		isLocalhost: window.location.hostname === 'localhost',
 		hasPublicKeyCredential: typeof (window.PublicKeyCredential) !== 'undefined',
 	},
 }).$mount('#security-webauthn')

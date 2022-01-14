@@ -103,7 +103,7 @@
 				<div class="app-sidebar-header__figure--default-app-icon icon-settings-dark" />
 			</template>
 
-			<template #primary-actions>
+			<template #description>
 				<!-- Featured/Supported badges -->
 				<div v-if="app.level === 300 || app.level === 200 || hasRating" class="app-level">
 					<span v-if="app.level === 300"
@@ -229,13 +229,19 @@ export default {
 
 		// sidebar app binding
 		appSidebar() {
+			const authorName = (xmlNode) => {
+				if (xmlNode['@value']) {
+					// Complex node (with email or homepage attribute)
+					return xmlNode['@value']
+				}
+
+				// Simple text node
+				return xmlNode
+			}
+
 			const author = Array.isArray(this.app.author)
-				? this.app.author[0]['@value']
-					? this.app.author.map(author => author['@value']).join(', ')
-					: this.app.author.join(', ')
-				: this.app.author['@value']
-					? this.app.author['@value']
-					: this.app.author
+				? this.app.author.map(authorName).join(', ')
+				: authorName(this.app.author)
 			const license = t('settings', '{license}-licensed', { license: ('' + this.app.licence).toUpperCase() })
 
 			const subtitle = t('settings', 'by {author}\n{license}', { author, license })
@@ -262,7 +268,7 @@ export default {
 
 		app() {
 			this.screenshotLoaded = false
-			if (this.app && this.app.screenshot) {
+			if (this.app?.releases && this.app?.screenshot) {
 				const image = new Image()
 				image.onload = (e) => {
 					this.screenshotLoaded = true

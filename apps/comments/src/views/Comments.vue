@@ -70,6 +70,7 @@
 <script>
 import { generateOcsUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
+import { loadState } from '@nextcloud/initial-state'
 import axios from '@nextcloud/axios'
 import VTooltip from 'v-tooltip'
 import Vue from 'vue'
@@ -125,7 +126,8 @@ export default {
 	methods: {
 		/**
 		 * Update current ressourceId and fetch new data
-		 * @param {Number} ressourceId the current ressourceId (fileId...)
+		 *
+		 * @param {number} ressourceId the current ressourceId (fileId...)
 		 */
 		async update(ressourceId) {
 			this.ressourceId = ressourceId
@@ -151,8 +153,9 @@ export default {
 
 		/**
 		 * Make sure we have all mentions as Array of objects
+		 *
 		 * @param {Array} mentions the mentions list
-		 * @returns {Object[]}
+		 * @return {object[]}
 		 */
 		genMentionsData(mentions) {
 			const list = Object.values(mentions).flat()
@@ -216,17 +219,18 @@ export default {
 
 		/**
 		 * Autocomplete @mentions
+		 *
 		 * @param {string} search the query
 		 * @param {Function} callback the callback to process the results with
 		 */
 		async autoComplete(search, callback) {
-			const results = await axios.get(generateOcsUrl('core', 2) + 'autocomplete/get', {
+			const results = await axios.get(generateOcsUrl('core/autocomplete/get'), {
 				params: {
 					search,
 					itemType: 'files',
 					itemId: this.ressourceId,
 					sorter: 'commenters|share-recipients',
-					limit: OC.appConfig?.comments?.maxAutoCompleteResults || 25,
+					limit: loadState('comments', 'maxAutoCompleteResults'),
 				},
 			})
 			return callback(results.data.ocs.data)
@@ -234,7 +238,8 @@ export default {
 
 		/**
 		 * Add newly created comment to the list
-		 * @param {Object} comment the new comment
+		 *
+		 * @param {object} comment the new comment
 		 */
 		onNewComment(comment) {
 			this.comments.unshift(comment)
@@ -242,6 +247,7 @@ export default {
 
 		/**
 		 * Remove deleted comment from the list
+		 *
 		 * @param {number} id the deleted comment
 		 */
 		onDelete(id) {

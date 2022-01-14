@@ -7,7 +7,7 @@
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Weimann <mail@michael-weimann.eu>
@@ -29,7 +29,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Core\Controller;
 
 use OC\AppFramework\Http\Request;
@@ -39,7 +38,6 @@ use OC\Authentication\WebAuthn\Manager as WebAuthnManager;
 use OC\Security\Bruteforce\Throttler;
 use OC\User\Session;
 use OC_App;
-use OC_Util;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -48,6 +46,7 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\Defaults;
 use OCP\IConfig;
 use OCP\IInitialStateService;
+use OCP\IL10N;
 use OCP\ILogger;
 use OCP\IRequest;
 use OCP\ISession;
@@ -55,6 +54,7 @@ use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
+use OCP\Notification\IManager;
 use OCP\Util;
 
 class LoginController extends Controller {
@@ -83,6 +83,10 @@ class LoginController extends Controller {
 	private $initialStateService;
 	/** @var WebAuthnManager */
 	private $webAuthnManager;
+	/** @var IManager */
+	private $manager;
+	/** @var IL10N */
+	private $l10n;
 
 	public function __construct(?string $appName,
 								IRequest $request,
@@ -96,7 +100,9 @@ class LoginController extends Controller {
 								Throttler $throttler,
 								Chain $loginChain,
 								IInitialStateService $initialStateService,
-								WebAuthnManager $webAuthnManager) {
+								WebAuthnManager $webAuthnManager,
+								IManager $manager,
+								IL10N $l10n) {
 		parent::__construct($appName, $request);
 		$this->userManager = $userManager;
 		$this->config = $config;
@@ -109,6 +115,8 @@ class LoginController extends Controller {
 		$this->loginChain = $loginChain;
 		$this->initialStateService = $initialStateService;
 		$this->webAuthnManager = $webAuthnManager;
+		$this->manager = $manager;
+		$this->l10n = $l10n;
 	}
 
 	/**
@@ -151,12 +159,18 @@ class LoginController extends Controller {
 	 */
 	public function showLoginForm(string $user = null, string $redirect_url = null): Http\Response {
 		if ($this->userSession->isLoggedIn()) {
-			return new RedirectResponse(OC_Util::getDefaultPageUrl());
+			return new RedirectResponse($this->urlGenerator->linkToDefaultPageUrl());
 		}
 
 		$loginMessages = $this->session->get('loginMessages');
+		if (!$this->manager->isFairUseOfFreePushService()) {
+			if (!is_array($loginMessages)) {
+				$loginMessages = [[], []];
+			}
+			$loginMessages[1][] = $this->l10n->t('This community release of Nextcloud is unsupported and instant notifications are unavailable.');
+		}
 		if (is_array($loginMessages)) {
-			list($errors, $messages) = $loginMessages;
+			[$errors, $messages] = $loginMessages;
 			$this->initialStateService->provideInitialState('core', 'loginMessages', $messages);
 			$this->initialStateService->provideInitialState('core', 'loginErrors', $errors);
 		}
@@ -175,7 +189,10 @@ class LoginController extends Controller {
 		);
 
 		if (!empty($redirect_url)) {
-			$this->initialStateService->provideInitialState('core', 'loginRedirectUrl', $redirect_url);
+			[$url, ] = explode('?', $redirect_url);
+			if ($url !== $this->urlGenerator->linkToRoute('core.login.logout')) {
+				$this->initialStateService->provideInitialState('core', 'loginRedirectUrl', $redirect_url);
+			}
 		}
 
 		$this->initialStateService->provideInitialState(
@@ -188,6 +205,8 @@ class LoginController extends Controller {
 
 		$this->initialStateService->provideInitialState('core', 'webauthn-available', $this->webAuthnManager->isWebAuthnAvailable());
 
+		$this->initialStateService->provideInitialState('core', 'hideLoginForm', $this->config->getSystemValueBool('hide_login_form', false));
+
 		// OpenGraph Support: http://ogp.me/
 		Util::addHeader('meta', ['property' => 'og:title', 'content' => Util::sanitizeHTML($this->defaults->getName())]);
 		Util::addHeader('meta', ['property' => 'og:description', 'content' => Util::sanitizeHTML($this->defaults->getSlogan())]);
@@ -199,6 +218,9 @@ class LoginController extends Controller {
 		$parameters = [
 			'alt_login' => OC_App::getAlternativeLogIns(),
 		];
+
+		$this->initialStateService->provideInitialState('core', 'countAlternativeLogins', count($parameters['alt_login']));
+
 		return new TemplateResponse(
 			$this->appName, 'login', $parameters, 'guest'
 		);
@@ -267,7 +289,7 @@ class LoginController extends Controller {
 				return new RedirectResponse($location);
 			}
 		}
-		return new RedirectResponse(OC_Util::getDefaultPageUrl());
+		return new RedirectResponse($this->urlGenerator->linkToDefaultPageUrl());
 	}
 
 	/**
@@ -334,7 +356,7 @@ class LoginController extends Controller {
 		$user, $originalUser, $redirect_url, string $loginMessage) {
 		// Read current user and append if possible we need to
 		// return the unmodified user otherwise we will leak the login name
-		$args = $user !== null ? ['user' => $originalUser] : [];
+		$args = $user !== null ? ['user' => $originalUser, 'direct' => 1] : [];
 		if ($redirect_url !== null) {
 			$args['redirect_url'] = $redirect_url;
 		}

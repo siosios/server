@@ -13,7 +13,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author tbartenstein <tbartenstein@users.noreply.github.com>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -30,7 +30,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Files;
 
 use OCP\Files\Cache\ICacheEntry;
@@ -105,18 +104,22 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 		$this->rawSize = $this->data['size'] ?? 0;
 	}
 
-	public function offsetSet($offset, $value) {
+	public function offsetSet($offset, $value): void {
 		$this->data[$offset] = $value;
 	}
 
-	public function offsetExists($offset) {
+	public function offsetExists($offset): bool {
 		return isset($this->data[$offset]);
 	}
 
-	public function offsetUnset($offset) {
+	public function offsetUnset($offset): void {
 		unset($this->data[$offset]);
 	}
 
+	/**
+	 * @return mixed
+	 */
+	#[\ReturnTypeWillChange]
 	public function offsetGet($offset) {
 		if ($offset === 'type') {
 			return $this->getType();
@@ -243,7 +246,7 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 		if (\OCP\Util::isSharingDisabledForUser() || ($this->isShared() && !\OC\Share\Share::isResharingAllowed())) {
 			$perms = $perms & ~\OCP\Constants::PERMISSION_SHARE;
 		}
-		return (int) $perms;
+		return $perms;
 	}
 
 	/**

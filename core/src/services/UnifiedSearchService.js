@@ -1,9 +1,12 @@
 /**
  * @copyright 2020, John Molakvoæ <skjnldsv@protonmail.com>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
+ * @author Joas Schilling <coding@schilljs.com>
  * @author John Molakvoæ <skjnldsv@protonmail.com>
  *
- * @license GNU AGPL version 3 or any later version
+ * @license AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -16,7 +19,8 @@
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 import { generateOcsUrl } from '@nextcloud/router'
@@ -30,18 +34,19 @@ export const regexFilterNot = /-in:([a-z_-]+)/ig
 
 /**
  * Create a cancel token
- * @returns {CancelTokenSource}
+ *
+ * @return {import('axios').CancelTokenSource}
  */
 const createCancelToken = () => axios.CancelToken.source()
 
 /**
  * Get the list of available search providers
  *
- * @returns {Array}
+ * @return {Promise<Array>}
  */
 export async function getTypes() {
 	try {
-		const { data } = await axios.get(generateOcsUrl('search', 2) + 'providers', {
+		const { data } = await axios.get(generateOcsUrl('search/providers'), {
 			params: {
 				// Sending which location we're currently at
 				from: window.location.pathname.replace('/index.php', '') + window.location.search,
@@ -60,11 +65,11 @@ export async function getTypes() {
 /**
  * Get the list of available search providers
  *
- * @param {Object} options destructuring object
+ * @param {object} options destructuring object
  * @param {string} options.type the type to search
  * @param {string} options.query the search
- * @param {int|string|undefined} options.cursor the offset for paginated searches
- * @returns {Object} {request: Promise, cancel: Promise}
+ * @param {number|string|undefined} options.cursor the offset for paginated searches
+ * @return {object} {request: Promise, cancel: Promise}
  */
 export function search({ type, query, cursor }) {
 	/**
@@ -72,7 +77,7 @@ export function search({ type, query, cursor }) {
 	 */
 	const cancelToken = createCancelToken()
 
-	const request = async() => axios.get(generateOcsUrl('search', 2) + `providers/${type}/search`, {
+	const request = async () => axios.get(generateOcsUrl('search/providers/{type}/search', { type }), {
 		cancelToken: cancelToken.token,
 		params: {
 			term: query,

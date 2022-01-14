@@ -5,7 +5,7 @@ Feature: header
     Given I am logged in as the admin
     When I open the Settings menu
     Then I see that the Settings menu is shown
-    And I see that the Settings menu has only 6 items
+    And I see that the Settings menu has only 7 items
     And I see that the "Set status" item in the Settings menu is shown
     And I see that the "Settings" item in the Settings menu is shown
     And I see that the "Apps" item in the Settings menu is shown
@@ -17,7 +17,7 @@ Feature: header
     Given I am logged in
     When I open the Settings menu
     Then I see that the Settings menu is shown
-    And I see that the Settings menu has only 4 items
+    And I see that the Settings menu has only 5 items
     And I see that the "Set status" item in the Settings menu is shown
     And I see that the "Settings" item in the Settings menu is shown
     And I see that the "Help" item in the Settings menu is shown
@@ -46,21 +46,17 @@ Feature: header
     And I open the User settings
     And I click the New user button
     And I see that the new user form is shown
-    And I create user user1 with password 123456acb
-    And I see that the list of users contains the user user1
+    And I create user user2 with password 123456acb
+    And I see that the list of users contains the user user2
     When I open the Contacts menu
     Then I see that the Contacts menu is shown
     And I see that the contact "user0" in the Contacts menu is shown
     And I see that the contact "user1" in the Contacts menu is shown
+    And I see that the contact "user2" in the Contacts menu is shown
     And I see that the contact "admin" in the Contacts menu is not shown
 
   Scenario: search for other users in the contacts menu
     Given I am logged in as the admin
-    And I open the User settings
-    And I click the New user button
-    And I see that the new user form is shown
-    And I create user user1 with password 123456acb
-    And I see that the list of users contains the user user1
     And I open the Contacts menu
     And I see that the Contacts menu is shown
     And I see that the contact "user0" in the Contacts menu is shown

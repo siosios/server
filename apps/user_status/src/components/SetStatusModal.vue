@@ -101,6 +101,7 @@ export default {
 			clearAt: null,
 			icon: null,
 			message: '',
+			messageId: '',
 			isSavingStatus: false,
 			statuses: getAllStatusOptions(),
 		}
@@ -109,7 +110,7 @@ export default {
 		/**
 		 * Returns the user-set icon or a smiley in case no icon is set
 		 *
-		 * @returns {String}
+		 * @return {string}
 		 */
 		visibleIcon() {
 			return this.icon || '😀'
@@ -141,7 +142,7 @@ export default {
 		/**
 		 * Sets a new icon
 		 *
-		 * @param {String} icon The new icon
+		 * @param {string} icon The new icon
 		 */
 		setIcon(icon) {
 			this.messageId = null
@@ -153,7 +154,7 @@ export default {
 		/**
 		 * Sets a new message
 		 *
-		 * @param {String} message The new message
+		 * @param {string} message The new message
 		 */
 		setMessage(message) {
 			this.messageId = null
@@ -162,7 +163,7 @@ export default {
 		/**
 		 * Sets a new clearAt value
 		 *
-		 * @param {Object} clearAt The new clearAt object
+		 * @param {object} clearAt The new clearAt object
 		 */
 		setClearAt(clearAt) {
 			this.clearAt = clearAt
@@ -170,7 +171,7 @@ export default {
 		/**
 		 * Sets new icon/message/clearAt based on a predefined message
 		 *
-		 * @param {Object} status The predefined status object
+		 * @param {object} status The predefined status object
 		 */
 		selectPredefinedMessage(status) {
 			this.messageId = status.id
@@ -181,7 +182,7 @@ export default {
 		/**
 		 * Saves the status and closes the
 		 *
-		 * @returns {Promise<void>}
+		 * @return {Promise<void>}
 		 */
 		async saveStatus() {
 			if (this.isSavingStatus) {
@@ -191,7 +192,7 @@ export default {
 			try {
 				this.isSavingStatus = true
 
-				if (this.messageId !== null) {
+				if (this.messageId !== undefined && this.messageId !== null) {
 					await this.$store.dispatch('setPredefinedMessage', {
 						messageId: this.messageId,
 						clearAt: this.clearAt,
@@ -215,7 +216,7 @@ export default {
 		},
 		/**
 		 *
-		 * @returns {Promise<void>}
+		 * @return {Promise<void>}
 		 */
 		async clearStatus() {
 			try {
@@ -237,12 +238,28 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// TODO: can be removed once migrated to @nextcloud-vue >= 5.0
+::v-deep {
+	.modal-wrapper {
+		.prev, .next {
+			display: none !important;
+		}
+
+		.modal-container {
+			max-height: 100% !important;
+		}
+	}
+
+	.modal-header .modal-title {
+		display: none;
+	}
+}
+
 .set-status-modal {
-	min-width: 500px;
 	min-height: 200px;
 	padding: 8px 20px 20px 20px;
 	// Enable scrollbar for too long content, same way as in Dashboard customize
-	max-height: 70vh;
+	max-height: 95vh;
 	overflow: auto;
 
 	&__header {
@@ -279,6 +296,12 @@ export default {
 		button {
 			flex-basis: 50%;
 		}
+	}
+}
+
+@media only screen and (max-width: 500px) {
+	.set-status-modal__online-status {
+		grid-template-columns: none !important;
 	}
 }
 

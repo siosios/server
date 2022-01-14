@@ -102,7 +102,7 @@
 		 * Number of files per page
 		 * Always show a minimum of 1
 		 *
-		 * @return {int} page size
+		 * @return {number} page size
 		 */
 		pageSize: function() {
 			var isGridView = this.$showGridView.is(':checked');
@@ -252,7 +252,8 @@
 				this._filesConfig = OCA.Files.App.getFilesConfig();
 			} else {
 				this._filesConfig = new OC.Backbone.Model({
-					'showhidden': false
+					'showhidden': false,
+					'cropimagepreviews': true
 				});
 			}
 
@@ -291,6 +292,10 @@
 					}
 				});
 
+				this._filesConfig.on('change:cropimagepreviews', function() {
+					self.reload();
+				});
+
 				this.$el.toggleClass('hide-hidden-files', !this._filesConfig.get('showhidden'));
 			}
 
@@ -325,9 +330,7 @@
 						this.multiSelectMenuItems[i] = this.multiSelectMenuItems[i](this);
 					}
 				}
-				this.fileMultiSelectMenu = new OCA.Files.FileMultiSelectMenu(this.multiSelectMenuItems);
-				this.fileMultiSelectMenu.render();
-				this.$el.find('.selectedActions').append(this.fileMultiSelectMenu.$el);
+				this._updateMultiSelectFileActions()
 			}
 
 			if (options.sorting) {
@@ -409,6 +412,31 @@
 				this.$fileList.one('updated', function() {
 					self.scrollTo(options.scrollTo);
 				});
+			}
+
+			if(options.openFile) {
+				// Wait for some initialisation process to be over before triggering the default action.
+				_.defer(() => {
+					try {
+						var fileInfo = JSON.parse(atob($('#initial-state-files-openFileInfo').val()))
+						var spec = this.fileActions.getDefaultFileAction(fileInfo.mime, fileInfo.type, fileInfo.permissions)
+						if (spec && spec.action) {
+							spec.action(fileInfo.name, {
+								fileId: fileInfo.id,
+								fileList: this,
+								fileActions: this.fileActions,
+								dir: fileInfo.directory
+							});
+						} else {
+							var url = this.getDownloadUrl(fileInfo.name, fileInfo.dir, true);
+							OCA.Files.Files.handleDownload(url);
+						}
+
+						OCA.Files.Sidebar.open(fileInfo.path);
+					} catch (error) {
+						console.error(`Failed to trigger default action on the file for URL: ${location.href}`, error)
+					}
+				})
 			}
 
 			this._operationProgressBar = new OCA.Files.OperationProgressBar();
@@ -511,7 +539,7 @@
 		multiSelectMenuClick: function (ev, action) {
 				var actionFunction = _.find(this.multiSelectMenuItems, function (item) {return item.name === action;}).action;
 				if (actionFunction) {
-					actionFunction(ev);
+					actionFunction(this.getSelectedFiles());
 					return;
 				}
 				switch (action) {
@@ -526,6 +554,9 @@
 						break;
 					case 'restore':
 						this._onClickRestoreSelected(ev);
+						break;
+					case 'tags':
+						this._onClickTagSelected(ev);
 						break;
 				}
 		},
@@ -763,7 +794,7 @@
 				if( (this._currentDirectory || this.$el.find('#dir').val()) && currentDir === e.dir) {
 					return;
 				}
-				this.changeDirectory(e.dir, false, true);
+				this.changeDirectory(e.dir, true, true, undefined, true);
 			}
 		},
 
@@ -772,7 +803,7 @@
 		 * the internal selection cache.
 		 *
 		 * @param {Object} $tr single file row element
-		 * @param {bool} state true to select, false to deselect
+		 * @param {boolean} state true to select, false to deselect
 		 */
 		_selectFileEl: function($tr, state) {
 			var $checkbox = $tr.find('td.selection>.selectCheckBox');
@@ -914,7 +945,7 @@
 					var mime = this.fileActions.getCurrentMimeType();
 					var type = this.fileActions.getCurrentType();
 					var permissions = this.fileActions.getCurrentPermissions();
-					var action = this.fileActions.get(mime, type, permissions)['Details'];
+					var action = this.fileActions.get(mime, type, permissions, filename)['Details'];
 					if (action) {
 						action(filename, {
 							$file: $tr,
@@ -1086,6 +1117,124 @@
 			}
 			this.do_delete(files);
 			event.preventDefault();
+		},
+
+		/**
+		 * CUSTOM CODE
+		 * Event handler for when clicking on "Tags" for the selected files
+		 */
+		_onClickTagSelected: function(event) {
+			var self = this;
+			event.preventDefault();
+			var commonTags = [];
+
+			var selectedFiles = _.pluck(this.getSelectedFiles(), 'id')
+			var tagCollections = [];
+			var fetchTagPromises = [];
+
+
+			selectedFiles.forEach(function(fileId) {
+				var deferred = new $.Deferred();
+				var tagCollection = new OC.SystemTags.SystemTagsMappingCollection([], {
+					objectType: 'files',
+					objectId: fileId});
+				tagCollections.push(tagCollection);
+				tagCollection.fetch({
+					success: function(){
+						deferred.resolve('success');
+					},
+					error: function() {
+						deferred.resolve('failed');
+					}
+				})
+				fetchTagPromises.push(deferred);
+			});
+
+			if (!self._inputView) {
+				self._inputView = new OC.SystemTags.SystemTagsInputField({
+					multiple: true,
+					allowActions: true,
+					allowCreate: true,
+					isAdmin: OC.isUserAdmin(),
+				});
+				self._inputView.on('select', self._onSelectTag, self);
+				self._inputView.on('deselect', self._onDeselectTag, self);
+				self._inputView.render();
+
+				// Build dom
+				self.tagsTitle = $('<h3>'+ t('files', 'Please select tag(s) to add to the selection') +'</h3>');
+				self.tagsSubmit = $('<button>' + t('files', 'Apply tag(s) to selection') + '</button>');
+				self.tagsContainer = $('<tr id="tag_multiple_files_container"></tr>');
+				self.tagsTitle.appendTo(self.tagsContainer)
+				self.tagsContainer.append(self._inputView.el);
+				self.tagsSubmit.appendTo(self.tagsContainer)
+
+				// Inject everything
+				self.$table.find('thead').append(self.tagsContainer);
+
+				self.tagsSubmit.on('click', function(ev){
+					self._onClickDocument(ev);
+				});
+			}
+
+			self._inputView.$el.addClass('icon-loading');
+			self.tagsContainer.show();
+
+			Promise.all(fetchTagPromises).then(function() {
+				//find tags which are common to all selected files
+				commonTags =_.intersection.apply(null, tagCollections.map(function (tagCollection) {return tagCollection.getTagIds();}));
+				self._inputView.setValues(commonTags);
+				self._inputView.$el.removeClass('icon-loading');
+				$(document).on('click',function(ev){
+					self._onClickDocument(ev);
+				});
+			});
+		},
+
+		_onClickDocument: function(ev) {
+			if(!$(ev.target).closest('#editor_container').length) {
+				this._inputView.setValues([]);
+				this.tagsContainer.hide();
+				$(document).off('click', this._onClickDocument);
+			}
+
+		},
+
+		/**
+		 * Custom code
+		 * Set tag for all selected files
+		 * @param {any} tagModel -
+		 * @private
+		 */
+		_onSelectTag: function(tagModel) {
+			var selectedFiles = _.pluck(this.getSelectedFiles(),'id')
+			if (!_.isArray(selectedFiles)) {
+				return;
+			}
+			selectedFiles.forEach(function(fileId) {
+				$.ajax({
+					url: OC.linkToRemote('dav') + '/systemtags-relations/files/' + fileId + '/'+ tagModel.attributes.id,
+					type: 'PUT',
+				});
+			});
+
+		},
+		/**
+		 * remove tag from all selected files
+		 * @param {any} tagId -
+		 * @private
+		 */
+		_onDeselectTag: function(tagId) {
+			var selectedFiles = _.pluck(this.getSelectedFiles(),'id');
+			if (!_.isArray(selectedFiles)) {
+				return;
+			}
+			selectedFiles.forEach(function(fileId) {
+				$.ajax({
+					url: OC.linkToRemote('dav') + '/systemtags-relations/files/' +fileId + '/'+ tagId,
+					type: 'DELETE'
+				});
+			});
 		},
 
 		/**
@@ -1317,31 +1466,6 @@
 				}, 0);
 			}
 
-			if(!this.triedActionOnce) {
-				var id = OC.Util.History.parseUrlQuery().openfile;
-				if (id) {
-					var $tr = this.$fileList.children().filterAttr('data-id', '' + id);
-					var filename = $tr.attr('data-file');
-					this.fileActions.currentFile = $tr.find('td');
-					var dir = $tr.attr('data-path') || this.getCurrentDirectory();
-					var spec = this.fileActions.getCurrentDefaultFileAction();
-					if (spec && spec.action) {
-						spec.action(filename, {
-							$file: $tr,
-							fileList: this,
-							fileActions: this.fileActions,
-							dir: dir
-						});
-
-					}
-					else {
-						var url = this.getDownloadUrl(filename, dir, true);
-						OCA.Files.Files.handleDownload(url);
-					}
-				}
-				this.triedActionOnce = true;
-			}
-
 			return newTrs;
 		},
 
@@ -1361,6 +1485,32 @@
 			});
 			this.$fileList.trigger($.Event('fileActionsReady', {fileList: this, $files: $files}));
 
+		},
+
+		/**
+		 * Register action for multiple selected files
+		 *
+		 * @param {OCA.Files.FileAction} fileAction object
+		 * The callback of FileAction will be called with an array of files that are currently selected
+		 */
+		registerMultiSelectFileAction: function(fileAction) {
+			if (typeof this.multiSelectMenuItems === 'undefined') {
+				return;
+			}
+			this.multiSelectMenuItems.push(fileAction)
+			this._updateMultiSelectFileActions()
+		},
+
+		_updateMultiSelectFileActions: function() {
+			if (typeof this.multiSelectMenuItems === 'undefined') {
+				return;
+			}
+			this.fileMultiSelectMenu = new OCA.Files.FileMultiSelectMenu(this.multiSelectMenuItems.sort(function(a, b) {
+				return a.order - b.order
+			}));
+			this.fileMultiSelectMenu.render();
+			this.$el.find('.selectedActions .filesSelectMenu').remove();
+			this.$el.find('.selectedActions').append(this.fileMultiSelectMenu.$el);
 		},
 
 		/**
@@ -1808,7 +1958,7 @@
 		 *
 		 * @param {OC.Files.FileInfo} fileData map of file attributes
 		 * @param {Object} [options] map of attributes
-		 * @param {int} [options.index] index at which to insert the element
+		 * @param {number} [options.index] index at which to insert the element
 		 * @param {boolean} [options.updateSummary] true to update the summary
 		 * after adding (default), false otherwise. Defaults to true.
 		 * @param {boolean} [options.animate] true to animate the thumbnail image after load
@@ -1907,15 +2057,16 @@
 		 * @param {boolean} [changeUrl=true] if the URL must not be changed (defaults to true)
 		 * @param {boolean} [force=false] set to true to force changing directory
 		 * @param {string} [fileId] optional file id, if known, to be appended in the URL
+		 * @param {bool} [changedThroughUrl=false] true if the dir was set through a URL change
 		 */
-		changeDirectory: function(targetDir, changeUrl, force, fileId) {
+		changeDirectory: function(targetDir, changeUrl, force, fileId, changedThroughUrl) {
 			var self = this;
 			var currentDir = this.getCurrentDirectory();
 			targetDir = targetDir || '/';
 			if (!force && currentDir === targetDir) {
 				return;
 			}
-			this._setCurrentDir(targetDir, changeUrl, fileId);
+			this._setCurrentDir(targetDir, changeUrl, fileId, changedThroughUrl);
 
 			// discard finished uploads list, we'll get it through a regular reload
 			this._uploads = {};
@@ -1950,8 +2101,9 @@
 		 * @param targetDir directory to display
 		 * @param changeUrl true to also update the URL, false otherwise (default)
 		 * @param {string} [fileId] file id
+		 * @param {bool} changedThroughUrl true if the dir was set through a URL change
 		 */
-		_setCurrentDir: function(targetDir, changeUrl, fileId) {
+		_setCurrentDir: function(targetDir, changeUrl, fileId, changedThroughUrl) {
 			targetDir = targetDir.replace(/\\/g, '/');
 			if (!this._isValidPath(targetDir)) {
 				targetDir = '/';
@@ -1983,6 +2135,7 @@
 				if (fileId) {
 					params.fileId = fileId;
 				}
+				params.changedThroughUrl = changedThroughUrl
 				this.$el.trigger(jQuery.Event('changeDirectory', params));
 			}
 			this.breadcrumb.setDirectory(this.getCurrentDirectory());
@@ -2082,7 +2235,9 @@
 			this.hideMask();
 
 			if (status === 401) {
-				return false;
+				// We are not authentificated, so reload the page so that we get
+				// redirected to the login page while saving the current url.
+				location.reload();
 			}
 
 			// Firewall Blocked request?
@@ -2196,8 +2351,8 @@
 		/**
 		 * Generates a preview URL based on the URL space.
 		 * @param urlSpec attributes for the URL
-		 * @param {int} urlSpec.x width
-		 * @param {int} urlSpec.y height
+		 * @param {number} urlSpec.x width
+		 * @param {number} urlSpec.y height
 		 * @param {String} urlSpec.file path to the file
 		 * @return preview URL
 		 */
@@ -2214,6 +2369,12 @@
 			urlSpec.x = Math.ceil(urlSpec.x);
 			urlSpec.y = Math.ceil(urlSpec.y);
 			urlSpec.forceIcon = 0;
+
+			/**
+			 * Images are cropped to a square by default. Append a=1 to the URL
+			 *  if the user wants to see images with original aspect ratio.
+			 */
+			urlSpec.a = this._filesConfig.get('cropimagepreviews') ? 0 : 1;
 
 			if (typeof urlSpec.fileId !== 'undefined') {
 				delete urlSpec.file;
@@ -2789,7 +2950,7 @@
 				} catch (error) {
 					input.attr('title', error);
 					input.tooltip({placement: 'right', trigger: 'manual'});
-					input.tooltip('fixTitle');
+					input.tooltip('_fixTitle');
 					input.tooltip('show');
 					input.addClass('error');
 				}
@@ -2804,7 +2965,7 @@
 				} catch (error) {
 					input.attr('title', error);
 					input.tooltip({placement: 'right', trigger: 'manual'});
-					input.tooltip('fixTitle');
+					input.tooltip('_fixTitle');
 					input.tooltip('show');
 					input.addClass('error');
 				}
@@ -3008,7 +3169,7 @@
 		 *
 		 * @param {string} file file name
 		 *
-		 * @return {bool} true if the file exists in the list, false otherwise
+		 * @return {boolean} true if the file exists in the list, false otherwise
 		 */
 		inList:function(file) {
 			return this.findFile(file);
@@ -3018,7 +3179,7 @@
 		 * Shows busy state on a given file row or multiple
 		 *
 		 * @param {string|Array.<string>} files file name or array of file names
-		 * @param {bool} [busy=true] busy state, true for busy, false to remove busy state
+		 * @param {boolean} [busy=true] busy state, true for busy, false to remove busy state
 		 *
 		 * @since 8.2
 		 */
@@ -3190,7 +3351,7 @@
 		},
 		/**
 		 * hide files matching the given filter
-		 * @param filter
+		 * @param {any} filter -
 		 */
 		setFilter:function(filter) {
 			var total = 0;
@@ -3255,7 +3416,7 @@
 		},
 		/**
 		 * get the current filter
-		 * @param filter
+		 * @param {any} filter -
 		 */
 		getFilter:function(filter) {
 			return this._filter;
@@ -3774,6 +3935,7 @@
 					return t('files', 'Select file range');
 				},
 				iconClass: 'icon-fullscreen',
+				order: 15,
 				action: function() {
 					fileList._onClickToggleSelectionMode();
 				},
@@ -3793,7 +3955,7 @@
 		 *
 		 * @param {OC.Files.FileInfo} fileInfo1 file info
 		 * @param {OC.Files.FileInfo} fileInfo2 file info
-		 * @return {int} -1 if the first file must appear before the second one,
+		 * @return {number} -1 if the first file must appear before the second one,
 		 * 0 if they are identify, 1 otherwise.
 		 */
 		name: function(fileInfo1, fileInfo2) {
@@ -3810,7 +3972,7 @@
 		 *
 		 * @param {OC.Files.FileInfo} fileInfo1 file info
 		 * @param {OC.Files.FileInfo} fileInfo2 file info
-		 * @return {int} -1 if the first file must appear before the second one,
+		 * @return {number} -1 if the first file must appear before the second one,
 		 * 0 if they are identify, 1 otherwise.
 		 */
 		size: function(fileInfo1, fileInfo2) {
@@ -3821,7 +3983,7 @@
 		 *
 		 * @param {OC.Files.FileInfo} fileInfo1 file info
 		 * @param {OC.Files.FileInfo} fileInfo2 file info
-		 * @return {int} -1 if the first file must appear before the second one,
+		 * @return {number} -1 if the first file must appear before the second one,
 		 * 0 if they are identify, 1 otherwise.
 		 */
 		mtime: function(fileInfo1, fileInfo2) {

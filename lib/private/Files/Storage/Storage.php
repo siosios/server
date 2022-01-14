@@ -22,7 +22,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Files\Storage;
 
 use OCP\Lock\ILockingProvider;
@@ -38,7 +37,7 @@ interface Storage extends \OCP\Files\Storage {
 	 * get a cache instance for the storage
 	 *
 	 * @param string $path
-	 * @param \OC\Files\Storage\Storage (optional) the storage to pass to the cache
+	 * @param \OC\Files\Storage\Storage|null (optional) the storage to pass to the cache
 	 * @return \OC\Files\Cache\Cache
 	 */
 	public function getCache($path = '', $storage = null);
@@ -93,7 +92,7 @@ interface Storage extends \OCP\Files\Storage {
 
 	/**
 	 * @param string $path
-	 * @return array
+	 * @return array|null
 	 */
 	public function getMetaData($path);
 

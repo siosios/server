@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * @author Joas Schilling <nickvergessen@owncloud.com>
  *
@@ -21,12 +23,20 @@
 
 namespace Test\Notification;
 
+use OC\AppFramework\Bootstrap\Coordinator;
+use OC\AppFramework\Bootstrap\RegistrationContext;
+use OC\AppFramework\Bootstrap\ServiceRegistration;
 use OC\Notification\Manager;
-use OCP\ILogger;
+use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\ICache;
+use OCP\ICacheFactory;
+use OCP\IUserManager;
 use OCP\Notification\IManager;
 use OCP\Notification\INotification;
 use OCP\RichObjectStrings\IValidator;
+use OCP\Support\Subscription\IRegistry;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class ManagerTest extends TestCase {
@@ -35,14 +45,44 @@ class ManagerTest extends TestCase {
 
 	/** @var IValidator|MockObject */
 	protected $validator;
-	/** @var ILogger|MockObject */
+	/** @var IUserManager|MockObject */
+	protected $userManager;
+	/** @var ICacheFactory|MockObject */
+	protected $cacheFactory;
+	/** @var ICache|MockObject */
+	protected $cache;
+	/** @var ITimeFactory|MockObject */
+	protected $timeFactory;
+	/** @var IRegistry|MockObject */
+	protected $subscriptionRegistry;
+	/** @var LoggerInterface|MockObject */
 	protected $logger;
+	/** @var Coordinator|MockObject */
+	protected $coordinator;
+	/** @var RegistrationContext|MockObject */
+	protected $registrationContext;
 
 	protected function setUp(): void {
 		parent::setUp();
+
 		$this->validator = $this->createMock(IValidator::class);
-		$this->logger = $this->createMock(ILogger::class);
-		$this->manager = new Manager($this->validator, $this->logger);
+		$this->userManager = $this->createMock(IUserManager::class);
+		$this->cache = $this->createMock(ICache::class);
+		$this->timeFactory = $this->createMock(ITimeFactory::class);
+		$this->subscriptionRegistry = $this->createMock(IRegistry::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
+
+		$this->cacheFactory = $this->createMock(ICacheFactory::class);
+		$this->cacheFactory->method('createDistributed')
+			->with('notifications')
+			->willReturn($this->cache);
+
+		$this->registrationContext = $this->createMock(RegistrationContext::class);
+		$this->coordinator = $this->createMock(Coordinator::class);
+		$this->coordinator->method('getRegistrationContext')
+			->willReturn($this->registrationContext);
+
+		$this->manager = new Manager($this->validator, $this->userManager, $this->cacheFactory, $this->timeFactory, $this->subscriptionRegistry, $this->logger, $this->coordinator);
 	}
 
 	public function testRegisterApp() {
@@ -79,6 +119,16 @@ class ManagerTest extends TestCase {
 		$this->assertCount(2, self::invokePrivate($this->manager, 'getNotifiers'));
 	}
 
+	public function testRegisterNotifierBootstrap() {
+		$this->registrationContext->method('getNotifierServices')
+			->willReturn([
+				new ServiceRegistration('app', DummyNotifier::class),
+			]);
+
+		$this->assertCount(1, self::invokePrivate($this->manager, 'getNotifiers'));
+		$this->assertCount(1, self::invokePrivate($this->manager, 'getNotifiers'));
+	}
+
 	public function testRegisterNotifierInvalid() {
 		$this->manager->registerNotifierService(DummyApp::class);
 
@@ -104,7 +154,12 @@ class ManagerTest extends TestCase {
 		$manager = $this->getMockBuilder(Manager::class)
 			->setConstructorArgs([
 				$this->validator,
+				$this->userManager,
+				$this->cacheFactory,
+				$this->timeFactory,
+				$this->subscriptionRegistry,
 				$this->logger,
+				$this->coordinator,
 			])
 			->setMethods(['getApps'])
 			->getMock();
@@ -131,7 +186,12 @@ class ManagerTest extends TestCase {
 		$manager = $this->getMockBuilder(Manager::class)
 			->setConstructorArgs([
 				$this->validator,
+				$this->userManager,
+				$this->cacheFactory,
+				$this->timeFactory,
+				$this->subscriptionRegistry,
 				$this->logger,
+				$this->coordinator,
 			])
 			->setMethods(['getApps'])
 			->getMock();
@@ -151,7 +211,12 @@ class ManagerTest extends TestCase {
 		$manager = $this->getMockBuilder(Manager::class)
 			->setConstructorArgs([
 				$this->validator,
+				$this->userManager,
+				$this->cacheFactory,
+				$this->timeFactory,
+				$this->subscriptionRegistry,
 				$this->logger,
+				$this->coordinator,
 			])
 			->setMethods(['getApps'])
 			->getMock();
@@ -172,7 +237,12 @@ class ManagerTest extends TestCase {
 		$manager = $this->getMockBuilder(Manager::class)
 			->setConstructorArgs([
 				$this->validator,
+				$this->userManager,
+				$this->cacheFactory,
+				$this->timeFactory,
+				$this->subscriptionRegistry,
 				$this->logger,
+				$this->coordinator,
 			])
 			->setMethods(['getApps'])
 			->getMock();
@@ -182,5 +252,41 @@ class ManagerTest extends TestCase {
 			->willReturn([]);
 
 		$manager->getCount($notification);
+	}
+
+	public function dataIsFairUseOfFreePushService() {
+		return [
+			// Before 1st March
+			[1646089199, true, 4999, true],
+			[1646089199, true, 5000, true],
+			[1646089199, false, 4999, true],
+			[1646089199, false, 5000, true],
+
+			// After 1st March
+			[1646089200, true, 4999, true],
+			[1646089200, true, 5000, true],
+			[1646089200, false, 4999, true],
+			[1646089200, false, 5000, false],
+		];
+	}
+
+	/**
+	 * @dataProvider dataIsFairUseOfFreePushService
+	 * @param int $time
+	 * @param bool $hasValidSubscription
+	 * @param int $userCount
+	 * @param bool $isFair
+	 */
+	public function testIsFairUseOfFreePushService(int $time, bool $hasValidSubscription, int $userCount, bool $isFair): void {
+		$this->timeFactory->method('getTime')
+			->willReturn($time);
+
+		$this->subscriptionRegistry->method('delegateHasValidSubscription')
+			->willReturn($hasValidSubscription);
+
+		$this->userManager->method('countSeenUsers')
+			->willReturn($userCount);
+
+		$this->assertSame($isFair, $this->manager->isFairUseOfFreePushService());
 	}
 }

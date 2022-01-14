@@ -16,7 +16,7 @@
  * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Julius Haertl <jus@bitgrid.net>
  * @author Julius Härtl <jus@bitgrid.net>
@@ -33,8 +33,7 @@
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Thomas Tanghus <thomas@tanghus.net>
  * @author Tobia De Koninck <tobia@ledfan.be>
- * @author Vincent Petry <pvince81@owncloud.com>
- * @author Xheni Myrtaj <myrtajxheni@gmail.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -51,7 +50,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC;
 
 use bantu\IniGetWrapper\IniGetWrapper;
@@ -60,6 +58,7 @@ use OC\App\AppManager;
 use OC\App\AppStore\Bundles\BundleFetcher;
 use OC\App\AppStore\Fetcher\AppFetcher;
 use OC\App\AppStore\Fetcher\CategoryFetcher;
+use OC\AppFramework\Bootstrap\Coordinator;
 use OC\AppFramework\Http\Request;
 use OC\AppFramework\Utility\TimeFactory;
 use OC\Authentication\Events\LoginFailed;
@@ -78,6 +77,8 @@ use OC\Comments\ManagerFactory as CommentsManagerFactory;
 use OC\Contacts\ContactsMenu\ActionFactory;
 use OC\Contacts\ContactsMenu\ContactsStore;
 use OC\Dashboard\DashboardManager;
+use OC\DB\Connection;
+use OC\DB\ConnectionAdapter;
 use OC\Diagnostics\EventLogger;
 use OC\Diagnostics\QueryLogger;
 use OC\EventDispatcher\SymfonyAdapter;
@@ -94,14 +95,20 @@ use OC\Files\Node\HookConnector;
 use OC\Files\Node\LazyRoot;
 use OC\Files\Node\Root;
 use OC\Files\Storage\StorageFactory;
+use OC\Files\Template\TemplateManager;
 use OC\Files\Type\Loader;
 use OC\Files\View;
 use OC\FullTextSearch\FullTextSearchManager;
 use OC\Http\Client\ClientService;
+use OC\Http\Client\DnsPinMiddleware;
+use OC\Http\Client\LocalAddressChecker;
+use OC\Http\Client\NegativeDnsCache;
 use OC\IntegrityCheck\Checker;
 use OC\IntegrityCheck\Helpers\AppLocator;
 use OC\IntegrityCheck\Helpers\EnvironmentHelper;
 use OC\IntegrityCheck\Helpers\FileAccessHelper;
+use OC\LDAP\NullLDAPProviderFactory;
+use OC\KnownUser\KnownUserService;
 use OC\Lock\DBLockingProvider;
 use OC\Lock\MemcacheLockingProvider;
 use OC\Lock\NoopLockingProvider;
@@ -129,6 +136,7 @@ use OC\Security\CSRF\TokenStorage\SessionStorage;
 use OC\Security\Hasher;
 use OC\Security\SecureRandom;
 use OC\Security\TrustedDomainHelper;
+use OC\Security\VerificationToken\VerificationToken;
 use OC\Session\CryptoWrapper;
 use OC\Share20\ProviderFactory;
 use OC\Share20\ShareHelper;
@@ -138,6 +146,7 @@ use OC\Template\JSCombiner;
 use OCA\Theming\ImageManager;
 use OCA\Theming\ThemingDefaults;
 use OCA\Theming\Util;
+use OCA\WorkflowEngine\Service\Logger;
 use OCP\Accounts\IAccountManager;
 use OCP\App\IAppManager;
 use OCP\Authentication\LoginCredentials\IStore;
@@ -165,6 +174,7 @@ use OCP\Files\IRootFolder;
 use OCP\Files\Mount\IMountManager;
 use OCP\Files\NotFoundException;
 use OCP\Files\Storage\IStorageFactory;
+use OCP\Files\Template\ITemplateManager;
 use OCP\FullTextSearch\IFullTextSearchManager;
 use OCP\GlobalScale\IConfig;
 use OCP\Group\Events\BeforeGroupCreatedEvent;
@@ -202,6 +212,8 @@ use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
+use OCP\LDAP\ILDAPProvider;
+use OCP\LDAP\ILDAPProviderFactory;
 use OCP\Lock\ILockingProvider;
 use OCP\Log\ILogFactory;
 use OCP\Mail\IMailer;
@@ -214,6 +226,8 @@ use OCP\Security\ICredentialsManager;
 use OCP\Security\ICrypto;
 use OCP\Security\IHasher;
 use OCP\Security\ISecureRandom;
+use OCP\Security\ITrustedDomainHelper;
+use OCP\Security\VerificationToken\IVerificationToken;
 use OCP\Share\IShareHelper;
 use OCP\SystemTag\ISystemTagManager;
 use OCP\SystemTag\ISystemTagObjectMapper;
@@ -288,6 +302,7 @@ class Server extends ServerContainer implements IServerContainer {
 		$this->registerDeprecatedAlias('ContactsManager', \OCP\Contacts\IManager::class);
 
 		$this->registerAlias(\OCP\DirectEditing\IManager::class, \OC\DirectEditing\Manager::class);
+		$this->registerAlias(ITemplateManager::class, TemplateManager::class);
 
 		$this->registerAlias(IActionFactory::class, ActionFactory::class);
 
@@ -305,7 +320,9 @@ class Server extends ServerContainer implements IServerContainer {
 				),
 				$c->get(SymfonyAdapter::class),
 				$c->get(GeneratorHelper::class),
-				$c->get(ISession::class)->get('user_id')
+				$c->get(ISession::class)->get('user_id'),
+				$c->get(Coordinator::class),
+				$c->get(IServerContainer::class)
 			);
 		});
 		/** @deprecated 19.0.0 */
@@ -505,11 +522,11 @@ class Server extends ServerContainer implements IServerContainer {
 			$session = new \OC\Session\Memory('');
 			$timeFactory = new TimeFactory();
 			// Token providers might require a working database. This code
-			// might however be called when ownCloud is not yet setup.
+			// might however be called when Nextcloud is not yet setup.
 			if (\OC::$server->get(SystemConfig::class)->getValue('installed', false)) {
-				$defaultTokenProvider = $c->get(IProvider::class);
+				$provider = $c->get(IProvider::class);
 			} else {
-				$defaultTokenProvider = null;
+				$provider = null;
 			}
 
 			$legacyDispatcher = $c->get(SymfonyAdapter::class);
@@ -518,40 +535,32 @@ class Server extends ServerContainer implements IServerContainer {
 				$manager,
 				$session,
 				$timeFactory,
-				$defaultTokenProvider,
+				$provider,
 				$c->get(\OCP\IConfig::class),
 				$c->get(ISecureRandom::class),
 				$c->getLockdownManager(),
 				$c->get(ILogger::class),
 				$c->get(IEventDispatcher::class)
 			);
+			/** @deprecated 21.0.0 use BeforeUserCreatedEvent event with the IEventDispatcher instead */
 			$userSession->listen('\OC\User', 'preCreateUser', function ($uid, $password) {
 				\OC_Hook::emit('OC_User', 'pre_createUser', ['run' => true, 'uid' => $uid, 'password' => $password]);
-
-				/** @var IEventDispatcher $dispatcher */
-				$dispatcher = $this->get(IEventDispatcher::class);
-				$dispatcher->dispatchTyped(new BeforeUserCreatedEvent($uid, $password));
 			});
+			/** @deprecated 21.0.0 use UserCreatedEvent event with the IEventDispatcher instead */
 			$userSession->listen('\OC\User', 'postCreateUser', function ($user, $password) {
 				/** @var \OC\User\User $user */
 				\OC_Hook::emit('OC_User', 'post_createUser', ['uid' => $user->getUID(), 'password' => $password]);
 			});
+			/** @deprecated 21.0.0 use BeforeUserDeletedEvent event with the IEventDispatcher instead */
 			$userSession->listen('\OC\User', 'preDelete', function ($user) use ($legacyDispatcher) {
 				/** @var \OC\User\User $user */
 				\OC_Hook::emit('OC_User', 'pre_deleteUser', ['run' => true, 'uid' => $user->getUID()]);
 				$legacyDispatcher->dispatch('OCP\IUser::preDelete', new GenericEvent($user));
-
-				/** @var IEventDispatcher $dispatcher */
-				$dispatcher = $this->get(IEventDispatcher::class);
-				$dispatcher->dispatchTyped(new BeforeUserDeletedEvent($user));
 			});
+			/** @deprecated 21.0.0 use UserDeletedEvent event with the IEventDispatcher instead */
 			$userSession->listen('\OC\User', 'postDelete', function ($user) {
 				/** @var \OC\User\User $user */
 				\OC_Hook::emit('OC_User', 'post_deleteUser', ['uid' => $user->getUID()]);
-
-				/** @var IEventDispatcher $dispatcher */
-				$dispatcher = $this->get(IEventDispatcher::class);
-				$dispatcher->dispatchTyped(new UserDeletedEvent($user));
 			});
 			$userSession->listen('\OC\User', 'preSetPassword', function ($user, $password, $recoveryPassword) {
 				/** @var \OC\User\User $user */
@@ -582,7 +591,7 @@ class Server extends ServerContainer implements IServerContainer {
 
 				/** @var IEventDispatcher $dispatcher */
 				$dispatcher = $this->get(IEventDispatcher::class);
-				$dispatcher->dispatchTyped(new UserLoggedInEvent($user, $password, $isTokenLogin));
+				$dispatcher->dispatchTyped(new UserLoggedInEvent($user, $loginName, $password, $isTokenLogin));
 			});
 			$userSession->listen('\OC\User', 'preRememberedLogin', function ($uid) {
 				/** @var IEventDispatcher $dispatcher */
@@ -679,7 +688,16 @@ class Server extends ServerContainer implements IServerContainer {
 			$config = $c->get(\OCP\IConfig::class);
 
 			if ($config->getSystemValue('installed', false) && !(defined('PHPUNIT_RUN') && PHPUNIT_RUN)) {
-				$v = \OC_App::getAppVersions();
+				if (!$config->getSystemValueBool('log_query')) {
+					$v = \OC_App::getAppVersions();
+				} else {
+					// If the log_query is enabled, we can not get the app versions
+					// as that does a query, which will be logged and the logging
+					// depends on redis and here we are back again in the same function.
+					$v = [
+						'log_query' => 'enabled',
+					];
+				}
 				$v['core'] = implode(',', \OC_Util::getVersion());
 				$version = implode(',', $v);
 				$instanceId = \OC_Util::getInstanceId();
@@ -688,7 +706,8 @@ class Server extends ServerContainer implements IServerContainer {
 				return new \OC\Memcache\Factory($prefix, $c->get(ILogger::class),
 					$config->getSystemValue('memcache.local', null),
 					$config->getSystemValue('memcache.distributed', null),
-					$config->getSystemValue('memcache.locking', null)
+					$config->getSystemValue('memcache.locking', null),
+					$config->getSystemValueString('redis_log_file')
 				);
 			}
 			return $arrayCacheFactory;
@@ -724,11 +743,14 @@ class Server extends ServerContainer implements IServerContainer {
 
 		$this->registerService(AvatarManager::class, function (Server $c) {
 			return new AvatarManager(
+				$c->get(IUserSession::class),
 				$c->get(\OC\User\Manager::class),
 				$c->getAppDataDir('avatar'),
 				$c->getL10N('lib'),
-				$c->get(ILogger::class),
-				$c->get(\OCP\IConfig::class)
+				$c->get(LoggerInterface::class),
+				$c->get(\OCP\IConfig::class),
+				$c->get(IAccountManager::class),
+				$c->get(KnownUserService::class)
 			);
 		});
 		$this->registerAlias(IAvatarManager::class, AvatarManager::class);
@@ -779,15 +801,27 @@ class Server extends ServerContainer implements IServerContainer {
 		$this->registerDeprecatedAlias('Search', ISearch::class);
 
 		$this->registerService(\OC\Security\RateLimiting\Backend\IBackend::class, function ($c) {
-			return new \OC\Security\RateLimiting\Backend\MemoryCache(
-				$this->get(ICacheFactory::class),
-				new \OC\AppFramework\Utility\TimeFactory()
-			);
+			$cacheFactory = $c->get(ICacheFactory::class);
+			if ($cacheFactory->isAvailable()) {
+				$backend = new \OC\Security\RateLimiting\Backend\MemoryCacheBackend(
+					$this->get(ICacheFactory::class),
+					new \OC\AppFramework\Utility\TimeFactory()
+				);
+			} else {
+				$backend = new \OC\Security\RateLimiting\Backend\DatabaseBackend(
+					$c->get(IDBConnection::class),
+					new \OC\AppFramework\Utility\TimeFactory()
+				);
+			}
+
+			return $backend;
 		});
 
 		$this->registerAlias(\OCP\Security\ISecureRandom::class, SecureRandom::class);
 		/** @deprecated 19.0.0 */
 		$this->registerDeprecatedAlias('SecureRandom', \OCP\Security\ISecureRandom::class);
+
+		$this->registerAlias(IVerificationToken::class, VerificationToken::class);
 
 		$this->registerAlias(ICrypto::class, Crypto::class);
 		/** @deprecated 19.0.0 */
@@ -801,7 +835,8 @@ class Server extends ServerContainer implements IServerContainer {
 		/** @deprecated 19.0.0 */
 		$this->registerDeprecatedAlias('CredentialsManager', ICredentialsManager::class);
 
-		$this->registerService(IDBConnection::class, function (Server $c) {
+		$this->registerAlias(IDBConnection::class, ConnectionAdapter::class);
+		$this->registerService(Connection::class, function (Server $c) {
 			$systemConfig = $c->get(SystemConfig::class);
 			$factory = new \OC\DB\ConnectionFactory($systemConfig);
 			$type = $systemConfig->getValue('dbtype', 'sqlite');
@@ -818,6 +853,22 @@ class Server extends ServerContainer implements IServerContainer {
 
 		$this->registerAlias(ICertificateManager::class, CertificateManager::class);
 		$this->registerAlias(IClientService::class, ClientService::class);
+		$this->registerService(LocalAddressChecker::class, function (ContainerInterface $c) {
+			return new LocalAddressChecker(
+				$c->get(ILogger::class),
+			);
+		});
+		$this->registerService(NegativeDnsCache::class, function (ContainerInterface $c) {
+			return new NegativeDnsCache(
+				$c->get(ICacheFactory::class),
+			);
+		});
+		$this->registerService(DnsPinMiddleware::class, function (ContainerInterface $c) {
+			return new DnsPinMiddleware(
+				$c->get(NegativeDnsCache::class),
+				$c->get(LocalAddressChecker::class)
+			);
+		});
 		$this->registerDeprecatedAlias('HttpClientService', IClientService::class);
 		$this->registerService(IEventLogger::class, function (ContainerInterface $c) {
 			$eventLogger = new EventLogger();
@@ -854,7 +905,7 @@ class Server extends ServerContainer implements IServerContainer {
 				$c->get(IGroupManager::class),
 				$c->get(ICacheFactory::class),
 				$c->get(SymfonyAdapter::class),
-				$c->get(ILogger::class)
+				$c->get(LoggerInterface::class)
 			);
 		});
 		/** @deprecated 19.0.0 */
@@ -928,6 +979,7 @@ class Server extends ServerContainer implements IServerContainer {
 		$this->registerDeprecatedAlias('AsyncCommandBus', IBus::class);
 		/** @deprecated 20.0.0 */
 		$this->registerDeprecatedAlias('TrustedDomainHelper', TrustedDomainHelper::class);
+		$this->registerAlias(ITrustedDomainHelper::class, TrustedDomainHelper::class);
 		/** @deprecated 19.0.0 */
 		$this->registerDeprecatedAlias('Throttler', Throttler::class);
 		$this->registerService('IntegrityCodeChecker', function (ContainerInterface $c) {
@@ -948,7 +1000,6 @@ class Server extends ServerContainer implements IServerContainer {
 				$config,
 				$c->get(ICacheFactory::class),
 				$appManager,
-				$c->get(ITempManager::class),
 				$c->get(IMimeTypeDetector::class)
 			);
 		});
@@ -1003,14 +1054,20 @@ class Server extends ServerContainer implements IServerContainer {
 		/** @deprecated 19.0.0 */
 		$this->registerDeprecatedAlias('Mailer', IMailer::class);
 
-		$this->registerService('LDAPProvider', function (ContainerInterface $c) {
+		/** @deprecated 21.0.0 */
+		$this->registerDeprecatedAlias('LDAPProvider', ILDAPProvider::class);
+
+		$this->registerService(ILDAPProviderFactory::class, function (ContainerInterface $c) {
 			$config = $c->get(\OCP\IConfig::class);
 			$factoryClass = $config->getSystemValue('ldapProviderFactory', null);
-			if (is_null($factoryClass)) {
-				throw new \Exception('ldapProviderFactory not set');
+			if (is_null($factoryClass) || !class_exists($factoryClass)) {
+				return new NullLDAPProviderFactory($this);
 			}
 			/** @var \OCP\LDAP\ILDAPProviderFactory $factory */
-			$factory = new $factoryClass($this);
+			return new $factoryClass($this);
+		});
+		$this->registerService(ILDAPProvider::class, function (ContainerInterface $c) {
+			$factory = $c->get(ILDAPProviderFactory::class);
 			return $factory->getLDAPProvider();
 		});
 		$this->registerService(ILockingProvider::class, function (ContainerInterface $c) {
@@ -1063,7 +1120,7 @@ class Server extends ServerContainer implements IServerContainer {
 		$this->registerDeprecatedAlias('NotificationManager', \OCP\Notification\IManager::class);
 
 		$this->registerService(CapabilitiesManager::class, function (ContainerInterface $c) {
-			$manager = new CapabilitiesManager($c->get(ILogger::class));
+			$manager = new CapabilitiesManager($c->get(LoggerInterface::class));
 			$manager->registerCapability(function () use ($c) {
 				return new \OC\OCS\CoreCapabilities($c->get(\OCP\IConfig::class));
 			});
@@ -1205,7 +1262,9 @@ class Server extends ServerContainer implements IServerContainer {
 				$c->get(IMailer::class),
 				$c->get(IURLGenerator::class),
 				$c->get('ThemingDefaults'),
-				$c->get(IEventDispatcher::class)
+				$c->get(IEventDispatcher::class),
+				$c->get(IUserSession::class),
+				$c->get(KnownUserService::class)
 			);
 
 			return $manager;
@@ -1257,7 +1316,7 @@ class Server extends ServerContainer implements IServerContainer {
 		});
 
 		$this->registerService(ICloudIdManager::class, function (ContainerInterface $c) {
-			return new CloudIdManager($c->get(\OCP\Contacts\IManager::class));
+			return new CloudIdManager($c->get(\OCP\Contacts\IManager::class), $c->get(IURLGenerator::class), $c->get(IUserManager::class));
 		});
 
 		$this->registerAlias(\OCP\GlobalScale\IConfig::class, \OC\GlobalScale\Config::class);
@@ -1306,7 +1365,7 @@ class Server extends ServerContainer implements IServerContainer {
 				$c->get(AppFetcher::class),
 				$c->get(IClientService::class),
 				$c->get(ITempManager::class),
-				$c->get(ILogger::class),
+				$c->get(LoggerInterface::class),
 				$c->get(\OCP\IConfig::class),
 				\OC::$CLI
 			);

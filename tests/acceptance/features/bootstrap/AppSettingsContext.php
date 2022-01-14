@@ -23,6 +23,7 @@
  */
 
 use Behat\Behat\Context\Context;
+use PHPUnit\Framework\Assert;
 
 class AppSettingsContext implements Context, ActorAwareInterface {
 	use ActorAware;
@@ -38,7 +39,7 @@ class AppSettingsContext implements Context, ActorAwareInterface {
 	 * @return Locator
 	 */
 	public static function appSettingsContent() {
-		return Locator::forThe()->id("app-settings-content")->
+		return Locator::forThe()->xpath("//div[@id = 'app-settings-content' or  @id = 'app-settings__content']")->
 			descendantOf(self::appSettings())->
 			describedAs("App settings");
 	}
@@ -47,7 +48,7 @@ class AppSettingsContext implements Context, ActorAwareInterface {
 	 * @return Locator
 	 */
 	public static function appSettingsOpenButton() {
-		return Locator::forThe()->xpath("//div[@id = 'app-settings-header']/button")->
+		return Locator::forThe()->xpath("//div[@id = 'app-settings-header' or  @id = 'app-settings__header']/button")->
 			descendantOf(self::appSettings())->
 			describedAs("The button to open the app settings");
 	}
@@ -74,27 +75,25 @@ class AppSettingsContext implements Context, ActorAwareInterface {
 	 * @Given I open the settings
 	 */
 	public function iOpenTheSettings() {
-		$this->actor->find(self::appSettingsOpenButton())->click();
+		$this->actor->find(self::appSettingsOpenButton(), 10)->click();
 	}
 
 	/**
 	 * @Given I toggle the :id checkbox in the settings
 	 */
 	public function iToggleTheCheckboxInTheSettingsTo($id) {
-		$locator = self::CheckboxInTheSettings($id);
-
-		// If locator is not visible, fallback to label
-		if (!$this->actor->find(self::CheckboxInTheSettings($id))->isVisible()) {
-			$locator = self::checkboxLabelInTheSettings($id);
-		}
-
-		$this->actor->find($locator)->click();
+		$this->actor->find(self::checkboxLabelInTheSettings($id), 10)->click();
 	}
 
 	/**
 	 * @Then I see that the settings are opened
 	 */
 	public function iSeeThatTheSettingsAreOpened() {
-		WaitFor::elementToBeEventuallyShown($this->actor, self::appSettingsContent());
+		if (!WaitFor::elementToBeEventuallyShown(
+				$this->actor,
+				self::appSettingsContent(),
+				$timeout = 10 * $this->actor->getFindTimeoutMultiplier())) {
+			Assert::fail("The app settings are not open yet after $timeout seconds");
+		}
 	}
 }

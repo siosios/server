@@ -162,24 +162,24 @@
 				mountPoint = $('#usedSpacePercent').data('mount-point');
 			if (usedSpacePercent > 98) {
 				if (owner !== OC.getCurrentUser().uid) {
-					OC.Notification.show(t('files', 'Storage of {owner} is full, files can not be updated or synced anymore!',
+					OC.Notification.show(t('files', 'Storage of {owner} is full, files cannot be updated or synced anymore!',
 						{owner: ownerDisplayName}), {type: 'error'}
 					);
 				} else if (mountType === 'group') {
 					OC.Notification.show(t('files',
-						'Group folder "{mountPoint}" is full, files can not be updated or synced anymore!',
+						'Group folder "{mountPoint}" is full, files cannot be updated or synced anymore!',
 						{mountPoint: mountPoint}),
 						{type: 'error'}
 					);
 				} else if (mountType === 'external') {
 					OC.Notification.show(t('files',
-						'External storage "{mountPoint}" is full, files can not be updated or synced anymore!',
+						'External storage "{mountPoint}" is full, files cannot be updated or synced anymore!',
 						{mountPoint: mountPoint}),
 						{type : 'error'}
 					);
 				} else {
 					OC.Notification.show(t('files',
-						'Your storage is full, files can not be updated or synced anymore!'),
+						'Your storage is full, files cannot be updated or synced anymore!'),
 						{type: 'error'}
 					);
 				}
@@ -219,7 +219,7 @@
 		 * Returns the download URL of the given file(s)
 		 * @param {string} filename string or array of file names to download
 		 * @param {string} [dir] optional directory in which the file name is, defaults to the current directory
-		 * @param {bool} [isDir=false] whether the given filename is a directory and might need a special URL
+		 * @param {boolean} [isDir=false] whether the given filename is a directory and might need a special URL
 		 */
 		getDownloadUrl: function(filename, dir, isDir) {
 			if (!_.isArray(filename) && !isDir) {
@@ -271,8 +271,8 @@
 		/**
 		 * Generates a preview URL based on the URL space.
 		 * @param urlSpec attributes for the URL
-		 * @param {int} urlSpec.x width
-		 * @param {int} urlSpec.y height
+		 * @param {number} urlSpec.x width
+		 * @param {number} urlSpec.y height
 		 * @param {String} urlSpec.file path to the file
 		 * @return preview URL
 		 * @deprecated used OCA.Files.FileList.generatePreviewUrl instead

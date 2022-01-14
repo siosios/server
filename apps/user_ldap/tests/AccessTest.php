@@ -12,7 +12,6 @@
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Roger Szabo <roger.szabo@web.de>
- * @author root <root@localhost.localdomain>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
  *
@@ -31,7 +30,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\User_LDAP\Tests;
 
 use OCA\User_LDAP\Access;
@@ -41,7 +39,7 @@ use OCA\User_LDAP\FilesystemHelper;
 use OCA\User_LDAP\Helper;
 use OCA\User_LDAP\ILDAPWrapper;
 use OCA\User_LDAP\LDAP;
-use OCA\User_LDAP\LogWrapper;
+use OCA\User_LDAP\Mapping\GroupMapping;
 use OCA\User_LDAP\Mapping\UserMapping;
 use OCA\User_LDAP\User\Manager;
 use OCA\User_LDAP\User\OfflineUser;
@@ -52,6 +50,7 @@ use OCP\Image;
 use OCP\IUserManager;
 use OCP\Notification\IManager as INotificationManager;
 use OCP\Share\IManager;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 /**
@@ -66,6 +65,8 @@ class AccessTest extends TestCase {
 	protected $userMapper;
 	/** @var IManager|\PHPUnit\Framework\MockObject\MockObject */
 	protected $shareManager;
+	/** @var GroupMapping|\PHPUnit\Framework\MockObject\MockObject */
+	protected $groupMapper;
 	/** @var Connection|\PHPUnit\Framework\MockObject\MockObject */
 	private $connection;
 	/** @var LDAP|\PHPUnit\Framework\MockObject\MockObject */
@@ -78,6 +79,8 @@ class AccessTest extends TestCase {
 	private $config;
 	/** @var IUserManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $ncUserManager;
+	/** @var LoggerInterface|MockObject */
+	private $logger;
 	/** @var Access */
 	private $access;
 
@@ -88,8 +91,10 @@ class AccessTest extends TestCase {
 		$this->helper = $this->createMock(Helper::class);
 		$this->config = $this->createMock(IConfig::class);
 		$this->userMapper = $this->createMock(UserMapping::class);
+		$this->groupMapper = $this->createMock(GroupMapping::class);
 		$this->ncUserManager = $this->createMock(IUserManager::class);
 		$this->shareManager = $this->createMock(IManager::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->access = new Access(
 			$this->connection,
@@ -97,9 +102,11 @@ class AccessTest extends TestCase {
 			$this->userManager,
 			$this->helper,
 			$this->config,
-			$this->ncUserManager
+			$this->ncUserManager,
+			$this->logger
 		);
 		$this->access->setUserMapper($this->userMapper);
+		$this->access->setGroupMapper($this->groupMapper);
 	}
 
 	private function getConnectorAndLdapMock() {
@@ -111,7 +118,7 @@ class AccessTest extends TestCase {
 			->setConstructorArgs([
 				$this->createMock(IConfig::class),
 				$this->createMock(FilesystemHelper::class),
-				$this->createMock(LogWrapper::class),
+				$this->createMock(LoggerInterface::class),
 				$this->createMock(IAvatarManager::class),
 				$this->createMock(Image::class),
 				$this->createMock(IUserManager::class),
@@ -233,10 +240,10 @@ class AccessTest extends TestCase {
 	 * @param array $case
 	 */
 	public function testStringResemblesDN($case) {
-		list($lw, $con, $um, $helper) = $this->getConnectorAndLdapMock();
+		[$lw, $con, $um, $helper] = $this->getConnectorAndLdapMock();
 		/** @var IConfig|\PHPUnit\Framework\MockObject\MockObject $config */
 		$config = $this->createMock(IConfig::class);
-		$access = new Access($con, $lw, $um, $helper, $config, $this->ncUserManager);
+		$access = new Access($con, $lw, $um, $helper, $config, $this->ncUserManager, $this->logger);
 
 		$lw->expects($this->exactly(1))
 			->method('explodeDN')
@@ -255,11 +262,11 @@ class AccessTest extends TestCase {
 	 * @param $case
 	 */
 	public function testStringResemblesDNLDAPmod($case) {
-		list(, $con, $um, $helper) = $this->getConnectorAndLdapMock();
+		[, $con, $um, $helper] = $this->getConnectorAndLdapMock();
 		/** @var IConfig|\PHPUnit\Framework\MockObject\MockObject $config */
 		$config = $this->createMock(IConfig::class);
 		$lw = new LDAP();
-		$access = new Access($con, $lw, $um, $helper, $config, $this->ncUserManager);
+		$access = new Access($con, $lw, $um, $helper, $config, $this->ncUserManager, $this->logger);
 
 		if (!function_exists('ldap_explode_dn')) {
 			$this->markTestSkipped('LDAP Module not available');
@@ -425,7 +432,7 @@ class AccessTest extends TestCase {
 	 * @param $attribute
 	 */
 	public function testSanitizeDN($attribute) {
-		list($lw, $con, $um, $helper) = $this->getConnectorAndLdapMock();
+		[$lw, $con, $um, $helper] = $this->getConnectorAndLdapMock();
 		/** @var IConfig|\PHPUnit\Framework\MockObject\MockObject $config */
 		$config = $this->createMock(IConfig::class);
 
@@ -440,7 +447,7 @@ class AccessTest extends TestCase {
 				$attribute => ['count' => 1, $dnFromServer]
 			]);
 
-		$access = new Access($con, $lw, $um, $helper, $config, $this->ncUserManager);
+		$access = new Access($con, $lw, $um, $helper, $config, $this->ncUserManager, $this->logger);
 		$values = $access->readAttribute('uid=whoever,dc=example,dc=org', $attribute);
 		$this->assertSame($values[0], strtolower($dnFromServer));
 	}
@@ -479,7 +486,7 @@ class AccessTest extends TestCase {
 
 
 	public function testSetPasswordWithRejectedChange() {
-		$this->expectException(\OC\HintException::class);
+		$this->expectException(\OCP\HintException::class);
 		$this->expectExceptionMessage('Password change rejected.');
 
 		$this->connection
@@ -552,7 +559,7 @@ class AccessTest extends TestCase {
 			->expects($this->any())
 			->method('isResource')
 			->willReturnCallback(function ($resource) {
-				return is_resource($resource);
+				return is_resource($resource) || is_object($resource);
 			});
 		$this->ldap
 			->expects($this->any())
@@ -641,19 +648,77 @@ class AccessTest extends TestCase {
 		$this->assertSame($expected, $list);
 	}
 
-	public function intUsernameProvider() {
-		// system dependent :-/
-		$translitExpected = @iconv('UTF-8', 'ASCII//TRANSLIT', 'fränk') ? 'frank' : 'frnk';
+	public function testFetchListOfGroupsKnown() {
+		$filter = 'objectClass=nextcloudGroup';
+		$attributes = ['cn', 'gidNumber', 'dn'];
+		$base = 'ou=SomeGroups,dc=my,dc=directory';
 
+		$fakeConnection = ldap_connect();
+		$fakeSearchResultResource = ldap_connect();
+		$fakeLdapEntries = [
+			'count' => 2,
+			[
+				'dn' => 'cn=Good Team,' . $base,
+				'cn' => ['Good Team'],
+			],
+			[
+				'dn' => 'cn=Another Good Team,' . $base,
+				'cn' => ['Another Good Team'],
+			]
+		];
+
+		$this->prepareMocksForSearchTests($base, $fakeConnection, $fakeSearchResultResource, $fakeLdapEntries);
+
+		$this->groupMapper->expects($this->any())
+			->method('getListOfIdsByDn')
+			->willReturn([
+				'cn=Good Team,' . $base => 'Good_Team',
+				'cn=Another Good Team,' . $base => 'Another_Good_Team',
+			]);
+		$this->groupMapper->expects($this->never())
+			->method('getNameByDN');
+
+		$this->connection->expects($this->exactly(2))
+			->method('writeToCache');
+
+		$groups = $this->access->fetchListOfGroups($filter, $attributes);
+		$this->assertSame(2, count($groups));
+		$this->assertSame('Good Team', $groups[0]['cn'][0]);
+		$this->assertSame('Another Good Team', $groups[1]['cn'][0]);
+	}
+
+	public function intUsernameProvider() {
 		return [
 			['alice', 'alice'],
 			['b/ob', 'bob'],
 			['charly🐬', 'charly'],
 			['debo rah', 'debo_rah'],
 			['epost@poste.test', 'epost@poste.test'],
-			['fränk', $translitExpected],
+			['fränk', 'frank'],
+			[' UPPÉR Case/[\]^`', 'UPPER_Case'],
 			[' gerda ', 'gerda'],
-			['🕱🐵🐘🐑', null]
+			['🕱🐵🐘🐑', null],
+			[
+				'OneNameToRuleThemAllOneNameToFindThemOneNameToBringThemAllAndInTheDarknessBindThem',
+				'81ff71b5dd0f0092e2dc977b194089120093746e273f2ef88c11003762783127'
+			]
+		];
+	}
+
+	public function groupIDCandidateProvider() {
+		return [
+			['alice', 'alice'],
+			['b/ob', 'b/ob'],
+			['charly🐬', 'charly🐬'],
+			['debo rah', 'debo rah'],
+			['epost@poste.test', 'epost@poste.test'],
+			['fränk', 'fränk'],
+			[' gerda ', 'gerda'],
+			['🕱🐵🐘🐑', '🕱🐵🐘🐑'],
+			[
+				'OneNameToRuleThemAllOneNameToFindThemOneNameToBringThemAllAndInTheDarknessBindThem',
+				'81ff71b5dd0f0092e2dc977b194089120093746e273f2ef88c11003762783127'
+			]
 		];
 	}
 
@@ -668,6 +733,14 @@ class AccessTest extends TestCase {
 			$this->expectException(\InvalidArgumentException::class);
 		}
 		$sanitizedName = $this->access->sanitizeUsername($name);
+		$this->assertSame($expected, $sanitizedName);
+	}
+
+	/**
+	 * @dataProvider groupIDCandidateProvider
+	 */
+	public function testSanitizeGroupIDCandidate(string $name, string $expected) {
+		$sanitizedName = $this->access->sanitizeGroupIDCandidate($name);
 		$this->assertSame($expected, $sanitizedName);
 	}
 

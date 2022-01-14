@@ -1,9 +1,10 @@
 <?php
 /**
- *
+ * @copyright Copyright (c) 2016 Roeland Jago Douma <roeland@famdouma.nl>
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Daniel Kesselberg <mail@danielkesselberg.de>
+ * @author J0WI <J0WI@users.noreply.github.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Joel S <joel.devbox@protonmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -18,26 +19,25 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\Files\Command;
 
-use Doctrine\DBAL\Connection;
 use OC\Core\Command\Base;
 use OC\Core\Command\InterruptedException;
+use OC\DB\Connection;
+use OC\DB\ConnectionAdapter;
 use OC\ForbiddenException;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\StorageNotAvailableException;
 use OCP\IConfig;
-use OCP\IDBConnection;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -73,15 +73,6 @@ class ScanAppData extends Base {
 		$this->addArgument('folder', InputArgument::OPTIONAL, 'The appdata subfolder to scan', '');
 	}
 
-	public function checkScanWarning($fullPath, OutputInterface $output) {
-		$normalizedPath = basename(\OC\Files\Filesystem::normalizePath($fullPath));
-		$path = basename($fullPath);
-
-		if ($normalizedPath !== $path) {
-			$output->writeln("\t<error>Entry \"" . $fullPath . '" will not be accessible due to incompatible encoding</error>');
-		}
-	}
-
 	protected function scanFiles(OutputInterface $output, string $folder): int {
 		try {
 			$appData = $this->getAppDataFolder();
@@ -100,7 +91,12 @@ class ScanAppData extends Base {
 		}
 
 		$connection = $this->reconnectToDatabase($output);
-		$scanner = new \OC\Files\Utils\Scanner(null, $connection, \OC::$server->query(IEventDispatcher::class), \OC::$server->getLogger());
+		$scanner = new \OC\Files\Utils\Scanner(
+			null,
+			new ConnectionAdapter($connection),
+			\OC::$server->query(IEventDispatcher::class),
+			\OC::$server->getLogger()
+		);
 
 		# check on each file/folder if there was a user interrupt (ctrl-c) and throw an exception
 		$scanner->listen('\OC\Files\Utils\Scanner', 'scanFile', function ($path) use ($output) {
@@ -119,12 +115,8 @@ class ScanAppData extends Base {
 			$output->writeln('Error while scanning, storage not available (' . $e->getMessage() . ')', OutputInterface::VERBOSITY_VERBOSE);
 		});
 
-		$scanner->listen('\OC\Files\Utils\Scanner', 'scanFile', function ($path) use ($output) {
-			$this->checkScanWarning($path, $output);
-		});
-
-		$scanner->listen('\OC\Files\Utils\Scanner', 'scanFolder', function ($path) use ($output) {
-			$this->checkScanWarning($path, $output);
+		$scanner->listen('\OC\Files\Utils\Scanner', 'normalizedNameMismatch', function ($fullPath) use ($output) {
+			$output->writeln("\t<error>Entry \"" . $fullPath . '" will not be accessible due to incompatible encoding</error>');
 		});
 
 		try {
@@ -183,7 +175,7 @@ class ScanAppData extends Base {
 	/**
 	 * Processes PHP errors as exceptions in order to be able to keep track of problems
 	 *
-	 * @see https://secure.php.net/manual/en/function.set-error-handler.php
+	 * @see https://www.php.net/manual/en/function.set-error-handler.php
 	 *
 	 * @param int $severity the level of the error raised
 	 * @param string $message
@@ -249,12 +241,9 @@ class ScanAppData extends Base {
 		return sprintf('%02d:%02d:%02d', ($secs / 3600), ($secs / 60 % 60), $secs % 60);
 	}
 
-	/**
-	 * @return \OCP\IDBConnection
-	 */
-	protected function reconnectToDatabase(OutputInterface $output) {
-		/** @var Connection | IDBConnection $connection*/
-		$connection = \OC::$server->getDatabaseConnection();
+	protected function reconnectToDatabase(OutputInterface $output): Connection {
+		/** @var Connection $connection*/
+		$connection = \OC::$server->get(Connection::class);
 		try {
 			$connection->close();
 		} catch (\Exception $ex) {

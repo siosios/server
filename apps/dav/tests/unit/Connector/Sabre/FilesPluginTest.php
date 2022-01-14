@@ -1,6 +1,8 @@
 <?php
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
+ * Copyright (c) 2015 Vincent Petry <pvince81@owncloud.com>
+ * Copyright (c) 2015 Vincent Petry <pvince81@owncloud.com>
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
@@ -10,7 +12,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Stefan Weil <sw@weilnetz.de>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -27,7 +29,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\DAV\Tests\unit\Connector\Sabre;
 
 use OC\User\User;
@@ -40,6 +41,8 @@ use OCP\Files\StorageNotAvailableException;
 use OCP\IConfig;
 use OCP\IPreview;
 use OCP\IRequest;
+use OCP\IUserSession;
+use PHPUnit\Framework\MockObject\MockObject;
 use Sabre\DAV\PropFind;
 use Sabre\DAV\PropPatch;
 use Sabre\DAV\Server;
@@ -62,6 +65,7 @@ class FilesPluginTest extends TestCase {
 	public const SIZE_PROPERTYNAME = FilesPlugin::SIZE_PROPERTYNAME;
 	public const PERMISSIONS_PROPERTYNAME = FilesPlugin::PERMISSIONS_PROPERTYNAME;
 	public const LASTMODIFIED_PROPERTYNAME = FilesPlugin::LASTMODIFIED_PROPERTYNAME;
+	public const CREATIONDATE_PROPERTYNAME = FilesPlugin::CREATIONDATE_PROPERTYNAME;
 	public const DOWNLOADURL_PROPERTYNAME = FilesPlugin::DOWNLOADURL_PROPERTYNAME;
 	public const OWNER_ID_PROPERTYNAME = FilesPlugin::OWNER_ID_PROPERTYNAME;
 	public const OWNER_DISPLAY_NAME_PROPERTYNAME = FilesPlugin::OWNER_DISPLAY_NAME_PROPERTYNAME;
@@ -98,30 +102,27 @@ class FilesPluginTest extends TestCase {
 	 */
 	private $previewManager;
 
+	/** @var IUserSession|MockObject */
+	private $userSession;
+
 	protected function setUp(): void {
 		parent::setUp();
-		$this->server = $this->getMockBuilder(Server::class)
-			->disableOriginalConstructor()
-			->getMock();
-		$this->tree = $this->getMockBuilder(Tree::class)
-			->disableOriginalConstructor()
-			->getMock();
+		$this->server = $this->createMock(Server::class);
+		$this->tree = $this->createMock(Tree::class);
 		$this->config = $this->createMock(IConfig::class);
 		$this->config->expects($this->any())->method('getSystemValue')
 			->with($this->equalTo('data-fingerprint'), $this->equalTo(''))
 			->willReturn('my_fingerprint');
-		$this->request = $this->getMockBuilder(IRequest::class)
-			->disableOriginalConstructor()
-			->getMock();
-		$this->previewManager = $this->getMockBuilder(IPreview::class)
-			->disableOriginalConstructor()
-			->getMock();
+		$this->request = $this->createMock(IRequest::class);
+		$this->previewManager = $this->createMock(IPreview::class);
+		$this->userSession = $this->createMock(IUserSession::class);
 
 		$this->plugin = new FilesPlugin(
 			$this->tree,
 			$this->config,
 			$this->request,
-			$this->previewManager
+			$this->previewManager,
+			$this->userSession
 		);
 
 		$response = $this->getMockBuilder(ResponseInterface::class)
@@ -168,6 +169,9 @@ class FilesPluginTest extends TestCase {
 		$fileInfo->expects($this->any())
 			->method('isReadable')
 			->willReturn(true);
+		$fileInfo->expects($this->any())
+			->method('getCreationTime')
+			->willReturn(123456789);
 
 		$node->expects($this->any())
 			->method('getFileInfo')
@@ -192,6 +196,7 @@ class FilesPluginTest extends TestCase {
 				self::OWNER_ID_PROPERTYNAME,
 				self::OWNER_DISPLAY_NAME_PROPERTYNAME,
 				self::DATA_FINGERPRINT_PROPERTYNAME,
+				self::CREATIONDATE_PROPERTYNAME,
 			],
 			0
 		);
@@ -222,6 +227,7 @@ class FilesPluginTest extends TestCase {
 		$this->assertEquals('"abc"', $propFind->get(self::GETETAG_PROPERTYNAME));
 		$this->assertEquals('00000123instanceid', $propFind->get(self::FILEID_PROPERTYNAME));
 		$this->assertEquals('123', $propFind->get(self::INTERNAL_FILEID_PROPERTYNAME));
+		$this->assertEquals('1973-11-29T21:33:09+00:00', $propFind->get(self::CREATIONDATE_PROPERTYNAME));
 		$this->assertEquals(null, $propFind->get(self::SIZE_PROPERTYNAME));
 		$this->assertEquals('DWCKMSR', $propFind->get(self::PERMISSIONS_PROPERTYNAME));
 		$this->assertEquals('http://example.com/', $propFind->get(self::DOWNLOADURL_PROPERTYNAME));
@@ -263,6 +269,7 @@ class FilesPluginTest extends TestCase {
 				->disableOriginalConstructor()
 				->getMock(),
 			$this->previewManager,
+			$this->userSession,
 			true);
 		$this->plugin->initialize($this->server);
 
@@ -395,6 +402,7 @@ class FilesPluginTest extends TestCase {
 		$node = $this->createTestNode('\OCA\DAV\Connector\Sabre\File');
 
 		$testDate = 'Fri, 13 Feb 2015 00:01:02 GMT';
+		$testCreationDate = '2007-08-31T16:47+00:00';
 
 		$node->expects($this->once())
 			->method('touch')
@@ -405,10 +413,15 @@ class FilesPluginTest extends TestCase {
 			->with('newetag')
 			->willReturn(true);
 
+		$node->expects($this->once())
+			->method('setCreationTime')
+			->with('1188578820');
+
 		// properties to set
 		$propPatch = new PropPatch([
 			self::GETETAG_PROPERTYNAME => 'newetag',
-			self::LASTMODIFIED_PROPERTYNAME => $testDate
+			self::LASTMODIFIED_PROPERTYNAME => $testDate,
+			self::CREATIONDATE_PROPERTYNAME => $testCreationDate,
 		]);
 
 		$this->plugin->handleUpdateProperties(
@@ -423,6 +436,7 @@ class FilesPluginTest extends TestCase {
 		$result = $propPatch->getResult();
 		$this->assertEquals(200, $result[self::LASTMODIFIED_PROPERTYNAME]);
 		$this->assertEquals(200, $result[self::GETETAG_PROPERTYNAME]);
+		$this->assertEquals(200, $result[self::CREATIONDATE_PROPERTYNAME]);
 	}
 
 	public function testUpdatePropsForbidden() {

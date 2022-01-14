@@ -4,12 +4,13 @@
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
+ * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -26,20 +27,22 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\DAV\Tests\unit\Connector\Sabre;
 
+use OC\AppFramework\Http\Request;
 use OC\Files\Filesystem;
 use OC\Files\Storage\Local;
 use OC\Files\Storage\Temporary;
 use OC\Files\Storage\Wrapper\PermissionsMask;
 use OC\Files\View;
+use OC\Security\SecureRandom;
 use OCA\DAV\Connector\Sabre\File;
 use OCP\Constants;
 use OCP\Files\ForbiddenException;
 use OCP\Files\Storage;
 use OCP\IConfig;
 use OCP\Lock\ILockingProvider;
+use OCP\Security\ISecureRandom;
 use Test\HookHelper;
 use Test\TestCase;
 use Test\Traits\MountProviderTrait;
@@ -64,6 +67,9 @@ class FileTest extends TestCase {
 	/** @var IConfig | \PHPUnit\Framework\MockObject\MockObject */
 	protected $config;
 
+	/** @var ISecureRandom */
+	protected $secureRandom;
+
 	protected function setUp(): void {
 		parent::setUp();
 		unset($_SERVER['HTTP_OC_CHUNKED']);
@@ -78,6 +84,7 @@ class FileTest extends TestCase {
 		$this->loginAsUser($this->user);
 
 		$this->config = $this->getMockBuilder('\OCP\IConfig')->getMock();
+		$this->secureRandom = new SecureRandom();
 	}
 
 	protected function tearDown(): void {
@@ -303,11 +310,11 @@ class FileTest extends TestCase {
 	 *
 	 * @param string $path path to put the file into
 	 * @param string $viewRoot root to use for the view
-	 * @param null|\OC\AppFramework\Http\Request $request the HTTP request
+	 * @param null|Request $request the HTTP request
 	 *
 	 * @return null|string of the PUT operaiton which is usually the etag
 	 */
-	private function doPut($path, $viewRoot = null, \OC\AppFramework\Http\Request $request = null) {
+	private function doPut($path, $viewRoot = null, Request $request = null) {
 		$view = \OC\Files\Filesystem::getView();
 		if (!is_null($viewRoot)) {
 			$view = new \OC\Files\View($viewRoot);
@@ -354,28 +361,28 @@ class FileTest extends TestCase {
 				'expected result' => null
 			],
 			"castable string (int)" => [
-				'HTTP_X_OC_MTIME' => "34",
-				'expected result' => 34
+				'HTTP_X_OC_MTIME' => "987654321",
+				'expected result' => 987654321
 			],
 			"castable string (float)" => [
-				'HTTP_X_OC_MTIME' => "34.56",
-				'expected result' => 34
+				'HTTP_X_OC_MTIME' => "123456789.56",
+				'expected result' => 123456789
 			],
 			"float" => [
-				'HTTP_X_OC_MTIME' => 34.56,
-				'expected result' => 34
+				'HTTP_X_OC_MTIME' => 123456789.56,
+				'expected result' => 123456789
 			],
 			"zero" => [
 				'HTTP_X_OC_MTIME' => 0,
-				'expected result' => 0
+				'expected result' => null
 			],
 			"zero string" => [
 				'HTTP_X_OC_MTIME' => "0",
-				'expected result' => 0
+				'expected result' => null
 			],
 			"negative zero string" => [
 				'HTTP_X_OC_MTIME' => "-0",
-				'expected result' => 0
+				'expected result' => null
 			],
 			"string starting with number following by char" => [
 				'HTTP_X_OC_MTIME' => "2345asdf",
@@ -391,11 +398,11 @@ class FileTest extends TestCase {
 			],
 			"negative int" => [
 				'HTTP_X_OC_MTIME' => -34,
-				'expected result' => -34
+				'expected result' => null
 			],
 			"negative float" => [
 				'HTTP_X_OC_MTIME' => -34.43,
-				'expected result' => -34
+				'expected result' => null
 			],
 		];
 	}
@@ -405,16 +412,15 @@ class FileTest extends TestCase {
 	 * @dataProvider legalMtimeProvider
 	 */
 	public function testPutSingleFileLegalMtime($requestMtime, $resultMtime) {
-		$request = new \OC\AppFramework\Http\Request([
+		$request = new Request([
 			'server' => [
 				'HTTP_X_OC_MTIME' => $requestMtime,
 			]
-		], null, $this->config, null);
+		], $this->secureRandom, $this->config, null);
 		$file = 'foo.txt';
 
 		if ($resultMtime === null) {
 			$this->expectException(\InvalidArgumentException::class);
-			$this->expectExceptionMessage("X-OC-MTime header must be an integer (unix timestamp).");
 		}
 
 		$this->doPut($file, null, $request);
@@ -429,18 +435,17 @@ class FileTest extends TestCase {
 	 * @dataProvider legalMtimeProvider
 	 */
 	public function testChunkedPutLegalMtime($requestMtime, $resultMtime) {
-		$request = new \OC\AppFramework\Http\Request([
+		$request = new Request([
 			'server' => [
 				'HTTP_X_OC_MTIME' => $requestMtime,
 			]
-		], null, $this->config, null);
+		], $this->secureRandom, $this->config, null);
 
 		$_SERVER['HTTP_OC_CHUNKED'] = true;
 		$file = 'foo.txt';
 
 		if ($resultMtime === null) {
 			$this->expectException(\Sabre\DAV\Exception::class);
-			$this->expectExceptionMessage("X-OC-MTime header must be an integer (unix timestamp).");
 		}
 
 		$this->doPut($file.'-chunking-12345-2-0', null, $request);
@@ -1079,7 +1084,7 @@ class FileTest extends TestCase {
 			$userView = \OC\Files\Filesystem::getView();
 		}
 		$files = [];
-		list($storage, $internalPath) = $userView->resolvePath($path);
+		[$storage, $internalPath] = $userView->resolvePath($path);
 		if ($storage instanceof Local) {
 			$realPath = $storage->getSourcePath($internalPath);
 			$dh = opendir($realPath);

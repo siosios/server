@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
@@ -22,7 +25,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Core\Middleware;
 
 use Exception;
@@ -32,6 +34,7 @@ use OC\Authentication\TwoFactorAuth\Manager;
 use OC\Core\Controller\LoginController;
 use OC\Core\Controller\TwoFactorChallengeController;
 use OC\User\Session;
+use OCA\TwoFactorNextcloudNotification\Controller\APIController;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Middleware;
@@ -83,8 +86,14 @@ class TwoFactorMiddleware extends Middleware {
 	 * @param string $methodName
 	 */
 	public function beforeController($controller, $methodName) {
-		if ($this->reflector->hasAnnotation('PublicPage')) {
-			// Don't block public pages
+		if ($this->reflector->hasAnnotation('NoTwoFactorRequired')) {
+			// Route handler explicitly marked to work without finished 2FA are
+			// not blocked
+			return;
+		}
+
+		if ($controller instanceof APIController && $methodName === 'poll') {
+			// Allow polling the twofactor nextcloud notifications state
 			return;
 		}
 
@@ -93,7 +102,7 @@ class TwoFactorMiddleware extends Middleware {
 			&& !$this->reflector->hasAnnotation('TwoFactorSetUpDoneRequired')) {
 			$providers = $this->twoFactorManager->getProviderSet($this->userSession->getUser());
 
-			if (!($providers->getProviders() === [] && !$providers->isProviderMissing())) {
+			if (!($providers->getPrimaryProviders() === [] && !$providers->isProviderMissing())) {
 				throw new TwoFactorAuthRequiredException();
 			}
 		}
@@ -101,7 +110,11 @@ class TwoFactorMiddleware extends Middleware {
 		if ($controller instanceof ALoginSetupController
 			&& $this->userSession->getUser() !== null
 			&& $this->twoFactorManager->needsSecondFactor($this->userSession->getUser())) {
-			return;
+			$providers = $this->twoFactorManager->getProviderSet($this->userSession->getUser());
+
+			if ($providers->getPrimaryProviders() === [] && !$providers->isProviderMissing()) {
+				return;
+			}
 		}
 
 		if ($controller instanceof LoginController && $methodName === 'logout') {

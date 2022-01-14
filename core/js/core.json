@@ -1,19 +1,11 @@
 {
 	"libraries": [
+		"core-common.js"
 	],
 	"modules": [
-		"share.js",
-		"sharetemplates.js",
-		"sharesocialmanager.js",
-		"shareconfigmodel.js",
-		"shareitemmodel.js",
-		"sharedialogview.js",
-		"sharedialoglinkshareview.js",
-		"sharedialogresharerinfoview.js",
-		"sharedialogshareelistview.js",
-		"public/publicpage.js",
-		"setupchecks.js",
-		"mimetype.js",
-		"mimetypelist.js"
+		"../core/js/public/publicpage.js",
+		"../core/js/setupchecks.js",
+		"../core/js/mimetype.js",
+		"../core/js/mimetypelist.js"
 	]
 }

@@ -1,4 +1,7 @@
 <?php
+
+use OCP\Util;
+
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
@@ -14,7 +17,7 @@
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -30,11 +33,6 @@
  * You should have received a copy of the GNU Affero General Public License, version 3,
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
- */
-
-/**
- * Prints a sanitized string
- * @param string $string the string which will be escaped and printed
  */
 function p($string) {
 	print(\OCP\Util::sanitizeHTML($string));
@@ -116,17 +114,22 @@ function print_unescaped($string) {
 
 /**
  * Shortcut for adding scripts to a page
+ * All scripts are forced to be loaded after core since
+ * they are coming from a template registration.
+ * Please consider moving them into the relevant controller
+ *
  * @param string $app the appname
  * @param string|string[] $file the filename,
  * if an array is given it will add all scripts
+ * @deprecated 23.1.0
  */
 function script($app, $file = null) {
 	if (is_array($file)) {
-		foreach ($file as $f) {
-			OC_Util::addScript($app, $f);
+		foreach ($file as $script) {
+			Util::addScript($app, $script, 'core');
 		}
 	} else {
-		OC_Util::addScript($app, $file);
+		Util::addScript($app, $file, 'core');
 	}
 }
 

@@ -36,14 +36,17 @@ $urlGenerator = $_['urlGenerator'];
 		])) ?>
 	</p>
 
-	<p class="info">
-		<?php print_unescaped($l->t('If you are not trying to set up a new device or app, someone is trying to trick you into granting them access to your data. In this case do not proceed and instead contact your system administrator.')) ?>
-	</p>
+	<span class="warning">
+		<h3><?php p($l->t('Security warning')) ?></h3>
+		<p>
+			<?php p($l->t('If you are not trying to set up a new device or app, someone is trying to trick you into granting them access to your data. In this case do not proceed and instead contact your system administrator.')) ?>
+		</p>
+	</span>
 
 	<br/>
 
 	<p id="redirect-link">
-		<a href="<?php p($urlGenerator->linkToRoute('core.ClientFlowLogin.grantPage', ['stateToken' => $_['stateToken'], 'clientIdentifier' => $_['clientIdentifier'], 'oauthState' => $_['oauthState']])) ?>">
+		<a href="<?php p($urlGenerator->linkToRoute('core.ClientFlowLogin.grantPage', ['stateToken' => $_['stateToken'], 'clientIdentifier' => $_['clientIdentifier'], 'oauthState' => $_['oauthState'], 'user' => $_['user']])) ?>">
 			<input type="submit" class="login primary icon-confirm-white" value="<?php p($l->t('Log in')) ?>">
 		</a>
 	</p>
@@ -61,8 +64,8 @@ $urlGenerator = $_['urlGenerator'];
 		<input type="hidden" name="requesttoken" value="<?php p($_['requesttoken']) ?>">
 		<input id="submit-app-token-login" type="submit" class="login primary icon-confirm-white" value="<?php p($l->t('Grant access')) ?>">
 	</form>
-</div>
 
-<?php if (empty($_['oauthState'])): ?>
-<a id="app-token-login" class="warning" href="#"><?php p($l->t('Alternative log in using app token')) ?></a>
-<?php endif; ?>
+	<?php if (empty($_['oauthState'])): ?>
+		<a id="app-token-login" class="apptoken-link" href="#"><?php p($l->t('Alternative log in using app token')) ?></a>
+	<?php endif; ?>
+</div>

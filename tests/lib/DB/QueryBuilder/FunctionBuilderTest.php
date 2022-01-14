@@ -41,17 +41,208 @@ class FunctionBuilderTest extends TestCase {
 		$this->connection = \OC::$server->getDatabaseConnection();
 	}
 
-	public function testConcat() {
+	/**
+	 * @dataProvider providerTestConcatString
+	 */
+	public function testConcatString($closure) {
 		$query = $this->connection->getQueryBuilder();
+		[$real, $arguments, $return] = $closure($query);
+		if ($real) {
+			$this->addDummyData();
+			$query->where($query->expr()->eq('appid', $query->createNamedParameter('group_concat')));
+		}
 
-		$query->select($query->func()->concat($query->createNamedParameter('foo'), new Literal("'bar'")));
+		$query->select($query->func()->concat(...$arguments));
 		$query->from('appconfig')
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
-		$this->assertEquals('foobar', $column);
+		$this->assertEquals($return, $column);
+	}
+
+	public function providerTestConcatString(): array {
+		return [
+			'1 column: string param unicode' =>
+				[function ($q) {
+					return [false, [$q->createNamedParameter('👍')], '👍'];
+				}],
+			'2 columns: string param and string param' =>
+				[function ($q) {
+					return [false, [$q->createNamedParameter('foo'), $q->createNamedParameter('bar')], 'foobar'];
+				}],
+			'2 columns: string param and int literal' =>
+				[function ($q) {
+					return [false, [$q->createNamedParameter('foo'), $q->expr()->literal(1)], 'foo1'];
+				}],
+			'2 columns: string param and string literal' =>
+				[function ($q) {
+					return [false, [$q->createNamedParameter('foo'), $q->expr()->literal('bar')], 'foobar'];
+				}],
+			'2 columns: string real and int literal' =>
+				[function ($q) {
+					return [true, ['configkey', $q->expr()->literal(2)], '12'];
+				}],
+			'4 columns: string literal' =>
+				[function ($q) {
+					return [false, [$q->expr()->literal('foo'), $q->expr()->literal('bar'), $q->expr()->literal('foo'), $q->expr()->literal('bar')], 'foobarfoobar'];
+				}],
+			'4 columns: int literal' =>
+				[function ($q) {
+					return [false, [$q->expr()->literal(1), $q->expr()->literal(2), $q->expr()->literal(3), $q->expr()->literal(4)], '1234'];
+				}],
+			'5 columns: string param with special chars used in the function' =>
+				[function ($q) {
+					return [false, [$q->createNamedParameter("b"), $q->createNamedParameter("'"), $q->createNamedParameter('||'), $q->createNamedParameter(','), $q->createNamedParameter('a')], "b'||,a"];
+				}],
+		];
+	}
+
+	protected function clearDummyData(): void {
+		$delete = $this->connection->getQueryBuilder();
+
+		$delete->delete('appconfig')
+			->where($delete->expr()->eq('appid', $delete->createNamedParameter('group_concat')));
+		$delete->executeStatement();
+	}
+
+	protected function addDummyData(): void {
+		$this->clearDummyData();
+		$insert = $this->connection->getQueryBuilder();
+
+		$insert->insert('appconfig')
+			->setValue('appid', $insert->createNamedParameter('group_concat'))
+			->setValue('configvalue', $insert->createNamedParameter('unittest'))
+			->setValue('configkey', $insert->createParameter('value'));
+
+		$insert->setParameter('value', '1');
+		$insert->executeStatement();
+		$insert->setParameter('value', '3');
+		$insert->executeStatement();
+		$insert->setParameter('value', '2');
+		$insert->executeStatement();
+	}
+
+	public function testGroupConcatWithoutSeparator(): void {
+		$this->addDummyData();
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->groupConcat('configkey'))
+			->from('appconfig')
+			->where($query->expr()->eq('appid', $query->createNamedParameter('group_concat')));
+
+		$result = $query->execute();
+		$column = $result->fetchOne();
+		$result->closeCursor();
+		$this->assertStringContainsString(',', $column);
+		$actual = explode(',', $column);
+		$this->assertEqualsCanonicalizing([1,2,3], $actual);
+	}
+
+	public function testGroupConcatWithSeparator(): void {
+		$this->addDummyData();
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->groupConcat('configkey', '#'))
+			->from('appconfig')
+			->where($query->expr()->eq('appid', $query->createNamedParameter('group_concat')));
+
+		$result = $query->execute();
+		$column = $result->fetchOne();
+		$result->closeCursor();
+		$this->assertStringContainsString('#', $column);
+		$actual = explode('#', $column);
+		$this->assertEqualsCanonicalizing([1,2,3], $actual);
+	}
+
+	public function testGroupConcatWithSingleQuoteSeparator(): void {
+		$this->addDummyData();
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->groupConcat('configkey', '\''))
+			->from('appconfig')
+			->where($query->expr()->eq('appid', $query->createNamedParameter('group_concat')));
+
+		$result = $query->execute();
+		$column = $result->fetchOne();
+		$result->closeCursor();
+		$this->assertStringContainsString("'", $column);
+		$actual = explode("'", $column);
+		$this->assertEqualsCanonicalizing([1,2,3], $actual);
+	}
+
+	public function testGroupConcatWithDoubleQuoteSeparator(): void {
+		$this->addDummyData();
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->groupConcat('configkey', '"'))
+			->from('appconfig')
+			->where($query->expr()->eq('appid', $query->createNamedParameter('group_concat')));
+
+		$result = $query->execute();
+		$column = $result->fetchOne();
+		$result->closeCursor();
+		$this->assertStringContainsString('"', $column);
+		$actual = explode('"', $column);
+		$this->assertEqualsCanonicalizing([1,2,3], $actual);
+	}
+
+	protected function clearIntDummyData(): void {
+		$delete = $this->connection->getQueryBuilder();
+
+		$delete->delete('systemtag')
+			->where($delete->expr()->eq('name', $delete->createNamedParameter('group_concat')));
+		$delete->executeStatement();
+	}
+
+	protected function addIntDummyData(): void {
+		$this->clearIntDummyData();
+		$insert = $this->connection->getQueryBuilder();
+
+		$insert->insert('systemtag')
+			->setValue('name', $insert->createNamedParameter('group_concat'))
+			->setValue('visibility', $insert->createNamedParameter(1))
+			->setValue('editable', $insert->createParameter('value'));
+
+		$insert->setParameter('value', 1);
+		$insert->executeStatement();
+		$insert->setParameter('value', 2);
+		$insert->executeStatement();
+		$insert->setParameter('value', 3);
+		$insert->executeStatement();
+	}
+
+	public function testIntGroupConcatWithoutSeparator(): void {
+		$this->addIntDummyData();
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->groupConcat('editable'))
+			->from('systemtag')
+			->where($query->expr()->eq('name', $query->createNamedParameter('group_concat')));
+
+		$result = $query->execute();
+		$column = $result->fetchOne();
+		$result->closeCursor();
+		$this->assertStringContainsString(',', $column);
+		$actual = explode(',', $column);
+		$this->assertEqualsCanonicalizing([1,2,3], $actual);
+	}
+
+	public function testIntGroupConcatWithSeparator(): void {
+		$this->addIntDummyData();
+		$query = $this->connection->getQueryBuilder();
+
+		$query->select($query->func()->groupConcat('editable', '#'))
+			->from('systemtag')
+			->where($query->expr()->eq('name', $query->createNamedParameter('group_concat')));
+
+		$result = $query->execute();
+		$column = $result->fetchOne();
+		$result->closeCursor();
+		$this->assertStringContainsString('#', $column);
+		$actual = explode('#', $column);
+		$this->assertEqualsCanonicalizing([1,2,3], $actual);
 	}
 
 	public function testMd5() {
@@ -62,7 +253,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(md5('foobar'), $column);
 	}
@@ -75,7 +266,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals('oo', $column);
 	}
@@ -88,7 +279,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals('oobar', $column);
 	}
@@ -101,7 +292,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals('foobar', $column);
 	}
@@ -114,7 +305,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(3, $column);
 	}
@@ -127,7 +318,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(1, $column);
 	}
@@ -140,7 +331,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$column = $result->fetchColumn();
+		$column = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertGreaterThan(1, $column);
 	}
@@ -176,7 +367,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$row = $result->fetchColumn();
+		$row = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(null, $row);
 	}
@@ -192,7 +383,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$row = $result->fetchColumn();
+		$row = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(null, $row);
 	}
@@ -211,7 +402,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$row = $result->fetchColumn();
+		$row = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(20, $row);
 	}
@@ -230,7 +421,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$row = $result->fetchColumn();
+		$row = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(10, $row);
 	}
@@ -243,7 +434,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$row = $result->fetchColumn();
+		$row = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(2, $row);
 	}
@@ -256,7 +447,7 @@ class FunctionBuilderTest extends TestCase {
 			->setMaxResults(1);
 
 		$result = $query->execute();
-		$row = $result->fetchColumn();
+		$row = $result->fetchOne();
 		$result->closeCursor();
 		$this->assertEquals(1, $row);
 	}

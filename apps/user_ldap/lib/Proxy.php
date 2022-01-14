@@ -30,13 +30,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\User_LDAP;
 
 use OCA\User_LDAP\Mapping\GroupMapping;
 use OCA\User_LDAP\Mapping\UserMapping;
 use OCA\User_LDAP\User\Manager;
 use OCP\Share\IManager;
+use Psr\Log\LoggerInterface;
 
 abstract class Proxy {
 	private static $accesses = [];
@@ -71,10 +71,10 @@ abstract class Proxy {
 		static $shareManager;
 		static $coreUserManager;
 		static $coreNotificationManager;
+		static $logger;
 		if ($fs === null) {
 			$ocConfig = \OC::$server->getConfig();
 			$fs = new FilesystemHelper();
-			$log = new LogWrapper();
 			$avatarM = \OC::$server->getAvatarManager();
 			$db = \OC::$server->getDatabaseConnection();
 			$userMap = new UserMapping($db);
@@ -82,12 +82,13 @@ abstract class Proxy {
 			$coreUserManager = \OC::$server->getUserManager();
 			$coreNotificationManager = \OC::$server->getNotificationManager();
 			$shareManager = \OC::$server->get(IManager::class);
+			$logger = \OC::$server->get(LoggerInterface::class);
 		}
 		$userManager =
-			new Manager($ocConfig, $fs, $log, $avatarM, new \OCP\Image(),
+			new Manager($ocConfig, $fs, $logger, $avatarM, new \OCP\Image(),
 				$coreUserManager, $coreNotificationManager, $shareManager);
 		$connector = new Connection($this->ldap, $configPrefix);
-		$access = new Access($connector, $this->ldap, $userManager, new Helper($ocConfig, \OC::$server->getDatabaseConnection()), $ocConfig, $coreUserManager);
+		$access = new Access($connector, $this->ldap, $userManager, new Helper($ocConfig, \OC::$server->getDatabaseConnection()), $ocConfig, $coreUserManager, $logger);
 		$access->setUserMapper($userMap);
 		$access->setGroupMapper($groupMap);
 		self::$accesses[$configPrefix] = $access;

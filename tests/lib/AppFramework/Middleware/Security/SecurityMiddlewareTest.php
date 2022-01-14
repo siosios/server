@@ -32,6 +32,7 @@ use OC\AppFramework\Middleware\Security\Exceptions\SecurityException;
 use OC\Appframework\Middleware\Security\Exceptions\StrictCookieMissingException;
 use OC\AppFramework\Middleware\Security\SecurityMiddleware;
 use OC\AppFramework\Utility\ControllerMethodReflector;
+use OC\Settings\AuthorizedGroupMapper;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
@@ -39,11 +40,12 @@ use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IConfig;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\INavigationManager;
 use OCP\IRequest;
 use OCP\IURLGenerator;
+use OCP\IUserSession;
 use OCP\Security\ISecureRandom;
+use Psr\Log\LoggerInterface;
 
 class SecurityMiddlewareTest extends \Test\TestCase {
 
@@ -59,7 +61,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	private $request;
 	/** @var ControllerMethodReflector */
 	private $reader;
-	/** @var ILogger|\PHPUnit\Framework\MockObject\MockObject */
+	/** @var LoggerInterface|\PHPUnit\Framework\MockObject\MockObject */
 	private $logger;
 	/** @var INavigationManager|\PHPUnit\Framework\MockObject\MockObject */
 	private $navigationManager;
@@ -69,13 +71,19 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	private $appManager;
 	/** @var IL10N|\PHPUnit\Framework\MockObject\MockObject */
 	private $l10n;
+	/** @var IUserSession|\PHPUnit\Framework\MockObject\MockObject */
+	private $userSession;
+	/** @var AuthorizedGroupMapper|\PHPUnit\Framework\MockObject\MockObject */
+	private $authorizedGroupMapper;
 
 	protected function setUp(): void {
 		parent::setUp();
 
+		$this->authorizedGroupMapper = $this->createMock(AuthorizedGroupMapper::class);
+		$this->userSession = $this->createMock(IUserSession::class);
 		$this->controller = $this->createMock(Controller::class);
 		$this->reader = new ControllerMethodReflector();
-		$this->logger = $this->createMock(ILogger::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 		$this->navigationManager = $this->createMock(INavigationManager::class);
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 		$this->request = $this->createMock(IRequest::class);
@@ -102,7 +110,9 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 			$isAdminUser,
 			$isSubAdmin,
 			$this->appManager,
-			$this->l10n
+			$this->l10n,
+			$this->authorizedGroupMapper,
+			$this->userSession
 		);
 	}
 
@@ -436,7 +446,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	 * @SubAdminRequired
 	 */
 	public function testIsNotSubAdminCheck() {
-		$this->reader->reflect(__CLASS__,__FUNCTION__);
+		$this->reader->reflect(__CLASS__, __FUNCTION__);
 		$sec = $this->getMiddleware(true, false, false);
 
 		$this->expectException(SecurityException::class);
@@ -448,7 +458,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	 * @SubAdminRequired
 	 */
 	public function testIsSubAdminCheck() {
-		$this->reader->reflect(__CLASS__,__FUNCTION__);
+		$this->reader->reflect(__CLASS__, __FUNCTION__);
 		$sec = $this->getMiddleware(true, false, true);
 
 		$sec->beforeController($this, __METHOD__);
@@ -460,7 +470,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	 * @SubAdminRequired
 	 */
 	public function testIsSubAdminAndAdminCheck() {
-		$this->reader->reflect(__CLASS__,__FUNCTION__);
+		$this->reader->reflect(__CLASS__, __FUNCTION__);
 		$sec = $this->getMiddleware(true, true, true);
 
 		$sec->beforeController($this, __METHOD__);
@@ -506,14 +516,14 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 			->willReturn('http://localhost/nextcloud/index.php/login?redirect_url=nextcloud/index.php/apps/specialapp');
 		$this->logger
 			->expects($this->once())
-			->method('logException');
+			->method('debug');
 		$response = $this->middleware->afterException(
 			$this->controller,
 			'test',
 			new NotLoggedInException()
 		);
 		$expected = new RedirectResponse('http://localhost/nextcloud/index.php/login?redirect_url=nextcloud/index.php/apps/specialapp');
-		$this->assertEquals($expected , $response);
+		$this->assertEquals($expected, $response);
 	}
 
 	public function testAfterExceptionRedirectsToWebRootAfterStrictCookieFail() {
@@ -536,7 +546,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 		);
 
 		$expected = new RedirectResponse(\OC::$WEBROOT . '/');
-		$this->assertEquals($expected , $response);
+		$this->assertEquals($expected, $response);
 	}
 
 
@@ -576,7 +586,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 		$this->middleware = $this->getMiddleware(false, false, false);
 		$this->logger
 			->expects($this->once())
-			->method('logException');
+			->method('debug');
 		$response = $this->middleware->afterException(
 			$this->controller,
 			'test',
@@ -584,7 +594,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 		);
 		$expected = new TemplateResponse('core', '403', ['message' => $exception->getMessage()], 'guest');
 		$expected->setStatus($exception->getCode());
-		$this->assertEquals($expected , $response);
+		$this->assertEquals($expected, $response);
 	}
 
 	public function testAfterAjaxExceptionReturnsJSONError() {
@@ -614,7 +624,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	 */
 	public function testRestrictedAppLoggedInPublicPage() {
 		$middleware = $this->getMiddleware(true, false, false);
-		$this->reader->reflect(__CLASS__,__FUNCTION__);
+		$this->reader->reflect(__CLASS__, __FUNCTION__);
 
 		$this->appManager->method('getAppPath')
 			->with('files')
@@ -635,7 +645,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	 */
 	public function testRestrictedAppNotLoggedInPublicPage() {
 		$middleware = $this->getMiddleware(false, false, false);
-		$this->reader->reflect(__CLASS__,__FUNCTION__);
+		$this->reader->reflect(__CLASS__, __FUNCTION__);
 
 		$this->appManager->method('getAppPath')
 			->with('files')
@@ -655,7 +665,7 @@ class SecurityMiddlewareTest extends \Test\TestCase {
 	 */
 	public function testRestrictedAppLoggedIn() {
 		$middleware = $this->getMiddleware(true, false, false, false);
-		$this->reader->reflect(__CLASS__,__FUNCTION__);
+		$this->reader->reflect(__CLASS__, __FUNCTION__);
 
 		$this->appManager->method('getAppPath')
 			->with('files')

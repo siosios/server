@@ -66,11 +66,12 @@
 		</div>
 
 		<!-- Message editor -->
-		<div class="comment__editor " v-if="editor || editing">
+		<div v-if="editor || editing" class="comment__editor ">
 			<RichContenteditable ref="editor"
-				v-model="localMessage"
 				:auto-complete="autoComplete"
 				:contenteditable="!loading"
+				:value="localMessage"
+				@update:value="updateLocalMessage"
 				@submit="onSubmit" />
 			<input v-tooltip="t('comments', 'Post comment')"
 				:class="loading ? 'icon-loading-small' :'icon-confirm'"
@@ -94,7 +95,7 @@
 
 <script>
 import { getCurrentUser } from '@nextcloud/auth'
-import moment from 'moment'
+import moment from '@nextcloud/moment'
 
 import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 import Actions from '@nextcloud/vue/dist/Components/Actions'
@@ -165,7 +166,8 @@ export default {
 
 		/**
 		 * Is the current user the author of this comment
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isOwnComment() {
 			return getCurrentUser().uid === this.actorId
@@ -173,7 +175,8 @@ export default {
 
 		/**
 		 * Rendered content as html string
-		 * @returns {string}
+		 *
+		 * @return {string}
 		 */
 		renderedContent() {
 			if (this.isEmptyMessage) {
@@ -207,6 +210,7 @@ export default {
 	methods: {
 		/**
 		 * Update local Message on outer change
+		 *
 		 * @param {string} message the message to set
 		 */
 		updateLocalMessage(message) {
@@ -242,6 +246,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:math";
+
 $comment-padding: 10px;
 
 .comment {
@@ -252,7 +258,7 @@ $comment-padding: 10px;
 		display: flex;
 		align-items: center;
 		min-height: 44px;
-		padding: $comment-padding / 2 0;
+		padding: math.div($comment-padding, 2) 0;
 	}
 
 	&__author,

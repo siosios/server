@@ -25,7 +25,6 @@ declare(strict_types=1);
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\IntegrityCheck\Iterator;
 
 class ExcludeFoldersByPathFilterIterator extends \RecursiveFilterIterator {
@@ -60,10 +59,7 @@ class ExcludeFoldersByPathFilterIterator extends \RecursiveFilterIterator {
 		$this->excludedFolders = array_merge($excludedFolders, $appFolders);
 	}
 
-	/**
-	 * @return bool
-	 */
-	public function accept() {
+	public function accept(): bool {
 		return !\in_array(
 			$this->current()->getPathName(),
 			$this->excludedFolders,

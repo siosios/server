@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Copyright (c) 2014 Lukas Reschke <lukas@owncloud.com>
  * This file is licensed under the Affero General Public License version 3 or
@@ -194,7 +197,7 @@ class HasherTest extends \Test\TestCase {
 		}
 
 
-		$this->assertTrue($this->hasher->verify($message, $blowfish,$newHash));
+		$this->assertTrue($this->hasher->verify($message, $blowfish, $newHash));
 		$this->assertTrue($this->hasher->verify($message, $argon2));
 
 		$relativePath = self::invokePrivate($this->hasher, 'splitHash', [$newHash]);

@@ -22,7 +22,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Files_External\Lib\Auth;
 
 use OCA\Files_External\Lib\FrontendDefinitionTrait;
@@ -91,10 +90,8 @@ class AuthMechanism implements \JsonSerializable {
 
 	/**
 	 * Serialize into JSON for client-side JS
-	 *
-	 * @return array
 	 */
-	public function jsonSerialize() {
+	public function jsonSerialize(): array {
 		$data = $this->jsonSerializeDefinition();
 		$data += $this->jsonSerializeIdentifier();
 

@@ -2,10 +2,11 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -27,8 +28,6 @@ use OCA\Files\Event\LoadSidebar;
 use OCA\Viewer\Event\LoadViewer;
 use OCP\EventDispatcher\GenericEvent;
 
-// Check if we are a user
-OCP\User::checkLoggedIn();
 $config = \OC::$server->getConfig();
 $userSession = \OC::$server->getUserSession();
 $legacyEventDispatcher = \OC::$server->getEventDispatcher();
@@ -36,12 +35,11 @@ $legacyEventDispatcher = \OC::$server->getEventDispatcher();
 $eventDispatcher = \OC::$server->get(OCP\EventDispatcher\IEventDispatcher::class);
 
 $showgridview = $config->getUserValue($userSession->getUser()->getUID(), 'files', 'show_grid', false);
-$isIE = \OCP\Util::isIE();
 
 $tmpl = new OCP\Template('files_sharing', 'list', '');
 
 // gridview not available for ie
-$tmpl->assign('showgridview', $showgridview && !$isIE);
+$tmpl->assign('showgridview', $showgridview);
 
 // fire script events
 $legacyEventDispatcher->dispatch('\OCP\Collaboration\Resources::loadAdditionalScripts', new GenericEvent());

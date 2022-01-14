@@ -2,6 +2,12 @@
 /**
  * @copyright Copyright (c) 2016 Joas Schilling <coding@schilljs.com>
  *
+ * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
+ * @author Richard Steinmetz <richard@steinmetz.cloud>
+ *
  * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
@@ -11,14 +17,13 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\WorkflowEngine\Check;
 
 use OCA\Files_Sharing\SharedStorage;
@@ -31,6 +36,7 @@ use OCP\SystemTag\ISystemTagObjectMapper;
 use OCP\SystemTag\TagNotFoundException;
 use OCP\WorkflowEngine\ICheck;
 use OCP\WorkflowEngine\IFileCheck;
+use OC\Files\Storage\Wrapper\Wrapper;
 
 class FileSystemTags implements ICheck, IFileCheck {
 	use TFileCheck;
@@ -127,7 +133,25 @@ class FileSystemTags implements ICheck, IFileCheck {
 	 * @return int[]
 	 */
 	protected function getFileIds(ICache $cache, $path, $isExternalStorage) {
-		$cacheId = $cache->getNumericStorageId();
+		/** @psalm-suppress InvalidArgument */
+		if ($this->storage->instanceOfStorage(\OCA\GroupFolders\Mount\GroupFolderStorage::class)) {
+			// Special implementation for groupfolder since all groupfolders share the same storage
+			// id so add the group folder id in the cache key too.
+			$groupFolderStorage = $this->storage;
+			if ($this->storage instanceof Wrapper) {
+				$groupFolderStorage = $this->storage->getInstanceOfStorage(\OCA\GroupFolders\Mount\GroupFolderStorage::class);
+			}
+			if ($groupFolderStorage === null) {
+				throw new \LogicException('Should not happen: Storage is instance of GroupFolderStorage but no group folder storage found while unwrapping.');
+			}
+			/**
+			 * @psalm-suppress UndefinedDocblockClass
+			 * @psalm-suppress UndefinedInterfaceMethod
+			 */
+			$cacheId = $cache->getNumericStorageId() . '/' . $groupFolderStorage->getFolderId();
+		} else {
+			$cacheId = $cache->getNumericStorageId();
+		}
 		if (isset($this->fileIds[$cacheId][$path])) {
 			return $this->fileIds[$cacheId][$path];
 		}
@@ -141,7 +165,7 @@ class FileSystemTags implements ICheck, IFileCheck {
 
 		$fileId = $cache->getId($path);
 		if ($fileId !== -1) {
-			$parentIds[] = $cache->getId($path);
+			$parentIds[] = $fileId;
 		}
 
 		$this->fileIds[$cacheId][$path] = $parentIds;

@@ -27,7 +27,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCP;
 
 /**
@@ -127,6 +126,18 @@ interface IUserManager {
 	public function searchDisplayName($pattern, $limit = null, $offset = null);
 
 	/**
+	 * Search known users (from phonebook sync) by displayName
+	 *
+	 * @param string $searcher
+	 * @param string $pattern
+	 * @param int|null $limit
+	 * @param int|null $offset
+	 * @return IUser[]
+	 * @since 21.0.1
+	 */
+	public function searchKnownUsersByDisplayName(string $searcher, string $pattern, ?int $limit = null, ?int $offset = null): array;
+
+	/**
 	 * @param string $uid
 	 * @param string $password
 	 * @throws \InvalidArgumentException
@@ -185,6 +196,8 @@ interface IUserManager {
 	public function callForSeenUsers(\Closure $callback);
 
 	/**
+	 * returns all users having the provided email set as system email address
+	 *
 	 * @param string $email
 	 * @return IUser[]
 	 * @since 9.1.0

@@ -6,20 +6,23 @@ declare(strict_types=1);
  * @copyright Copyright (c) 2020, Georg Ehrke
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Simon Spannagel <simonspa@kth.se>
  *
- * @license AGPL-3.0
+ * @license GNU AGPL version 3 or any later version
  *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 namespace OCA\UserStatus\Controller;
@@ -96,6 +99,8 @@ class UserStatusController extends OCSController {
 	public function setStatus(string $statusType): DataResponse {
 		try {
 			$status = $this->service->setStatus($this->userId, $statusType, null, true);
+
+			$this->service->removeBackupUserStatus($this->userId);
 			return new DataResponse($this->formatStatus($status));
 		} catch (InvalidStatusTypeException $ex) {
 			$this->logger->debug('New user-status for "' . $this->userId . '" was rejected due to an invalid status type "' . $statusType . '"');
@@ -115,6 +120,7 @@ class UserStatusController extends OCSController {
 										 ?int $clearAt): DataResponse {
 		try {
 			$status = $this->service->setPredefinedMessage($this->userId, $messageId, $clearAt);
+			$this->service->removeBackupUserStatus($this->userId);
 			return new DataResponse($this->formatStatus($status));
 		} catch (InvalidClearAtException $ex) {
 			$this->logger->debug('New user-status for "' . $this->userId . '" was rejected due to an invalid clearAt value "' . $clearAt . '"');
@@ -144,6 +150,7 @@ class UserStatusController extends OCSController {
 				$this->service->clearMessage($this->userId);
 				$status = $this->service->findByUserId($this->userId);
 			}
+			$this->service->removeBackupUserStatus($this->userId);
 			return new DataResponse($this->formatStatus($status));
 		} catch (InvalidClearAtException $ex) {
 			$this->logger->debug('New user-status for "' . $this->userId . '" was rejected due to an invalid clearAt value "' . $clearAt . '"');

@@ -26,13 +26,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\User_LDAP\Tests\User;
 
 use OCA\User_LDAP\Access;
 use OCA\User_LDAP\Connection;
 use OCA\User_LDAP\FilesystemHelper;
-use OCA\User_LDAP\LogWrapper;
 use OCA\User_LDAP\User\User;
 use OCP\IAvatar;
 use OCP\IAvatarManager;
@@ -42,6 +40,7 @@ use OCP\IUser;
 use OCP\IUserManager;
 use OCP\Notification\IManager as INotificationManager;
 use OCP\Notification\INotification;
+use Psr\Log\LoggerInterface;
 
 /**
  * Class UserTest
@@ -67,8 +66,8 @@ class UserTest extends \Test\TestCase {
 	protected $image;
 	/** @var IAvatarManager|\PHPUnit\Framework\MockObject\MockObject */
 	protected $avatarManager;
-	/** @var LogWrapper|\PHPUnit\Framework\MockObject\MockObject */
-	protected $log;
+	/** @var LoggerInterface|\PHPUnit\Framework\MockObject\MockObject */
+	protected $logger;
 	/** @var string */
 	protected $uid = 'alice';
 	/** @var string */
@@ -89,7 +88,7 @@ class UserTest extends \Test\TestCase {
 
 		$this->config = $this->createMock(IConfig::class);
 		$this->filesystemhelper = $this->createMock(FilesystemHelper::class);
-		$this->log = $this->createMock(LogWrapper::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 		$this->avatarManager = $this->createMock(IAvatarManager::class);
 		$this->image = $this->createMock(Image::class);
 		$this->userManager = $this->createMock(IUserManager::class);
@@ -102,7 +101,7 @@ class UserTest extends \Test\TestCase {
 			$this->config,
 			$this->filesystemhelper,
 			$this->image,
-			$this->log,
+			$this->logger,
 			$this->avatarManager,
 			$this->userManager,
 			$this->notificationManager
@@ -936,7 +935,7 @@ class UserTest extends \Test\TestCase {
 				$this->config,
 				$this->filesystemhelper,
 				$this->image,
-				$this->log,
+				$this->logger,
 				$this->avatarManager,
 				$this->userManager,
 				$this->notificationManager

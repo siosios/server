@@ -9,9 +9,10 @@
  * @author Frank Karlitschek <frank@karlitschek.de>
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Individual IT Services <info@individual-it.net>
+ * @author J0WI <J0WI@users.noreply.github.com>
  * @author Jens-Christian Fischer <jens-christian.fischer@switch.ch>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author Jonas Meurer <jonas@freesources.org>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Gapczynski <GapczynskiM@gmail.com>
@@ -23,7 +24,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Victor Dubiniuk <dubiniuk@owncloud.com>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -40,17 +41,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
-/**
- * Public interface of ownCloud for apps to use.
- * Utility Class.
- *
- */
-
 // use OCP namespace for all classes that are considered public.
 // This means that they should be used by apps instead of the internal ownCloud classes
 
 namespace OCP;
+
+use OC\AppScriptDependency;
+use OC\AppScriptSort;
 
 /**
  * This class provides different helper functions to make the life of a developer easier
@@ -79,8 +76,17 @@ class Util {
 	 */
 	public const FATAL = 4;
 
-	/** \OCP\Share\IManager */
+	/** @var \OCP\Share\IManager */
 	private static $shareManager;
+
+	/** @var array */
+	private static $scripts = [];
+
+	/** @var array */
+	private static $scriptDeps = [];
+
+	/** @var array */
+	private static $sortedScriptDeps = [];
 
 	/**
 	 * get the current installed version of Nextcloud
@@ -178,12 +184,51 @@ class Util {
 
 	/**
 	 * add a javascript file
+	 *
 	 * @param string $application
-	 * @param string $file
+	 * @param string|null $file
+	 * @param string $afterAppId
 	 * @since 4.0.0
 	 */
-	public static function addScript($application, $file = null) {
-		\OC_Util::addScript($application, $file);
+	public static function addScript(string $application, string $file = null, string $afterAppId = 'core'): void {
+		if (!empty($application)) {
+			$path = "$application/js/$file";
+		} else {
+			$path = "js/$file";
+		}
+
+		// Inject js translations if we load a script for
+		// a specific app that is not core, as those js files
+		// need separate handling
+		if ($application !== 'core'
+			&& $file !== null
+			&& strpos($file, 'l10n') === false) {
+			self::addTranslations($application);
+		}
+
+		// store app in dependency list
+		if (!array_key_exists($application, self::$scriptDeps)) {
+			self::$scriptDeps[$application] = new AppScriptDependency($application, [$afterAppId]);
+		} else {
+			self::$scriptDeps[$application]->addDep($afterAppId);
+		}
+
+		self::$scripts[$application][] = $path;
+	}
+
+	/**
+	 * Return the list of scripts injected to the page
+	 *
+	 * @return array
+	 * @since 24.0.0
+	 */
+	public static function getScripts(): array {
+		// Sort scriptDeps into sortedScriptDeps
+		$scriptSort = \OC::$server->get(AppScriptSort::class);
+		$sortedScripts = $scriptSort->sort(self::$scripts, self::$scriptDeps);
+
+		// Flatten array and remove duplicates
+		return $sortedScripts ? array_unique(array_merge(...array_values(($sortedScripts)))) : [];
 	}
 
 	/**
@@ -193,7 +238,15 @@ class Util {
 	 * @since 8.0.0
 	 */
 	public static function addTranslations($application, $languageCode = null) {
-		\OC_Util::addTranslations($application, $languageCode);
+		if (is_null($languageCode)) {
+			$languageCode = \OC::$server->getL10NFactory()->findLanguage($application);
+		}
+		if (!empty($application)) {
+			$path = "$application/l10n/$languageCode";
+		} else {
+			$path = "l10n/$languageCode";
+		}
+		self::$scripts[$application][] = $path;
 	}
 
 	/**
@@ -316,7 +369,7 @@ class Util {
 	 * @param string $str file size in a fancy format
 	 * @return float a file size in bytes
 	 *
-	 * Inspired by: http://www.php.net/manual/en/function.filesize.php#92418
+	 * Inspired by: https://www.php.net/manual/en/function.filesize.php#92418
 	 * @since 4.0.0
 	 */
 	public static function computerFileSize($str) {
@@ -522,12 +575,26 @@ class Util {
 	}
 
 	/**
-	 * is this Internet explorer ?
+	 * Sometimes a string has to be shortened to fit within a certain maximum
+	 * data length in bytes. substr() you may break multibyte characters,
+	 * because it operates on single byte level. mb_substr() operates on
+	 * characters, so does not ensure that the shortend string satisfies the
+	 * max length in bytes.
 	 *
-	 * @return boolean
-	 * @since 14.0.0
+	 * For example, json_encode is messing with multibyte characters a lot,
+	 * replacing them with something along "\u1234".
+	 *
+	 * This function shortens the string with by $accurancy (-5) from
+	 * $dataLength characters, until it fits within $dataLength bytes.
+	 *
+	 * @since 23.0.0
 	 */
-	public static function isIe() {
-		return \OC_Util::isIe();
+	public static function shortenMultibyteString(string $subject, int $dataLength, int $accuracy = 5): string {
+		$temp = mb_substr($subject, 0, $dataLength);
+		// json encodes encapsulates the string in double quotes, they need to be substracted
+		while ((strlen(json_encode($temp)) - 2) > $dataLength) {
+			$temp = mb_substr($temp, 0, -$accuracy);
+		}
+		return $temp;
 	}
 }

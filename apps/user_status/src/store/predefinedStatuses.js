@@ -3,7 +3,7 @@
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
  *
- * @license GNU AGPL version 3 or any later version
+ * @license AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 import { fetchAllPredefinedStatuses } from '../services/predefinedStatusService'
 
 const state = {
@@ -30,8 +31,8 @@ const mutations = {
 	/**
 	 * Adds a predefined status to the state
 	 *
-	 * @param {Object} state The Vuex state
-	 * @param {Object} status The status to add
+	 * @param {object} state The Vuex state
+	 * @param {object} status The status to add
 	 */
 	addPredefinedStatus(state, status) {
 		state.predefinedStatuses.push(status)
@@ -45,8 +46,9 @@ const actions = {
 	/**
 	 * Loads all predefined statuses from the server
 	 *
-	 * @param {Object} vuex The Vuex components
+	 * @param {object} vuex The Vuex components
 	 * @param {Function} vuex.commit The Vuex commit function
+	 * @param {object} vuex.state -
 	 */
 	async loadAllPredefinedStatuses({ state, commit }) {
 		if (state.predefinedStatuses.length > 0) {

@@ -19,7 +19,7 @@
 	 * @param {String} share.owner owner name
 	 * @param {String} share.name name of the shared folder
 	 * @param {String} share.token authentication token
-	 * @param {bool} passwordProtected true if the share is password protected
+	 * @param {boolean} passwordProtected true if the share is password protected
 	 * @param {Function} callback the callback
 	 */
 	OCA.Sharing.showAddExternalDialog = function(share, passwordProtected, callback) {
@@ -99,7 +99,7 @@
 			var fileList = this.filesApp.fileList;
 			var params = OC.Util.History.parseUrlQuery();
 			// manually add server-to-server share
-			if (params.remote && params.token && params.owner && params.name) {
+			if (params.remote && params.token && params.name) {
 
 				var callbackAddShare = function(result, share) {
 					var password = share.password || '';

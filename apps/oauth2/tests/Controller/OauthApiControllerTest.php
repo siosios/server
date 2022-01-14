@@ -16,20 +16,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\OAuth2\Tests\Controller;
 
 use OC\Authentication\Exceptions\ExpiredTokenException;
 use OC\Authentication\Exceptions\InvalidTokenException;
-use OC\Authentication\Token\DefaultToken;
 use OC\Authentication\Token\IProvider as TokenProvider;
+use OC\Authentication\Token\PublicKeyToken;
 use OC\Security\Bruteforce\Throttler;
 use OCA\OAuth2\Controller\OauthApiController;
 use OCA\OAuth2\Db\AccessToken;
@@ -239,7 +238,7 @@ class OauthApiControllerTest extends TestCase {
 				'validrefresh'
 			)->willReturn('decryptedToken');
 
-		$appToken = new DefaultToken();
+		$appToken = new PublicKeyToken();
 		$appToken->setUid('userId');
 		$this->tokenProvider->method('getTokenById')
 			->with(1337)
@@ -268,7 +267,7 @@ class OauthApiControllerTest extends TestCase {
 		$this->tokenProvider->expects($this->once())
 			->method('updateToken')
 			->with(
-				$this->callback(function (DefaultToken $token) {
+				$this->callback(function (PublicKeyToken $token) {
 					return $token->getExpires() === 4600;
 				})
 			);
@@ -331,7 +330,7 @@ class OauthApiControllerTest extends TestCase {
 				'validrefresh'
 			)->willReturn('decryptedToken');
 
-		$appToken = new DefaultToken();
+		$appToken = new PublicKeyToken();
 		$appToken->setUid('userId');
 		$this->tokenProvider->method('getTokenById')
 			->with(1337)
@@ -360,7 +359,7 @@ class OauthApiControllerTest extends TestCase {
 		$this->tokenProvider->expects($this->once())
 			->method('updateToken')
 			->with(
-				$this->callback(function (DefaultToken $token) {
+				$this->callback(function (PublicKeyToken $token) {
 					return $token->getExpires() === 4600;
 				})
 			);
@@ -426,7 +425,7 @@ class OauthApiControllerTest extends TestCase {
 				'validrefresh'
 			)->willReturn('decryptedToken');
 
-		$appToken = new DefaultToken();
+		$appToken = new PublicKeyToken();
 		$appToken->setUid('userId');
 		$this->tokenProvider->method('getTokenById')
 			->with(1337)
@@ -455,7 +454,7 @@ class OauthApiControllerTest extends TestCase {
 		$this->tokenProvider->expects($this->once())
 			->method('updateToken')
 			->with(
-				$this->callback(function (DefaultToken $token) {
+				$this->callback(function (PublicKeyToken $token) {
 					return $token->getExpires() === 4600;
 				})
 			);

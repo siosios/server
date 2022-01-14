@@ -7,7 +7,7 @@
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -29,7 +29,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Settings\Controller;
 
 use OC\App\AppStore\Bundles\BundleFetcher;
@@ -48,11 +47,11 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IConfig;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\INavigationManager;
 use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
+use Psr\Log\LoggerInterface;
 
 class AppSettingsController extends Controller {
 
@@ -76,7 +75,7 @@ class AppSettingsController extends Controller {
 	private $installer;
 	/** @var IURLGenerator */
 	private $urlGenerator;
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	private $logger;
 
 	/** @var array */
@@ -95,7 +94,7 @@ class AppSettingsController extends Controller {
 	 * @param BundleFetcher $bundleFetcher
 	 * @param Installer $installer
 	 * @param IURLGenerator $urlGenerator
-	 * @param ILogger $logger
+	 * @param LoggerInterface $logger
 	 */
 	public function __construct(string $appName,
 								IRequest $request,
@@ -109,7 +108,7 @@ class AppSettingsController extends Controller {
 								BundleFetcher $bundleFetcher,
 								Installer $installer,
 								IURLGenerator $urlGenerator,
-								ILogger $logger) {
+								LoggerInterface $logger) {
 		parent::__construct($appName, $request);
 		$this->l10n = $l10n;
 		$this->config = $config;
@@ -132,7 +131,7 @@ class AppSettingsController extends Controller {
 	public function viewApps(): TemplateResponse {
 		\OC_Util::addScript('settings', 'apps');
 		$params = [];
-		$params['appstoreEnabled'] = $this->config->getSystemValue('appstoreenabled', true) === true;
+		$params['appstoreEnabled'] = $this->config->getSystemValueBool('appstoreenabled', true);
 		$params['updateCount'] = count($this->getAppsWithUpdates());
 		$params['developerDocumentation'] = $this->urlGenerator->linkToDocs('developer-manual');
 		$params['bundles'] = $this->getBundles();
@@ -205,12 +204,17 @@ class AppSettingsController extends Controller {
 		}
 
 		$apps = $this->getAppsForCategory('');
+		$supportedApps = $appClass->getSupportedApps();
 		foreach ($apps as $app) {
 			$app['appstore'] = true;
 			if (!array_key_exists($app['id'], $this->allApps)) {
 				$this->allApps[$app['id']] = $app;
 			} else {
 				$this->allApps[$app['id']] = array_merge($app, $this->allApps[$app['id']]);
+			}
+
+			if (in_array($app['id'], $supportedApps)) {
+				$this->allApps[$app['id']]['level'] = \OC_App::supportedApp;
 			}
 		}
 
@@ -458,7 +462,7 @@ class AppSettingsController extends Controller {
 			}
 			return new JSONResponse(['data' => ['update_required' => $updateRequired]]);
 		} catch (\Exception $e) {
-			$this->logger->logException($e);
+			$this->logger->error('could not enable apps', ['exception' => $e]);
 			return new JSONResponse(['data' => ['message' => $e->getMessage()]], Http::STATUS_INTERNAL_SERVER_ERROR);
 		}
 	}
@@ -499,7 +503,7 @@ class AppSettingsController extends Controller {
 			}
 			return new JSONResponse([]);
 		} catch (\Exception $e) {
-			$this->logger->logException($e);
+			$this->logger->error('could not disable app', ['exception' => $e]);
 			return new JSONResponse(['data' => ['message' => $e->getMessage()]], Http::STATUS_INTERNAL_SERVER_ERROR);
 		}
 	}

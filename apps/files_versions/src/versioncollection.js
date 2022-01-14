@@ -1,10 +1,24 @@
-/*
+/**
  * Copyright (c) 2015
  *
- * This file is licensed under the Affero General Public License version 3
- * or later.
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
- * See the COPYING-README file.
+ * @license AGPL-3.0-or-later
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -17,7 +31,7 @@
 		sync: OC.Backbone.davSync,
 
 		/**
-		 * @var OCA.Files.FileInfoModel
+		 * @member OCA.Files.FileInfoModel
 		 */
 		_fileInfo: null,
 

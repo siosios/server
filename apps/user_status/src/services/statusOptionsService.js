@@ -2,8 +2,9 @@
  * @copyright Copyright (c) 2020 Georg Ehrke
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Jan C. Borchardt <hey@jancborchardt.net>
  *
- * @license GNU AGPL version 3 or any later version
+ * @license AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,12 +20,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 import { translate as t } from '@nextcloud/l10n'
 
 /**
  * Returns a list of all user-definable statuses
  *
- * @returns {Object[]}
+ * @return {object[]}
  */
 const getAllStatusOptions = () => {
 	return [{

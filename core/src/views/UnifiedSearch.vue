@@ -24,11 +24,14 @@
 		class="unified-search"
 		exclude-click-outside-classes="popover"
 		:open.sync="open"
+		:aria-label="ariaLabel"
 		@open="onOpen"
 		@close="onClose">
 		<!-- Header icon -->
 		<template #trigger>
-			<Magnify class="unified-search__trigger" :size="20" fill-color="var(--color-primary-text)" />
+			<Magnify class="unified-search__trigger"
+				:size="20"
+				fill-color="var(--color-primary-text)" />
 		</template>
 
 		<!-- Search form & filters wrapper -->
@@ -44,7 +47,7 @@
 					class="unified-search__form-input"
 					type="search"
 					:class="{'unified-search__form-input--with-reset': !!query}"
-					:placeholder="t('core', 'Search {types} …', { types: typesNames.join(', ').toLowerCase() })"
+					:placeholder="t('core', 'Search {types} …', { types: typesNames.join(', ') })"
 					@input="onInputDebounced"
 					@keypress.enter.prevent.stop="onInputEnter">
 
@@ -73,7 +76,7 @@
 			<SearchResultPlaceholders v-if="isLoading" />
 
 			<EmptyContent v-else-if="isValidQuery" icon="icon-search">
-				{{ t('core', 'No results for {query}', {query}) }}
+				<Highlight :text="t('core', 'No results for {query}', { query })" :search="query" />
 			</EmptyContent>
 
 			<EmptyContent v-else-if="!isLoading || isShortQuery" icon="icon-search">
@@ -123,10 +126,12 @@
 import { emit } from '@nextcloud/event-bus'
 import { minSearchLength, getTypes, search, defaultLimit, regexFilterIn, regexFilterNot } from '../services/UnifiedSearchService'
 import { showError } from '@nextcloud/dialogs'
+
 import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 import Actions from '@nextcloud/vue/dist/Components/Actions'
 import debounce from 'debounce'
 import EmptyContent from '@nextcloud/vue/dist/Components/EmptyContent'
+import Highlight from '@nextcloud/vue/dist/Components/Highlight'
 import Magnify from 'vue-material-design-icons/Magnify'
 
 import HeaderMenu from '../components/HeaderMenu'
@@ -145,6 +150,7 @@ export default {
 		Actions,
 		EmptyContent,
 		HeaderMenu,
+		Highlight,
 		Magnify,
 		SearchResult,
 		SearchResultPlaceholders,
@@ -191,9 +197,14 @@ export default {
 			}, {})
 		},
 
+		ariaLabel() {
+			return t('core', 'Search')
+		},
+
 		/**
 		 * Is there any result to display
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		hasResults() {
 			return Object.keys(this.results).length !== 0
@@ -201,7 +212,8 @@ export default {
 
 		/**
 		 * Return ordered results
-		 * @returns {Array}
+		 *
+		 * @return {Array}
 		 */
 		orderedResults() {
 			return this.typesIDs
@@ -215,7 +227,8 @@ export default {
 		/**
 		 * Available filters
 		 * We only show filters that are available on the results
-		 * @returns {string[]}
+		 *
+		 * @return {string[]}
 		 */
 		availableFilters() {
 			return Object.keys(this.results)
@@ -223,7 +236,8 @@ export default {
 
 		/**
 		 * Applied filters
-		 * @returns {string[]}
+		 *
+		 * @return {string[]}
 		 */
 		usedFiltersIn() {
 			let match
@@ -236,7 +250,8 @@ export default {
 
 		/**
 		 * Applied anti filters
-		 * @returns {string[]}
+		 *
+		 * @return {string[]}
 		 */
 		usedFiltersNot() {
 			let match
@@ -249,7 +264,8 @@ export default {
 
 		/**
 		 * Is the current search too short
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isShortQuery() {
 			return this.query && this.query.trim().length < minSearchLength
@@ -257,7 +273,8 @@ export default {
 
 		/**
 		 * Is the current search valid
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isValidQuery() {
 			return this.query && this.query.trim() !== '' && !this.isShortQuery
@@ -265,7 +282,8 @@ export default {
 
 		/**
 		 * Have we reached the end of all types searches
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isDoneSearching() {
 			return Object.values(this.reached).every(state => state === false)
@@ -273,7 +291,8 @@ export default {
 
 		/**
 		 * Is there any search in progress
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isLoading() {
 			return Object.values(this.loading).some(state => state === true)
@@ -468,7 +487,8 @@ export default {
 
 		/**
 		 * Load more results for the provided type
-		 * @param {String} type type
+		 *
+		 * @param {string} type type
 		 */
 		async loadMore(type) {
 			// If already loading, ignore
@@ -525,7 +545,7 @@ export default {
 		 *
 		 * @param {Array} list the results
 		 * @param {string} type the type
-		 * @returns {Array}
+		 * @return {Array}
 		 */
 		limitIfAny(list, type) {
 			if (type in this.limits) {
@@ -540,6 +560,7 @@ export default {
 
 		/**
 		 * Focus the first result if any
+		 *
 		 * @param {Event} event the keydown event
 		 */
 		focusFirst(event) {
@@ -555,6 +576,7 @@ export default {
 
 		/**
 		 * Focus the next result if any
+		 *
 		 * @param {Event} event the keydown event
 		 */
 		focusNext(event) {
@@ -574,6 +596,7 @@ export default {
 
 		/**
 		 * Focus the previous result if any
+		 *
 		 * @param {Event} event the keydown event
 		 */
 		focusPrev(event) {
@@ -594,6 +617,7 @@ export default {
 
 		/**
 		 * Focus the specified result index if it exists
+		 *
 		 * @param {number} index the result index
 		 */
 		focusIndex(index) {
@@ -605,6 +629,7 @@ export default {
 
 		/**
 		 * Set the current focused element based on the target
+		 *
 		 * @param {Event} event the focus event
 		 */
 		setFocusedIndex(event) {
@@ -628,6 +653,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:math";
+
 $margin: 10px;
 $input-height: 34px;
 $input-padding: 6px;
@@ -650,7 +677,7 @@ $input-padding: 6px;
 	}
 
 	&__filters {
-		margin: $margin / 2 $margin;
+		margin: math.div($margin, 2) $margin;
 		ul {
 			display: inline-flex;
 			justify-content: space-between;
@@ -670,7 +697,7 @@ $input-padding: 6px;
 
 		&-input,
 		&-reset {
-			margin: $input-padding / 2;
+			margin: math.div($input-padding, 2);
 		}
 
 		&-input {
@@ -722,7 +749,7 @@ $input-padding: 6px;
 	}
 
 	&__filters {
-		margin-right: $margin / 2;
+		margin-right: math.div($margin, 2);
 	}
 
 	&__results {

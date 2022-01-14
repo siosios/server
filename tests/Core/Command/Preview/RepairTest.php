@@ -9,6 +9,7 @@ use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\IConfig;
 use OCP\ILogger;
+use OCP\Lock\ILockingProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
 use Symfony\Component\Console\Input\InputInterface;
@@ -43,7 +44,13 @@ class RepairTest extends TestCase {
 			->getMock();
 		$this->iniGetWrapper = $this->getMockBuilder(IniGetWrapper::class)
 			->getMock();
-		$this->repair = new Repair($this->config, $this->rootFolder, $this->logger, $this->iniGetWrapper);
+		$this->repair = new Repair(
+			$this->config,
+			$this->rootFolder,
+			$this->logger,
+			$this->iniGetWrapper,
+			$this->createMock(ILockingProvider::class)
+		);
 		$this->input = $this->getMockBuilder(InputInterface::class)
 			->getMock();
 		$this->input->expects($this->any())
@@ -61,9 +68,14 @@ class RepairTest extends TestCase {
 		$this->output->expects($this->any())
 			->method('section')
 			->willReturn($this->output);
+
+		/* We need format method to return a string */
+		$outputFormatter = $this->createMock(OutputFormatterInterface::class);
+		$outputFormatter->method('format')->willReturnArgument(0);
+
 		$this->output->expects($this->any())
 			->method('getFormatter')
-			->willReturn($this->getMockBuilder(OutputFormatterInterface::class)->getMock());
+			->willReturn($outputFormatter);
 		$this->output->expects($this->any())
 			->method('writeln')
 			->willReturnCallback(function ($line) use ($self) {

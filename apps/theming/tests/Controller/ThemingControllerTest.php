@@ -6,13 +6,12 @@
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Julius Haertl <jus@bitgrid.net>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Kyle Fazzari <kyrofa@ubuntu.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Weimann <mail@michael-weimann.eu>
- * @author Morris Jobke <hey@morrisjobke.de>
  * @author rakekniven <mark.ziegler@rakekniven.de>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  *
@@ -25,14 +24,13 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\Theming\Tests\Controller;
 
 use OC\L10N\L10N;
@@ -691,6 +689,8 @@ class ThemingControllerTest extends TestCase {
 
 	public function testGetLogo() {
 		$file = $this->createMock(ISimpleFile::class);
+		$file->method('getName')->willReturn('logo.svg');
+		$file->method('getMTime')->willReturn(42);
 		$this->imageManager->expects($this->once())
 			->method('getImage')
 			->willReturn($file);
@@ -721,6 +721,8 @@ class ThemingControllerTest extends TestCase {
 
 	public function testGetLoginBackground() {
 		$file = $this->createMock(ISimpleFile::class);
+		$file->method('getName')->willReturn('background.png');
+		$file->method('getMTime')->willReturn(42);
 		$this->imageManager->expects($this->once())
 			->method('getImage')
 			->willReturn($file);
@@ -746,6 +748,7 @@ class ThemingControllerTest extends TestCase {
 		$this->appManager->expects($this->once())->method('getAppPath')->with('theming')->willReturn(\OC::$SERVERROOT . '/theming');
 		$file = $this->createMock(ISimpleFile::class);
 		$file->expects($this->any())->method('getName')->willReturn('theming.css');
+		$file->expects($this->any())->method('getMTime')->willReturn(42);
 		$file->expects($this->any())->method('getContent')->willReturn('compiled');
 		$this->scssCacher->expects($this->once())->method('process')->willReturn(true);
 		$this->scssCacher->expects($this->once())->method('getCachedCSS')->willReturn($file);
@@ -761,6 +764,7 @@ class ThemingControllerTest extends TestCase {
 		$this->appManager->expects($this->once())->method('getAppPath')->with('theming')->willReturn(\OC::$SERVERROOT . '/theming');
 		$file = $this->createMock(ISimpleFile::class);
 		$file->expects($this->any())->method('getName')->willReturn('theming.css');
+		$file->expects($this->any())->method('getMTime')->willReturn(42);
 		$file->expects($this->any())->method('getContent')->willReturn('compiled');
 		$this->scssCacher->expects($this->once())->method('process')->willReturn(true);
 		$this->scssCacher->expects($this->once())->method('getCachedCSS')->willThrowException(new NotFoundException());
@@ -774,6 +778,7 @@ class ThemingControllerTest extends TestCase {
 		$this->appManager->expects($this->once())->method('getAppPath')->with('theming')->willReturn('/outside/serverroot/theming');
 		$file = $this->createMock(ISimpleFile::class);
 		$file->expects($this->any())->method('getName')->willReturn('theming.css');
+		$file->expects($this->any())->method('getMTime')->willReturn(42);
 		$file->expects($this->any())->method('getContent')->willReturn('compiled');
 		$this->scssCacher->expects($this->once())->method('process')->with('/outside/serverroot/theming', 'css/theming.scss', 'theming')->willReturn(true);
 		$this->scssCacher->expects($this->once())->method('getCachedCSS')->willReturn($file);
@@ -825,7 +830,11 @@ class ThemingControllerTest extends TestCase {
 						'sizes' => '16x16'
 					]
 				],
-			'display' => 'standalone'
+			'display' => 'standalone',
+			'short_name' => 'Nextcloud',
+			'theme_color' => null,
+			'background_color' => null,
+			'description' => null
 		]);
 		$response->cacheFor(3600);
 		$this->assertEquals($response, $this->themingController->getManifest('core'));

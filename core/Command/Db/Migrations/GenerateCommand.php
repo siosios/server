@@ -22,13 +22,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Core\Command\Db\Migrations;
 
+use OC\DB\Connection;
 use OC\DB\MigrationService;
 use OC\Migration\ConsoleOutput;
 use OCP\App\IAppManager;
-use OCP\IDBConnection;
 use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
 use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Command\Command;
@@ -83,17 +82,17 @@ class {{classname}} extends SimpleMigrationStep {
 }
 ';
 
-	/** @var IDBConnection */
+	/** @var Connection */
 	protected $connection;
 
 	/** @var IAppManager */
 	protected $appManager;
 
 	/**
-	 * @param IDBConnection $connection
+	 * @param Connection $connection
 	 * @param IAppManager $appManager
 	 */
-	public function __construct(IDBConnection $connection, IAppManager $appManager) {
+	public function __construct(Connection $connection, IAppManager $appManager) {
 		$this->connection = $connection;
 		$this->appManager = $appManager;
 
@@ -114,7 +113,7 @@ class {{classname}} extends SimpleMigrationStep {
 		$appName = $input->getArgument('app');
 		$version = $input->getArgument('version');
 
-		if (!preg_match('/^\d{1,16}$/',$version)) {
+		if (!preg_match('/^\d{1,16}$/', $version)) {
 			$output->writeln('<error>The given version is invalid. Only 0-9 are allowed (max. 16 digits)</error>');
 			return 1;
 		}

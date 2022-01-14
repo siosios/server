@@ -10,6 +10,7 @@
  * @author bline <scottbeck@gmail.com>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Daniel Kesselberg <mail@danielkesselberg.de>
+ * @author J0WI <J0WI@users.noreply.github.com>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
@@ -43,21 +44,23 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\User_LDAP;
 
 use DomainException;
-use OC\HintException;
 use OC\Hooks\PublicEmitter;
 use OC\ServerNotAvailableException;
 use OCA\User_LDAP\Exceptions\ConstraintViolationException;
+use OCA\User_LDAP\Exceptions\NoMoreResults;
 use OCA\User_LDAP\Mapping\AbstractMapping;
 use OCA\User_LDAP\Mapping\UserMapping;
 use OCA\User_LDAP\User\Manager;
 use OCA\User_LDAP\User\OfflineUser;
+use OCP\HintException;
 use OCP\IConfig;
-use OCP\ILogger;
 use OCP\IUserManager;
+use Psr\Log\LoggerInterface;
+use function strlen;
+use function substr;
 
 /**
  * Class Access
@@ -92,6 +95,8 @@ class Access extends LDAPUtility {
 	private $config;
 	/** @var IUserManager */
 	private $ncUserManager;
+	/** @var LoggerInterface */
+	private $logger;
 	/** @var string */
 	private $lastCookie = '';
 
@@ -101,7 +106,8 @@ class Access extends LDAPUtility {
 		Manager $userManager,
 		Helper $helper,
 		IConfig $config,
-		IUserManager $ncUserManager
+		IUserManager $ncUserManager,
+		LoggerInterface $logger
 	) {
 		parent::__construct($ldap);
 		$this->connection = $connection;
@@ -110,6 +116,7 @@ class Access extends LDAPUtility {
 		$this->helper = $helper;
 		$this->config = $config;
 		$this->ncUserManager = $ncUserManager;
+		$this->logger = $logger;
 	}
 
 	/**
@@ -182,15 +189,16 @@ class Access extends LDAPUtility {
 	 */
 	public function readAttribute($dn, $attr, $filter = 'objectClass=*') {
 		if (!$this->checkConnection()) {
-			\OCP\Util::writeLog('user_ldap',
+			$this->logger->warning(
 				'No LDAP Connector assigned, access impossible for readAttribute.',
-				ILogger::WARN);
+				['app' => 'user_ldap']
+			);
 			return false;
 		}
 		$cr = $this->connection->getConnectionResource();
 		if (!$this->ldap->isResource($cr)) {
 			//LDAP not available
-			\OCP\Util::writeLog('user_ldap', 'LDAP resource not available.', ILogger::DEBUG);
+			$this->logger->debug('LDAP resource not available.', ['app' => 'user_ldap']);
 			return false;
 		}
 		//Cancel possibly running Paged Results operation, otherwise we run in
@@ -245,14 +253,14 @@ class Access extends LDAPUtility {
 			}
 		} while ($isRangeRequest);
 
-		\OCP\Util::writeLog('user_ldap', 'Requested attribute ' . $attr . ' not found for ' . $dn, ILogger::DEBUG);
+		$this->logger->debug('Requested attribute ' . $attr . ' not found for ' . $dn, ['app' => 'user_ldap']);
 		return false;
 	}
 
 	/**
 	 * Runs an read operation against LDAP
 	 *
-	 * @param resource $cr the LDAP connection
+	 * @param resource|\LDAP\Connection $cr the LDAP connection
 	 * @param string $dn
 	 * @param string $attribute
 	 * @param string $filter
@@ -263,19 +271,26 @@ class Access extends LDAPUtility {
 	 * @throws ServerNotAvailableException
 	 */
 	public function executeRead($cr, $dn, $attribute, $filter, $maxResults) {
-		$this->initPagedSearch($filter, $dn, [$attribute], $maxResults, 0);
+		try {
+			$this->initPagedSearch($filter, $dn, [$attribute], $maxResults, 0);
+		} catch (NoMoreResults $e) {
+			// does not happen, no pagination here since offset is 0, but the
+			// previous call is needed for a potential reset of the state.
+			// Tools would still point out a possible NoMoreResults exception.
+			return false;
+		}
 		$dn = $this->helper->DNasBaseParameter($dn);
 		$rr = @$this->invokeLDAPMethod('read', $cr, $dn, $filter, [$attribute]);
 		if (!$this->ldap->isResource($rr)) {
 			if ($attribute !== '') {
 				//do not throw this message on userExists check, irritates
-				\OCP\Util::writeLog('user_ldap', 'readAttribute failed for DN ' . $dn, ILogger::DEBUG);
+				$this->logger->debug('readAttribute failed for DN ' . $dn, ['app' => 'user_ldap']);
 			}
 			//in case an error occurs , e.g. object does not exist
 			return false;
 		}
 		if ($attribute === '' && ($filter === 'objectclass=*' || $this->invokeLDAPMethod('countEntries', $cr, $rr) === 1)) {
-			\OCP\Util::writeLog('user_ldap', 'readAttribute: ' . $dn . ' found', ILogger::DEBUG);
+			$this->logger->debug('readAttribute: ' . $dn . ' found', ['app' => 'user_ldap']);
 			return true;
 		}
 		$er = $this->invokeLDAPMethod('firstEntry', $cr, $rr);
@@ -361,7 +376,7 @@ class Access extends LDAPUtility {
 		$cr = $this->connection->getConnectionResource();
 		if (!$this->ldap->isResource($cr)) {
 			//LDAP not available
-			\OCP\Util::writeLog('user_ldap', 'LDAP resource not available.', ILogger::DEBUG);
+			$this->logger->debug('LDAP resource not available.', ['app' => 'user_ldap']);
 			return false;
 		}
 		try {
@@ -535,14 +550,14 @@ class Access extends LDAPUtility {
 			}
 		} else {
 			//If the UUID can't be detected something is foul.
-			\OCP\Util::writeLog('user_ldap', 'Cannot determine UUID for ' . $fdn . '. Skipping.', ILogger::INFO);
+			$this->logger->debug('Cannot determine UUID for ' . $fdn . '. Skipping.', ['app' => 'user_ldap']);
 			return false;
 		}
 
 		if (is_null($ldapName)) {
 			$ldapName = $this->readAttribute($fdn, $nameAttribute, $filter);
-			if (!isset($ldapName[0]) && empty($ldapName[0])) {
-				\OCP\Util::writeLog('user_ldap', 'No or empty name for ' . $fdn . ' with filter ' . $filter . '.', ILogger::INFO);
+			if (!isset($ldapName[0]) || empty($ldapName[0])) {
+				$this->logger->debug('No or empty name for ' . $fdn . ' with filter ' . $filter . '.', ['app' => 'user_ldap']);
 				return false;
 			}
 			$ldapName = $ldapName[0];
@@ -552,6 +567,10 @@ class Access extends LDAPUtility {
 			$usernameAttribute = (string)$this->connection->ldapExpertUsernameAttr;
 			if ($usernameAttribute !== '') {
 				$username = $this->readAttribute($fdn, $usernameAttribute);
+				if (!isset($username[0]) || empty($username[0])) {
+					$this->logger->debug('No or empty username (' . $usernameAttribute . ') for ' . $fdn . '.', ['app' => 'user_ldap']);
+					return false;
+				}
 				$username = $username[0];
 			} else {
 				$username = $uuid;
@@ -559,9 +578,8 @@ class Access extends LDAPUtility {
 			try {
 				$intName = $this->sanitizeUsername($username);
 			} catch (\InvalidArgumentException $e) {
-				\OC::$server->getLogger()->logException($e, [
-					'app' => 'user_ldap',
-					'level' => ILogger::WARN,
+				$this->logger->warning('Error sanitizing username: ' . $e->getMessage(), [
+					'exception' => $e,
 				]);
 				// we don't attempt to set a username here. We can go for
 				// for an alternative 4 digit random number as we would append
@@ -570,7 +588,7 @@ class Access extends LDAPUtility {
 				return false;
 			}
 		} else {
-			$intName = $ldapName;
+			$intName = $this->sanitizeGroupIDCandidate($ldapName);
 		}
 
 		//a new user/group! Add it only if it doesn't conflict with other backend's users or existing groups
@@ -601,7 +619,7 @@ class Access extends LDAPUtility {
 		}
 
 		//if everything else did not help..
-		\OCP\Util::writeLog('user_ldap', 'Could not create unique name for ' . $fdn . '.', ILogger::INFO);
+		$this->logger->info('Could not create unique name for ' . $fdn . '.', ['app' => 'user_ldap']);
 		return false;
 	}
 
@@ -829,6 +847,11 @@ class Access extends LDAPUtility {
 	 * @return string|false with with the name to use in Nextcloud or false if unsuccessful
 	 */
 	private function createAltInternalOwnCloudName($name, $isUser) {
+		// ensure there is space for the "_1234" suffix
+		if (strlen($name) > 59) {
+			$name = substr($name, 0, 59);
+		}
+
 		$originalTTL = $this->connection->ldapCacheTTL;
 		$this->connection->setConfiguration(['ldapCacheTTL' => 0]);
 		if ($isUser) {
@@ -903,7 +926,7 @@ class Access extends LDAPUtility {
 	 * @throws \Exception
 	 */
 	public function batchApplyUserAttributes(array $ldapRecords) {
-		$displayNameAttribute = strtolower($this->connection->ldapUserDisplayName);
+		$displayNameAttribute = strtolower((string)$this->connection->ldapUserDisplayName);
 		foreach ($ldapRecords as $userRecord) {
 			if (!isset($userRecord[$displayNameAttribute])) {
 				// displayName is obligatory
@@ -918,7 +941,7 @@ class Access extends LDAPUtility {
 			if ($user !== null) {
 				$user->processAttributes($userRecord);
 			} else {
-				\OC::$server->getLogger()->debug(
+				$this->logger->debug(
 					"The ldap user manager returned null for $ocName",
 					['app' => 'user_ldap']
 				);
@@ -944,7 +967,7 @@ class Access extends LDAPUtility {
 
 		array_walk($groupRecords, function ($record) use ($idsByDn) {
 			$newlyMapped = false;
-			$gid = $uidsByDn[$record['dn'][0]] ?? null;
+			$gid = $idsByDn[$record['dn'][0]] ?? null;
 			if ($gid === null) {
 				$gid = $this->dn2ocname($record['dn'][0], null, false, $newlyMapped, $record);
 			}
@@ -1097,13 +1120,13 @@ class Access extends LDAPUtility {
 			 * Maybe implement exponential backoff?
 			 * This was enough to get solr indexer working which has large delays between LDAP fetches.
 			 */
-			\OCP\Util::writeLog('user_ldap', "Connection lost on $command, attempting to reestablish.", ILogger::DEBUG);
+			$this->logger->debug("Connection lost on $command, attempting to reestablish.", ['app' => 'user_ldap']);
 			$this->connection->resetConnectionResource();
 			$cr = $this->connection->getConnectionResource();
 
 			if (!$this->ldap->isResource($cr)) {
 				// Seems like we didn't find any resource.
-				\OCP\Util::writeLog('user_ldap', "Could not $command, because resource is missing.", ILogger::DEBUG);
+				$this->logger->debug("Could not $command, because resource is missing.", ['app' => 'user_ldap']);
 				throw $e;
 			}
 
@@ -1137,18 +1160,23 @@ class Access extends LDAPUtility {
 		if (!$this->ldap->isResource($cr)) {
 			// Seems like we didn't find any resource.
 			// Return an empty array just like before.
-			\OCP\Util::writeLog('user_ldap', 'Could not search, because resource is missing.', ILogger::DEBUG);
+			$this->logger->debug('Could not search, because resource is missing.', ['app' => 'user_ldap']);
 			return false;
 		}
 
 		//check whether paged search should be attempted
-		$pagedSearchOK = $this->initPagedSearch($filter, $base, $attr, (int)$limit, (int)$offset);
+		try {
+			$pagedSearchOK = $this->initPagedSearch($filter, $base, $attr, (int)$limit, (int)$offset);
+		} catch (NoMoreResults $e) {
+			// beyond last results page
+			return false;
+		}
 
 		$sr = $this->invokeLDAPMethod('search', $cr, $base, $filter, $attr);
 		// cannot use $cr anymore, might have changed in the previous call!
 		$error = $this->ldap->errno($this->connection->getConnectionResource());
 		if (!$this->ldap->isResource($sr) || $error !== 0) {
-			\OCP\Util::writeLog('user_ldap', 'Attempt for Paging?  ' . print_r($pagedSearchOK, true), ILogger::ERROR);
+			$this->logger->error('Attempt for Paging?  ' . print_r($pagedSearchOK, true), ['app' => 'user_ldap']);
 			return false;
 		}
 
@@ -1158,7 +1186,7 @@ class Access extends LDAPUtility {
 	/**
 	 * processes an LDAP paged search operation
 	 *
-	 * @param resource $sr the array containing the LDAP search resources
+	 * @param resource|\LDAP\Result|resource[]|\LDAP\Result[] $sr the array containing the LDAP search resources
 	 * @param int $foundItems number of results in the single search operation
 	 * @param int $limit maximum results to be counted
 	 * @param bool $pagedSearchOK whether a paged search has been executed
@@ -1193,7 +1221,7 @@ class Access extends LDAPUtility {
 			}
 		} else {
 			if (!is_null($limit) && (int)$this->connection->ldapPagingSize !== 0) {
-				\OC::$server->getLogger()->debug(
+				$this->logger->debug(
 					'Paged search was not available',
 					['app' => 'user_ldap']
 				);
@@ -1229,7 +1257,7 @@ class Access extends LDAPUtility {
 		?int $offset = null,
 		bool $skipHandling = false
 	) {
-		\OC::$server->getLogger()->debug('Count filter: {filter}', [
+		$this->logger->debug('Count filter: {filter}', [
 			'app' => 'user_ldap',
 			'filter' => $filter
 		]);
@@ -1253,7 +1281,7 @@ class Access extends LDAPUtility {
 				if ($search === false) {
 					return $counter > 0 ? $counter : false;
 				}
-				list($sr, $pagedSearchOK) = $search;
+				[$sr, $pagedSearchOK] = $search;
 
 				/* ++ Fixing RHDS searches with pages with zero results ++
 				 * countEntriesInSearchResults() method signature changed
@@ -1275,7 +1303,7 @@ class Access extends LDAPUtility {
 	}
 
 	/**
-	 * @param resource $sr
+	 * @param resource|\LDAP\Result|resource[]|\LDAP\Result[] $sr
 	 * @return int
 	 * @throws ServerNotAvailableException
 	 */
@@ -1320,7 +1348,7 @@ class Access extends LDAPUtility {
 			if ($search === false) {
 				return [];
 			}
-			list($sr, $pagedSearchOK) = $search;
+			[$sr, $pagedSearchOK] = $search;
 			$cr = $this->connection->getConnectionResource();
 
 			if ($skipHandling) {
@@ -1405,12 +1433,15 @@ class Access extends LDAPUtility {
 			return $name;
 		}
 
-		// Transliteration to ASCII
-		$transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT', $name);
-		if ($transliterated !== false) {
-			// depending on system config iconv can work or not
-			$name = $transliterated;
-		}
+		// Use htmlentities to get rid of accents
+		$name = htmlentities($name, ENT_NOQUOTES, 'UTF-8');
+
+		// Remove accents
+		$name = preg_replace('#&([A-Za-z])(?:acute|cedil|caron|circ|grave|orn|ring|slash|th|tilde|uml);#', '\1', $name);
+		// Remove ligatures
+		$name = preg_replace('#&([A-Za-z]{2})(?:lig);#', '\1', $name);
+		// Remove unknown leftover entities
+		$name = preg_replace('#&[^;]+;#', '', $name);
 
 		// Replacements
 		$name = str_replace(' ', '_', $name);
@@ -1418,11 +1449,27 @@ class Access extends LDAPUtility {
 		// Every remaining disallowed characters will be removed
 		$name = preg_replace('/[^a-zA-Z0-9_.@-]/u', '', $name);
 
+		if (strlen($name) > 64) {
+			$name = (string)hash('sha256', $name, false);
+		}
+
 		if ($name === '') {
 			throw new \InvalidArgumentException('provided name template for username does not contain any allowed characters');
 		}
 
 		return $name;
+	}
+
+	public function sanitizeGroupIDCandidate(string $candidate): string {
+		$candidate = trim($candidate);
+		if (strlen($candidate) > 64) {
+			$candidate = (string)hash('sha256', $candidate, false);
+		}
+		if ($candidate === '') {
+			throw new \InvalidArgumentException('provided name template for username does not contain any allowed characters');
+		}
+
+		return $candidate;
 	}
 
 	/**
@@ -1706,7 +1753,7 @@ class Access extends LDAPUtility {
 			}
 
 			$attribute = $this->connection->getFromCache($uuidAttr);
-			if (!$attribute === null) {
+			if ($attribute !== null) {
 				$this->connection->$uuidAttr = $attribute;
 				return true;
 			}
@@ -1723,7 +1770,7 @@ class Access extends LDAPUtility {
 
 			$value = $this->readAttribute($dn, $attribute);
 			if (is_array($value) && isset($value[0]) && !empty($value[0])) {
-				\OC::$server->getLogger()->debug(
+				$this->logger->debug(
 					'Setting {attribute} as {subject}',
 					[
 						'app' => 'user_ldap',
@@ -1736,7 +1783,7 @@ class Access extends LDAPUtility {
 				return true;
 			}
 		}
-		\OC::$server->getLogger()->debug('Could not autodetect the UUID attribute', ['app' => 'user_ldap']);
+		$this->logger->debug('Could not autodetect the UUID attribute', ['app' => 'user_ldap']);
 
 		return false;
 	}
@@ -1781,7 +1828,7 @@ class Access extends LDAPUtility {
 	 *
 	 * @param string $oguid the ObjectGUID in it's binary form as retrieved from AD
 	 * @return string
-	 * @link http://www.php.net/manual/en/function.ldap-get-values-len.php#73198
+	 * @link https://www.php.net/manual/en/function.ldap-get-values-len.php#73198
 	 */
 	private function convertObjectGUID2Str($oguid) {
 		$hex_guid = bin2hex($oguid);
@@ -1831,7 +1878,7 @@ class Access extends LDAPUtility {
 			 * an exception here would kill the experience for a valid, acting
 			 * user. Instead we write a log message.
 			 */
-			\OC::$server->getLogger()->info(
+			$this->logger->info(
 				'Passed string does not resemble a valid GUID. Known UUID ' .
 				'({uuid}) probably does not match UUID configuration.',
 				['app' => 'user_ldap', 'uuid' => $guid]
@@ -1995,6 +2042,7 @@ class Access extends LDAPUtility {
 	 * @param int $offset
 	 * @return bool|true
 	 * @throws ServerNotAvailableException
+	 * @throws NoMoreResults
 	 */
 	private function initPagedSearch(
 		string $filter,
@@ -2005,7 +2053,7 @@ class Access extends LDAPUtility {
 	): bool {
 		$pagedSearchOK = false;
 		if ($limit !== 0) {
-			\OC::$server->getLogger()->debug(
+			$this->logger->debug(
 				'initializing paged search for filter {filter}, base {base}, attr {attr}, limit {limit}, offset {offset}',
 				[
 					'app' => 'user_ldap',
@@ -2026,7 +2074,7 @@ class Access extends LDAPUtility {
 				if (!$this->hasMoreResults()) {
 					// when the cookie is reset with != 0 offset, there are no further
 					// results, so stop.
-					return false;
+					throw new NoMoreResults();
 				}
 			}
 			if ($this->lastCookie !== '' && $offset === 0) {
@@ -2037,7 +2085,7 @@ class Access extends LDAPUtility {
 					'controlPagedResult', $this->connection->getConnectionResource(), $limit, false
 				);
 			if ($pagedSearchOK) {
-				\OC::$server->getLogger()->debug('Ready for a paged search', ['app' => 'user_ldap']);
+				$this->logger->debug('Ready for a paged search', ['app' => 'user_ldap']);
 			}
 			/* ++ Fixing RHDS searches with pages with zero results ++
 			 * We coudn't get paged searches working with our RHDS for login ($limit = 0),

@@ -24,7 +24,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Encryption;
 
 use OC\Files\View;
@@ -77,7 +76,7 @@ class Recovery {
 								IConfig $config,
 								IFile $file,
 								View $view) {
-		$this->user = ($userSession && $userSession->isLoggedIn()) ? $userSession->getUser() : false;
+		$this->user = ($userSession->isLoggedIn()) ? $userSession->getUser() : null;
 		$this->crypt = $crypt;
 		$this->keyManager = $keyManager;
 		$this->config = $config;

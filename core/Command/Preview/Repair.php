@@ -5,6 +5,7 @@ declare(strict_types=1);
 /**
  * @copyright Copyright (c) 2020, Morris Jobke <hey@morrisjobke.de>
  *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Morris Jobke <hey@morrisjobke.de>
  *
  * @license GNU AGPL version 3 or any later version
@@ -16,14 +17,13 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\Core\Command\Preview;
 
 use bantu\IniGetWrapper\IniGetWrapper;
@@ -76,7 +76,8 @@ class Repair extends Command {
 			->setName('preview:repair')
 			->setDescription('distributes the existing previews into subfolders')
 			->addOption('batch', 'b', InputOption::VALUE_NONE, 'Batch mode - will not ask to start the migration and start it right away.')
-			->addOption('dry', 'd', InputOption::VALUE_NONE, 'Dry mode - will not create, move or delete any files - in combination with the verbose mode one could check the operations.');
+			->addOption('dry', 'd', InputOption::VALUE_NONE, 'Dry mode - will not create, move or delete any files - in combination with the verbose mode one could check the operations.')
+			->addOption('delete', null, InputOption::VALUE_NONE, 'Delete instead of migrating them. Usefull if too many entries to migrate.');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int {
@@ -94,9 +95,14 @@ class Repair extends Command {
 		}
 
 		$dryMode = $input->getOption('dry');
+		$deleteMode = $input->getOption('delete');
+
 
 		if ($dryMode) {
 			$output->writeln("INFO: The migration is run in dry mode and will not modify anything.");
+			$output->writeln("");
+		} elseif ($deleteMode) {
+			$output->writeln("WARN: The migration will _DELETE_ old previews.");
 			$output->writeln("");
 		}
 
@@ -250,16 +256,29 @@ class Repair extends Command {
 						$progressBar->advance();
 						continue;
 					}
-					$section1->writeln("         Move preview/$name/$previewName to preview/$newFoldername", OutputInterface::VERBOSITY_VERBOSE);
+
+					// Execute process
 					if (!$dryMode) {
-						try {
-							$preview->move("appdata_$instanceId/preview/$newFoldername/$previewName");
-						} catch (\Exception $e) {
-							$this->logger->logException($e, ['app' => 'core', 'message' => "Failed to move preview from preview/$name/$previewName to preview/$newFoldername"]);
+						// Delete preview instead of moving
+						if ($deleteMode) {
+							try {
+								$section1->writeln("         Delete preview/$name/$previewName", OutputInterface::VERBOSITY_VERBOSE);
+								$preview->delete();
+							} catch (\Exception $e) {
+								$this->logger->logException($e, ['app' => 'core', 'message' => "Failed to delete preview at preview/$name/$previewName"]);
+							}
+						} else {
+							try {
+								$section1->writeln("         Move preview/$name/$previewName to preview/$newFoldername", OutputInterface::VERBOSITY_VERBOSE);
+								$preview->move("appdata_$instanceId/preview/$newFoldername/$previewName");
+							} catch (\Exception $e) {
+								$this->logger->logException($e, ['app' => 'core', 'message' => "Failed to move preview from preview/$name/$previewName to preview/$newFoldername"]);
+							}
 						}
 					}
 				}
 			}
+		
 			if ($oldPreviewFolder->getDirectoryListing() === []) {
 				$section1->writeln("         Delete empty folder preview/$name", OutputInterface::VERBOSITY_VERBOSE);
 				if (!$dryMode) {

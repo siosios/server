@@ -3,7 +3,7 @@
  * @copyright Copyright (c) 2016, John Molakvoæ (skjnldsv@protonmail.com)
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Julius Haertl <jus@bitgrid.net>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Morris Jobke <hey@morrisjobke.de>
@@ -20,14 +20,13 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\Template;
 
 use OC\AppConfig;
@@ -46,9 +45,7 @@ use OCP\ILogger;
 use OCP\IMemcache;
 use OCP\IURLGenerator;
 use ScssPhp\ScssPhp\Compiler;
-use ScssPhp\ScssPhp\Exception\ParserException;
-use ScssPhp\ScssPhp\Formatter\Crunched;
-use ScssPhp\ScssPhp\Formatter\Expanded;
+use ScssPhp\ScssPhp\OutputStyle;
 
 class SCSSCacher {
 
@@ -313,14 +310,12 @@ class SCSSCacher {
 		]);
 
 		// Continue after throw
-		$scss->setIgnoreErrors(true);
 		if ($this->config->getSystemValue('debug')) {
 			// Debug mode
-			$scss->setFormatter(Expanded::class);
-			$scss->setLineNumberStyle(Compiler::LINE_COMMENTS);
+			$scss->setOutputStyle(OutputStyle::EXPANDED);
 		} else {
 			// Compression
-			$scss->setFormatter(Crunched::class);
+			$scss->setOutputStyle(OutputStyle::COMPRESSED);
 		}
 
 		try {
@@ -344,7 +339,7 @@ class SCSSCacher {
 				'@import "variables.scss";' .
 				'@import "functions.scss";' .
 				'@import "' . $fileNameSCSS . '";');
-		} catch (ParserException $e) {
+		} catch (\Exception $e) {
 			$this->logger->logException($e, ['app' => 'scss_cacher']);
 
 			return false;
@@ -391,8 +386,8 @@ class SCSSCacher {
 		$this->injectedVariables = null;
 
 		// do not clear locks
-		$this->cacheFactory->createDistributed('SCSS-deps-')->clear();
-		$this->cacheFactory->createDistributed('SCSS-cached-')->clear();
+		$this->depsCache->clear();
+		$this->isCachedCache->clear();
 
 		$appDirectory = $this->appData->getDirectoryListing();
 		foreach ($appDirectory as $folder) {
@@ -435,7 +430,7 @@ class SCSSCacher {
 			$scss = new Compiler();
 			$scss->compile($variables);
 			$this->injectedVariables = $variables;
-		} catch (ParserException $e) {
+		} catch (\Exception $e) {
 			$this->logger->logException($e, ['app' => 'scss_cacher']);
 		}
 

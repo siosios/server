@@ -8,17 +8,24 @@
  * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Derek <derek.kelly27@gmail.com>
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author J0WI <J0WI@users.noreply.github.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Julius Härtl <jus@bitgrid.net>
  * @author Ko- <k.stoffelen@cs.ru.nl>
  * @author Lauris Binde <laurisb@users.noreply.github.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Weimann <mail@michael-weimann.eu>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author nhirokinet <nhirokinet@nhiroki.net>
+ * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Sven Strickroth <email@cs-ware.de>
  * @author Sylvia van Os <sylvia@hackerchick.me>
+ * @author timm2k <timm2k@gmx.de>
  * @author Timo Förster <tfoerster@webfoersterei.de>
+ * @author Valdnet <47037905+Valdnet@users.noreply.github.com>
+ * @author MichaIng <micha@dietpi.com>
  *
  * @license AGPL-3.0
  *
@@ -35,14 +42,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Settings\Controller;
 
 use bantu\IniGetWrapper\IniGetWrapper;
 use DirectoryIterator;
-use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
-use Doctrine\DBAL\Types\Types;
+use Doctrine\DBAL\TransactionIsolationLevel;
+use OCP\DB\Types;
 use GuzzleHttp\Exception\ClientException;
 use OC;
 use OC\AppFramework\Http;
@@ -58,6 +65,7 @@ use OCA\Settings\SetupChecks\CheckUserCertificates;
 use OCA\Settings\SetupChecks\LegacySSEKeyFormat;
 use OCA\Settings\SetupChecks\PhpDefaultCharset;
 use OCA\Settings\SetupChecks\PhpOutputBuffering;
+use OCA\Settings\SetupChecks\SupportedDatabase;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\DataDisplayResponse;
 use OCP\AppFramework\Http\DataResponse;
@@ -67,11 +75,13 @@ use OCP\IConfig;
 use OCP\IDateTimeFormatter;
 use OCP\IDBConnection;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\IRequest;
+use OCP\ITempManager;
 use OCP\IURLGenerator;
 use OCP\Lock\ILockingProvider;
+use OCP\Notification\IManager;
 use OCP\Security\ISecureRandom;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
@@ -86,11 +96,11 @@ class CheckSetupController extends Controller {
 	private $l10n;
 	/** @var Checker */
 	private $checker;
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	private $logger;
 	/** @var EventDispatcherInterface */
 	private $dispatcher;
-	/** @var IDBConnection|Connection */
+	/** @var Connection */
 	private $db;
 	/** @var ILockingProvider */
 	private $lockingProvider;
@@ -102,6 +112,12 @@ class CheckSetupController extends Controller {
 	private $secureRandom;
 	/** @var IniGetWrapper */
 	private $iniGetWrapper;
+	/** @var IDBConnection */
+	private $connection;
+	/** @var ITempManager */
+	private $tempManager;
+	/** @var IManager */
+	private $manager;
 
 	public function __construct($AppName,
 								IRequest $request,
@@ -110,14 +126,17 @@ class CheckSetupController extends Controller {
 								IURLGenerator $urlGenerator,
 								IL10N $l10n,
 								Checker $checker,
-								ILogger $logger,
+								LoggerInterface $logger,
 								EventDispatcherInterface $dispatcher,
-								IDBConnection $db,
+								Connection $db,
 								ILockingProvider $lockingProvider,
 								IDateTimeFormatter $dateTimeFormatter,
 								MemoryInfo $memoryInfo,
 								ISecureRandom $secureRandom,
-								IniGetWrapper $iniGetWrapper) {
+								IniGetWrapper $iniGetWrapper,
+								IDBConnection $connection,
+								ITempManager $tempManager,
+								IManager $manager) {
 		parent::__construct($AppName, $request);
 		$this->config = $config;
 		$this->clientService = $clientService;
@@ -132,6 +151,17 @@ class CheckSetupController extends Controller {
 		$this->memoryInfo = $memoryInfo;
 		$this->secureRandom = $secureRandom;
 		$this->iniGetWrapper = $iniGetWrapper;
+		$this->connection = $connection;
+		$this->tempManager = $tempManager;
+		$this->manager = $manager;
+	}
+
+	/**
+	 * Check if is fair use of free push service
+	 * @return bool
+	 */
+	private function isFairUseOfFreePushService(): bool {
+		return $this->manager->isFairUseOfFreePushService();
 	}
 
 	/**
@@ -168,7 +198,10 @@ class CheckSetupController extends Controller {
 			$client->get($httpSiteName);
 			$client->get($httpsSiteName);
 		} catch (\Exception $e) {
-			$this->logger->logException($e, ['app' => 'internet_connection_check']);
+			$this->logger->error('Cannot connect to: ' . $sitename, [
+				'app' => 'internet_connection_check',
+				'exception' => $e,
+			]);
 			return false;
 		}
 		return true;
@@ -206,7 +239,7 @@ class CheckSetupController extends Controller {
 	}
 
 	/**
-	 * Check if the used  SSL lib is outdated. Older OpenSSL and NSS versions do
+	 * Check if the used SSL lib is outdated. Older OpenSSL and NSS versions do
 	 * have multiple bugs which likely lead to problems in combination with
 	 * functionality required by ownCloud such as SNI.
 	 *
@@ -234,9 +267,9 @@ class CheckSetupController extends Controller {
 			return '';
 		}
 
-		$features = (string)$this->l10n->t('installing and updating apps via the app store or Federated Cloud Sharing');
+		$features = $this->l10n->t('installing and updating apps via the App Store or Federated Cloud Sharing');
 		if (!$this->config->getSystemValue('appstoreenabled', true)) {
-			$features = (string)$this->l10n->t('Federated Cloud Sharing');
+			$features = $this->l10n->t('Federated Cloud Sharing');
 		}
 
 		// Check if at least OpenSSL after 1.01d or 1.0.2b
@@ -262,6 +295,12 @@ class CheckSetupController extends Controller {
 				if ($e->getResponse()->getStatusCode() === 400) {
 					return $this->l10n->t('cURL is using an outdated %1$s version (%2$s). Please update your operating system or features such as %3$s will not work reliably.', ['NSS', $versionString, $features]);
 				}
+			} catch (\Exception $e) {
+				$this->logger->warning('error checking curl', [
+					'app' => 'settings',
+					'exception' => $e,
+				]);
+				return $this->l10n->t('Could not determine if TLS version of cURL is outdated or not because an error happened during the HTTPS request against https://nextcloud.com. Please check the nextcloud log file for more details.');
 			}
 		}
 
@@ -274,12 +313,12 @@ class CheckSetupController extends Controller {
 	 * @return bool
 	 */
 	protected function isPhpOutdated(): bool {
-		return PHP_VERSION_ID < 70300;
+		return PHP_VERSION_ID < 70400;
 	}
 
 	/**
 	 * Whether the php version is still supported (at time of release)
-	 * according to: https://secure.php.net/supported-versions.php
+	 * according to: https://www.php.net/supported-versions.php
 	 *
 	 * @return array
 	 */
@@ -292,7 +331,7 @@ class CheckSetupController extends Controller {
 	 *
 	 * @return bool
 	 */
-	private function forwardedForHeadersWorking() {
+	private function forwardedForHeadersWorking(): bool {
 		$trustedProxies = $this->config->getSystemValue('trusted_proxies', []);
 		$remoteAddress = $this->request->getHeader('REMOTE_ADDR');
 
@@ -300,8 +339,12 @@ class CheckSetupController extends Controller {
 			return false;
 		}
 
-		if (\is_array($trustedProxies) && \in_array($remoteAddress, $trustedProxies, true)) {
-			return $remoteAddress !== $this->request->getRemoteAddress();
+		if (\is_array($trustedProxies)) {
+			if (\in_array($remoteAddress, $trustedProxies, true) && $remoteAddress !== '127.0.0.1') {
+				return $remoteAddress !== $this->request->getRemoteAddress();
+			}
+		} else {
+			return false;
 		}
 
 		// either not enabled or working correctly
@@ -341,8 +384,9 @@ class CheckSetupController extends Controller {
 
 	/**
 	 * @return RedirectResponse
+	 * @AuthorizedAdminSetting(settings=OCA\Settings\Settings\Admin\Overview)
 	 */
-	public function rescanFailedIntegrityCheck() {
+	public function rescanFailedIntegrityCheck(): RedirectResponse {
 		$this->checker->runInstanceVerification();
 		return new RedirectResponse(
 			$this->urlGenerator->linkToRoute('settings.AdminSettings.index', ['section' => 'overview'])
@@ -351,9 +395,9 @@ class CheckSetupController extends Controller {
 
 	/**
 	 * @NoCSRFRequired
-	 * @return DataResponse
+	 * @AuthorizedAdminSetting(settings=OCA\Settings\Settings\Admin\Overview)
 	 */
-	public function getFailedIntegrityCheckFiles() {
+	public function getFailedIntegrityCheckFiles(): DataDisplayResponse {
 		if (!$this->checker->isCodeCheckEnforced()) {
 			return new DataDisplayResponse('Integrity checker has been disabled. Integrity cannot be verified.');
 		}
@@ -397,43 +441,80 @@ Raw output
 		}
 
 
-		$response = new DataDisplayResponse(
+		return new DataDisplayResponse(
 			$formattedTextResponse,
 			Http::STATUS_OK,
 			[
 				'Content-Type' => 'text/plain',
 			]
 		);
-
-		return $response;
 	}
 
 	/**
-	 * Checks whether a PHP opcache is properly set up
-	 * @return bool
+	 * Checks whether a PHP OPcache is properly set up
+	 * @return string[] The list of OPcache setup recommendations
 	 */
-	protected function isOpcacheProperlySetup() {
+	protected function getOpcacheSetupRecommendations(): array {
+		// If the module is not loaded, return directly to skip inapplicable checks
+		if (!extension_loaded('Zend OPcache')) {
+			return ['The PHP OPcache module is not loaded. <a target="_blank" rel="noreferrer noopener" class="external" href="' . $this->urlGenerator->linkToDocs('admin-php-opcache') . '">For better performance it is recommended</a> to load it into your PHP installation.'];
+		}
+
+		$recommendations = [];
+
+		// Check whether Nextcloud is allowed to use the OPcache API
+		$isPermitted = true;
+		$permittedPath = $this->iniGetWrapper->getString('opcache.restrict_api');
+		if (isset($permittedPath) && $permittedPath !== '' && !str_starts_with(\OC::$SERVERROOT, $permittedPath)) {
+			$isPermitted = false;
+		}
+
 		if (!$this->iniGetWrapper->getBool('opcache.enable')) {
-			return false;
+			$recommendations[] = 'OPcache is disabled. For better performance, it is recommended to apply <code>opcache.enable=1</code> to your PHP configuration.';
+
+			// Check for saved comments only when OPcache is currently disabled. If it was enabled, opcache.save_comments=0 would break Nextcloud in the first place.
+			if (!$this->iniGetWrapper->getBool('opcache.save_comments')) {
+				$recommendations[] = 'OPcache is configured to remove code comments. With OPcache enabled, <code>opcache.save_comments=1</code> must be set for Nextcloud to function.';
+			}
+
+			if (!$isPermitted) {
+				$recommendations[] = 'Nextcloud is not allowed to use the OPcache API. With OPcache enabled, it is highly recommended to include all Nextcloud directories with <code>opcache.restrict_api</code> or unset this setting to disable OPcache API restrictions, to prevent errors during Nextcloud core or app upgrades.';
+			}
+		} elseif (!$isPermitted) {
+			$recommendations[] = 'Nextcloud is not allowed to use the OPcache API. It is highly recommended to include all Nextcloud directories with <code>opcache.restrict_api</code> or unset this setting to disable OPcache API restrictions, to prevent errors during Nextcloud core or app upgrades.';
+		} else {
+			// Check whether opcache_get_status has been explicitly disabled an in case skip usage based checks
+			$disabledFunctions = $this->iniGetWrapper->getString('disable_functions');
+			if (isset($disabledFunctions) && str_contains($disabledFunctions, 'opcache_get_status')) {
+				return [];
+			}
+
+			$status = opcache_get_status(false);
+
+			// Recommend to raise value, if more than 90% of max value is reached
+			if (
+				empty($status['opcache_statistics']['max_cached_keys']) ||
+				($status['opcache_statistics']['num_cached_keys'] / $status['opcache_statistics']['max_cached_keys'] > 0.9)
+			) {
+				$recommendations[] = 'The maximum number of OPcache keys is nearly exceeded. To assure that all scripts can be hold in cache, it is recommended to apply <code>opcache.max_accelerated_files</code> to your PHP configuration with a value higher than <code>' . ($this->iniGetWrapper->getNumeric('opcache.max_accelerated_files') ?: 'currently') . '</code>.';
+			}
+
+			if (
+				empty($status['memory_usage']['free_memory']) ||
+				($status['memory_usage']['used_memory'] / $status['memory_usage']['free_memory'] > 9)
+			) {
+				$recommendations[] = 'The OPcache buffer is nearly full. To assure that all scripts can be hold in cache, it is recommended to apply <code>opcache.memory_consumption</code> to your PHP configuration with a value higher than <code>' . ($this->iniGetWrapper->getNumeric('opcache.memory_consumption') ?: 'currently') . '</code>.';
+			}
+
+			if (
+				empty($status['interned_strings_usage']['free_memory']) ||
+				($status['interned_strings_usage']['used_memory'] / $status['interned_strings_usage']['free_memory'] > 9)
+			) {
+				$recommendations[] = 'The OPcache interned strings buffer is nearly full. To assure that repeating strings can be effectively cached, it is recommended to apply <code>opcache.interned_strings_buffer</code> to your PHP configuration with a value higher than <code>' . ($this->iniGetWrapper->getNumeric('opcache.interned_strings_buffer') ?: 'currently') . '</code>.';
+			}
 		}
 
-		if (!$this->iniGetWrapper->getBool('opcache.save_comments')) {
-			return false;
-		}
-
-		if ($this->iniGetWrapper->getNumeric('opcache.max_accelerated_files') < 10000) {
-			return false;
-		}
-
-		if ($this->iniGetWrapper->getNumeric('opcache.memory_consumption') < 128) {
-			return false;
-		}
-
-		if ($this->iniGetWrapper->getNumeric('opcache.interned_strings_buffer') < 8) {
-			return false;
-		}
-
-		return true;
+		return $recommendations;
 	}
 
 	/**
@@ -485,8 +566,8 @@ Raw output
 				return true;
 			}
 
-			return $this->db->getTransactionIsolation() === Connection::TRANSACTION_READ_COMMITTED;
-		} catch (DBALException $e) {
+			return $this->db->getTransactionIsolation() === TransactionIsolationLevel::READ_COMMITTED;
+		} catch (Exception $e) {
 			// ignore
 		}
 
@@ -533,8 +614,14 @@ Raw output
 		return [];
 	}
 
-	protected function hasOpcacheLoaded(): bool {
-		return extension_loaded('Zend OPcache');
+	private function isTemporaryDirectoryWritable(): bool {
+		try {
+			if (!empty($this->tempManager->getTempBaseDir())) {
+				return true;
+			}
+		} catch (\Exception $e) {
+		}
+		return false;
 	}
 
 	/**
@@ -610,6 +697,14 @@ Raw output
 			}
 		}
 
+		if (!defined('PASSWORD_ARGON2I') && PHP_VERSION_ID >= 70400) {
+			// Installing php-sodium on >=php7.4 will provide PASSWORD_ARGON2I
+			// on previous version argon2 wasn't part of the "standard" extension
+			// and RedHat disabled it so even installing php-sodium won't provide argon2i
+			// support in password_hash/password_verify.
+			$recommendedPHPModules[] = 'sodium';
+		}
+
 		return $recommendedPHPModules;
 	}
 
@@ -624,12 +719,14 @@ Raw output
 			'activity_mq' => ['mail_id'],
 			'authtoken' => ['id'],
 			'bruteforce_attempts' => ['id'],
+			'federated_reshares' => ['share_id'],
 			'filecache' => ['fileid', 'storage', 'parent', 'mimetype', 'mimepart', 'mtime', 'storage_mtime'],
 			'filecache_extended' => ['fileid'],
 			'file_locks' => ['id'],
 			'jobs' => ['id'],
 			'mimetypes' => ['id'],
 			'mounts' => ['id', 'storage_id', 'root_id', 'mount_id'],
+			'share_external' => ['id', 'parent'],
 			'storages' => ['numeric_id'],
 		];
 
@@ -698,12 +795,14 @@ Raw output
 
 	/**
 	 * @return DataResponse
+	 * @AuthorizedAdminSetting(settings=OCA\Settings\Settings\Admin\Overview)
 	 */
 	public function check() {
 		$phpDefaultCharset = new PhpDefaultCharset();
 		$phpOutputBuffering = new PhpOutputBuffering();
 		$legacySSEKeyFormat = new LegacySSEKeyFormat($this->l10n, $this->config, $this->urlGenerator);
 		$checkUserCertificates = new CheckUserCertificates($this->l10n, $this->config, $this->urlGenerator);
+		$supportedDatabases = new SupportedDatabase($this->l10n, $this->connection);
 
 		return new DataResponse(
 			[
@@ -715,6 +814,7 @@ Raw output
 				'suggestedOverwriteCliURL' => $this->getSuggestedOverwriteCliURL(),
 				'cronInfo' => $this->getLastCronInfo(),
 				'cronErrors' => $this->getCronErrors(),
+				'isFairUseOfFreePushService' => $this->isFairUseOfFreePushService(),
 				'serverHasInternetConnectionProblems' => $this->hasInternetConnectivityProblems(),
 				'isMemcacheConfigured' => $this->isMemcacheConfigured(),
 				'memcacheDocs' => $this->urlGenerator->linkToDocs('admin-performance'),
@@ -727,9 +827,7 @@ Raw output
 				'isCorrectMemcachedPHPModuleInstalled' => $this->isCorrectMemcachedPHPModuleInstalled(),
 				'hasPassedCodeIntegrityCheck' => $this->checker->hasPassedCheck(),
 				'codeIntegrityCheckerDocumentation' => $this->urlGenerator->linkToDocs('admin-code-integrity'),
-				'isOpcacheProperlySetup' => $this->isOpcacheProperlySetup(),
-				'hasOpcacheLoaded' => $this->hasOpcacheLoaded(),
-				'phpOpcacheDocumentation' => $this->urlGenerator->linkToDocs('admin-php-opcache'),
+				'OpcacheSetupRecommendations' => $this->getOpcacheSetupRecommendations(),
 				'isSettimelimitAvailable' => $this->isSettimelimitAvailable(),
 				'hasFreeTypeSupport' => $this->hasFreeTypeSupport(),
 				'missingPrimaryKeys' => $this->hasMissingPrimaryKeys(),
@@ -749,6 +847,9 @@ Raw output
 				PhpOutputBuffering::class => ['pass' => $phpOutputBuffering->run(), 'description' => $phpOutputBuffering->description(), 'severity' => $phpOutputBuffering->severity()],
 				LegacySSEKeyFormat::class => ['pass' => $legacySSEKeyFormat->run(), 'description' => $legacySSEKeyFormat->description(), 'severity' => $legacySSEKeyFormat->severity(), 'linkToDocumentation' => $legacySSEKeyFormat->linkToDocumentation()],
 				CheckUserCertificates::class => ['pass' => $checkUserCertificates->run(), 'description' => $checkUserCertificates->description(), 'severity' => $checkUserCertificates->severity(), 'elements' => $checkUserCertificates->elements()],
+				'isDefaultPhoneRegionSet' => $this->config->getSystemValueString('default_phone_region', '') !== '',
+				SupportedDatabase::class => ['pass' => $supportedDatabases->run(), 'description' => $supportedDatabases->description(), 'severity' => $supportedDatabases->severity()],
+				'temporaryDirectoryWritable' => $this->isTemporaryDirectoryWritable(),
 			]
 		);
 	}

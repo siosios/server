@@ -3,13 +3,15 @@ OC.L10N.register(
     {
     "Recent statuses" : "Estados recientes",
     "In a meeting" : "En una reunión",
-    "Commuting" : "Yendo a / Volviendo de trabajar",
+    "Commuting" : "De viaje",
     "Out sick" : "Ausente por enfermedad",
     "Vacationing" : "De vacaciones",
     "Working remotely" : "Teletrabajando",
+    "In a call" : "En una llamada",
     "User status" : "Estado del usuario",
+    "View profile" : "Ver perfil",
     "Clear status message after" : "Borrar mensaje de estado después de",
-    "What's your status?" : "¿Cuál es tu estado?",
+    "What is your status?" : "¿Cuál es su estado?",
     "Set status" : "Configurar estado",
     "Online status" : "Estado en línea",
     "Status message" : "Mensaje de estado",
@@ -33,6 +35,7 @@ OC.L10N.register(
     "4 hours" : "4 horas",
     "Mute all notifications" : "Silenciar todas las notificaciones",
     "Appear offline" : "Aparecer sin conexión",
-    "Clear status after" : "Eliminar el estado después de"
+    "Clear status after" : "Eliminar el estado después de",
+    "What's your status?" : "¿Cuál es tu estado?"
 },
 "nplurals=2; plural=(n != 1);");

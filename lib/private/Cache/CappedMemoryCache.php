@@ -19,7 +19,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Cache;
 
 use OCP\ICache;
@@ -64,19 +63,23 @@ class CappedMemoryCache implements ICache, \ArrayAccess {
 		return true;
 	}
 
-	public function offsetExists($offset) {
+	public function offsetExists($offset): bool {
 		return $this->hasKey($offset);
 	}
 
+	/**
+	 * @return mixed
+	 */
+	#[\ReturnTypeWillChange]
 	public function &offsetGet($offset) {
 		return $this->cache[$offset];
 	}
 
-	public function offsetSet($offset, $value) {
+	public function offsetSet($offset, $value): void {
 		$this->set($offset, $value);
 	}
 
-	public function offsetUnset($offset) {
+	public function offsetUnset($offset): void {
 		$this->remove($offset);
 	}
 

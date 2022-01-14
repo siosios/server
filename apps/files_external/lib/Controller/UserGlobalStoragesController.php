@@ -2,9 +2,9 @@
 /**
  * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
  * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
+ * @author Morris Jobke <hey@morrisjobke.de>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -24,7 +24,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Files_External\Controller;
 
 use OCA\Files_External\Lib\Auth\AuthMechanism;
@@ -37,6 +36,8 @@ use OCA\Files_External\NotFoundException;
 use OCA\Files_External\Service\UserGlobalStoragesService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\IConfig;
+use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\ILogger;
 use OCP\IRequest;
@@ -47,35 +48,36 @@ use OCP\IUserSession;
  */
 class UserGlobalStoragesController extends StoragesController {
 	/**
-	 * @var IUserSession
-	 */
-	private $userSession;
-
-	/**
 	 * Creates a new user global storages controller.
 	 *
 	 * @param string $AppName application name
 	 * @param IRequest $request request object
 	 * @param IL10N $l10n l10n service
 	 * @param UserGlobalStoragesService $userGlobalStoragesService storage service
+	 * @param ILogger $logger
 	 * @param IUserSession $userSession
+	 * @param IGroupManager $groupManager
 	 */
 	public function __construct(
 		$AppName,
 		IRequest $request,
 		IL10N $l10n,
 		UserGlobalStoragesService $userGlobalStoragesService,
+		ILogger $logger,
 		IUserSession $userSession,
-		ILogger $logger
+		IGroupManager $groupManager,
+		IConfig $config
 	) {
 		parent::__construct(
 			$AppName,
 			$request,
 			$l10n,
 			$userGlobalStoragesService,
-			$logger
+			$logger,
+			$userSession,
+			$groupManager,
+			$config
 		);
-		$this->userSession = $userSession;
 	}
 
 	/**
@@ -125,7 +127,7 @@ class UserGlobalStoragesController extends StoragesController {
 		} catch (NotFoundException $e) {
 			return new DataResponse(
 				[
-					'message' => (string)$this->l10n->t('Storage with ID "%d" not found', [$id])
+					'message' => $this->l10n->t('Storage with ID "%d" not found', [$id])
 				],
 				Http::STATUS_NOT_FOUND
 			);
@@ -133,8 +135,12 @@ class UserGlobalStoragesController extends StoragesController {
 
 		$this->sanitizeStorage($storage);
 
+		$data = $this->formatStorageForUI($storage)->jsonSerialize();
+		$isAdmin = $this->groupManager->isAdmin($this->userSession->getUser()->getUID());
+		$data['can_edit'] = $storage->getType() === StorageConfig::MOUNT_TYPE_PERSONAl || $isAdmin;
+
 		return new DataResponse(
-			$this->formatStorageForUI($storage),
+			$data,
 			Http::STATUS_OK
 		);
 	}
@@ -165,7 +171,7 @@ class UserGlobalStoragesController extends StoragesController {
 			} else {
 				return new DataResponse(
 					[
-						'message' => (string)$this->l10n->t('Storage with ID "%d" is not user editable', [$id])
+						'message' => $this->l10n->t('Storage with ID "%d" is not user editable', [$id])
 					],
 					Http::STATUS_FORBIDDEN
 				);
@@ -173,7 +179,7 @@ class UserGlobalStoragesController extends StoragesController {
 		} catch (NotFoundException $e) {
 			return new DataResponse(
 				[
-					'message' => (string)$this->l10n->t('Storage with ID "%d" not found', [$id])
+					'message' => $this->l10n->t('Storage with ID "%d" not found', [$id])
 				],
 				Http::STATUS_NOT_FOUND
 			);

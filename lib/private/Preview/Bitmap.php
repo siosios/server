@@ -24,7 +24,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OC\Preview;
 
 use Imagick;
@@ -61,7 +60,7 @@ abstract class Bitmap extends ProviderV2 {
 
 		//new bitmap image object
 		$image = new \OC_Image();
-		$image->loadFromData($bp);
+		$image->loadFromData((string) $bp);
 		//check if image object is valid
 		return $image->valid() ? $image : null;
 	}
@@ -106,7 +105,7 @@ abstract class Bitmap extends ProviderV2 {
 	 * @return \Imagick
 	 */
 	private function resize($bp, $maxX, $maxY) {
-		list($previewWidth, $previewHeight) = array_values($bp->getImageGeometry());
+		[$previewWidth, $previewHeight] = array_values($bp->getImageGeometry());
 
 		// We only need to resize a preview which doesn't fit in the maximum dimensions
 		if ($previewWidth > $maxX || $previewHeight > $maxY) {

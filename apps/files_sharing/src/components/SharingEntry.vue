@@ -29,13 +29,16 @@
 			:tooltip-message="share.type === SHARE_TYPES.SHARE_TYPE_USER ? share.shareWith : ''"
 			:menu-position="'left'"
 			:url="share.shareWithAvatar" />
-		<div v-tooltip.auto="tooltip" class="sharing-entry__desc">
-			<h5>{{ title }}</h5>
+		<component :is="share.shareWithLink ? 'a' : 'div'"
+			v-tooltip.auto="tooltip"
+			:href="share.shareWithLink"
+			class="sharing-entry__desc">
+			<h5>{{ title }}<span v-if="!isUnique" class="sharing-entry__desc-unique"> ({{ share.shareWithDisplayNameUnique }})</span></h5>
 			<p v-if="hasStatus">
 				<span>{{ share.status.icon || '' }}</span>
 				<span>{{ share.status.message || '' }}</span>
 			</p>
-		</div>
+		</component>
 		<Actions
 			menu-align="right"
 			class="sharing-entry__actions"
@@ -97,7 +100,6 @@
 					}"
 					:class="{ error: errors.expireDate}"
 					:disabled="saving"
-					:first-day-of-week="firstDay"
 					:lang="lang"
 					:value="share.expireDate"
 					value-type="format"
@@ -204,7 +206,7 @@ export default {
 					// todo: strong or italic?
 					// but the t function escape any html from the data :/
 					user: this.share.shareWithDisplayName,
-					owner: this.share.owner,
+					owner: this.share.ownerDisplayName,
 				}
 
 				if (this.share.type === this.SHARE_TYPES.SHARE_TYPE_GROUP) {
@@ -219,14 +221,18 @@ export default {
 		},
 
 		canHaveNote() {
-			return this.share.type !== this.SHARE_TYPES.SHARE_TYPE_REMOTE
-				&& this.share.type !== this.SHARE_TYPES.SHARE_TYPE_REMOTE_GROUP
+			return !this.isRemote
+		},
+
+		isRemote() {
+			return this.share.type === this.SHARE_TYPES.SHARE_TYPE_REMOTE
+				|| this.share.type === this.SHARE_TYPES.SHARE_TYPE_REMOTE_GROUP
 		},
 
 		/**
 		 * Can the sharer set whether the sharee can edit the file ?
 		 *
-		 * @returns {boolean}
+		 * @return {boolean}
 		 */
 		canSetEdit() {
 			// If the owner revoked the permission after the resharer granted it
@@ -238,7 +244,7 @@ export default {
 		/**
 		 * Can the sharer set whether the sharee can create the file ?
 		 *
-		 * @returns {boolean}
+		 * @return {boolean}
 		 */
 		canSetCreate() {
 			// If the owner revoked the permission after the resharer granted it
@@ -250,7 +256,7 @@ export default {
 		/**
 		 * Can the sharer set whether the sharee can delete the file ?
 		 *
-		 * @returns {boolean}
+		 * @return {boolean}
 		 */
 		canSetDelete() {
 			// If the owner revoked the permission after the resharer granted it
@@ -262,7 +268,7 @@ export default {
 		/**
 		 * Can the sharer set whether the sharee can reshare the file ?
 		 *
-		 * @returns {boolean}
+		 * @return {boolean}
 		 */
 		canSetReshare() {
 			// If the owner revoked the permission after the resharer granted it
@@ -320,8 +326,19 @@ export default {
 		},
 
 		/**
+		 * Is this share readable
+		 * Needed for some federated shares that might have been added from file drop links
+		 */
+		hasRead: {
+			get() {
+				return this.share.hasReadPermission
+			},
+		},
+
+		/**
 		 * Is the current share a folder ?
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		isFolder() {
 			return this.fileInfo.type === 'dir'
@@ -329,7 +346,8 @@ export default {
 
 		/**
 		 * Does the current share have an expiration date
-		 * @returns {boolean}
+		 *
+		 * @return {boolean}
 		 */
 		hasExpirationDate: {
 			get() {
@@ -345,12 +363,17 @@ export default {
 		},
 
 		dateMaxEnforced() {
-			return this.config.isDefaultInternalExpireDateEnforced
-				&& moment().add(1 + this.config.defaultInternalExpireDate, 'days')
+			if (!this.isRemote) {
+				return this.config.isDefaultInternalExpireDateEnforced
+					&& moment().add(1 + this.config.defaultInternalExpireDate, 'days')
+			} else {
+				return this.config.isDefaultRemoteExpireDateEnforced
+					&& moment().add(1 + this.config.defaultRemoteExpireDate, 'days')
+			}
 		},
 
 		/**
-		 * @returns {bool}
+		 * @return {boolean}
 		 */
 		hasStatus() {
 			if (this.share.type !== this.SHARE_TYPES.SHARE_TYPE_USER) {
@@ -365,7 +388,8 @@ export default {
 	methods: {
 		updatePermissions({ isEditChecked = this.canEdit, isCreateChecked = this.canCreate, isDeleteChecked = this.canDelete, isReshareChecked = this.canReshare } = {}) {
 			// calc permissions if checked
-			const permissions = this.permissionsRead
+			const permissions = 0
+				| (this.hasRead ? this.permissionsRead : 0)
 				| (isCreateChecked ? this.permissionsCreate : 0)
 				| (isDeleteChecked ? this.permissionsDelete : 0)
 				| (isEditChecked ? this.permissionsEdit : 0)
@@ -397,6 +421,9 @@ export default {
 		padding: 8px;
 		line-height: 1.2em;
 		p {
+			color: var(--color-text-maxcontrast);
+		}
+		&-unique {
 			color: var(--color-text-maxcontrast);
 		}
 	}

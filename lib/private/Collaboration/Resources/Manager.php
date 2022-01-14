@@ -18,14 +18,13 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OC\Collaboration\Resources;
 
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -38,8 +37,8 @@ use OCP\Collaboration\Resources\IResource;
 use OCP\Collaboration\Resources\ResourceException;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
-use OCP\ILogger;
 use OCP\IUser;
+use Psr\Log\LoggerInterface;
 
 class Manager implements IManager {
 	public const TABLE_COLLECTIONS = 'collres_collections';
@@ -50,14 +49,14 @@ class Manager implements IManager {
 	protected $connection;
 	/** @var IProviderManager */
 	protected $providerManager;
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	protected $logger;
 
 	/** @var string[] */
 	protected $providers = [];
 
 
-	public function __construct(IDBConnection $connection, IProviderManager $providerManager, ILogger $logger) {
+	public function __construct(IDBConnection $connection, IProviderManager $providerManager, LoggerInterface $logger) {
 		$this->connection = $connection;
 		$this->providerManager = $providerManager;
 		$this->logger = $logger;
@@ -132,7 +131,7 @@ class Manager implements IManager {
 	 */
 	public function searchCollections(IUser $user, string $filter, int $limit = 50, int $start = 0): array {
 		$query = $this->connection->getQueryBuilder();
-		$userId = $user instanceof IUser ? $user->getUID() : '';
+		$userId = $user->getUID();
 
 		$query->select('c.*', 'a.access')
 			->from(self::TABLE_COLLECTIONS, 'c')

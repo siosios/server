@@ -16,14 +16,13 @@ declare(strict_types=1);
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 namespace OCA\Settings\SetupChecks;
 
 use OCP\IConfig;
@@ -40,10 +39,7 @@ class CheckUserCertificates {
 
 	public function __construct(IL10N $l10n, IConfig $config, IURLGenerator $urlGenerator) {
 		$this->l10n = $l10n;
-		$configValue = $config->getAppValue('files_external', 'user_certificate_scan', false);
-		if (!is_string($configValue)) {
-			$configValue = '';
-		}
+		$configValue = $config->getAppValue('files_external', 'user_certificate_scan', '');
 		$this->configValue = $configValue;
 		$this->urlGenerator = $urlGenerator;
 	}

@@ -6,10 +6,11 @@
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Daniel Kesselberg <mail@danielkesselberg.de>
  * @author Joas Schilling <coding@schilljs.com>
- * @author Kyle Fazzari <kyrofa@ubuntu.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Michael Weimann <mail@michael-weimann.eu>
  * @author Morris Jobke <hey@morrisjobke.de>
+ * @author nhirokinet <nhirokinet@nhiroki.net>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Robin McCorkell <robin@mccorkell.me.uk>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -31,10 +32,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\Settings\Tests\Controller;
 
 use bantu\IniGetWrapper\IniGetWrapper;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use OC;
 use OC\DB\Connection;
 use OC\IntegrityCheck\Checker;
@@ -48,13 +49,16 @@ use OCP\AppFramework\Http\RedirectResponse;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\IDateTimeFormatter;
+use OCP\IDBConnection;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\IRequest;
+use OCP\ITempManager;
 use OCP\IURLGenerator;
 use OCP\Lock\ILockingProvider;
+use OCP\Notification\IManager;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Test\TestCase;
 
@@ -77,7 +81,7 @@ class CheckSetupControllerTest extends TestCase {
 	private $urlGenerator;
 	/** @var IL10N | \PHPUnit\Framework\MockObject\MockObject */
 	private $l10n;
-	/** @var ILogger */
+	/** @var LoggerInterface */
 	private $logger;
 	/** @var Checker|\PHPUnit\Framework\MockObject\MockObject */
 	private $checker;
@@ -95,6 +99,12 @@ class CheckSetupControllerTest extends TestCase {
 	private $secureRandom;
 	/** @var IniGetWrapper|\PHPUnit\Framework\MockObject\MockObject */
 	private $iniGetWrapper;
+	/** @var IDBConnection|\PHPUnit\Framework\MockObject\MockObject */
+	private $connection;
+	/** @var ITempManager|\PHPUnit\Framework\MockObject\MockObject */
+	private $tempManager;
+	/** @var IManager|\PHPUnit\Framework\MockObject\MockObject */
+	private $notificationManager;
 
 	/**
 	 * Holds a list of directories created during tests.
@@ -125,7 +135,7 @@ class CheckSetupControllerTest extends TestCase {
 			->disableOriginalConstructor()->getMock();
 		$this->checker = $this->getMockBuilder('\OC\IntegrityCheck\Checker')
 				->disableOriginalConstructor()->getMock();
-		$this->logger = $this->getMockBuilder(ILogger::class)->getMock();
+		$this->logger = $this->getMockBuilder(LoggerInterface::class)->getMock();
 		$this->db = $this->getMockBuilder(Connection::class)
 			->disableOriginalConstructor()->getMock();
 		$this->lockingProvider = $this->getMockBuilder(ILockingProvider::class)->getMock();
@@ -135,6 +145,10 @@ class CheckSetupControllerTest extends TestCase {
 			->getMock();
 		$this->secureRandom = $this->getMockBuilder(SecureRandom::class)->getMock();
 		$this->iniGetWrapper = $this->getMockBuilder(IniGetWrapper::class)->getMock();
+		$this->connection = $this->getMockBuilder(IDBConnection::class)
+			->disableOriginalConstructor()->getMock();
+		$this->tempManager = $this->getMockBuilder(ITempManager::class)->getMock();
+		$this->notificationManager = $this->getMockBuilder(IManager::class)->getMock();
 		$this->checkSetupController = $this->getMockBuilder(CheckSetupController::class)
 			->setConstructorArgs([
 				'settings',
@@ -152,6 +166,9 @@ class CheckSetupControllerTest extends TestCase {
 				$this->memoryInfo,
 				$this->secureRandom,
 				$this->iniGetWrapper,
+				$this->connection,
+				$this->tempManager,
+				$this->notificationManager,
 			])
 			->setMethods([
 				'isReadOnlyConfig',
@@ -162,13 +179,12 @@ class CheckSetupControllerTest extends TestCase {
 				'getSuggestedOverwriteCliURL',
 				'getCurlVersion',
 				'isPhpOutdated',
-				'isOpcacheProperlySetup',
+				'getOpcacheSetupRecommendations',
 				'hasFreeTypeSupport',
 				'hasMissingIndexes',
 				'hasMissingPrimaryKeys',
 				'isSqliteUsed',
 				'isPHPMailerUsed',
-				'hasOpcacheLoaded',
 				'getAppDirsWithDifferentOwner',
 				'hasRecommendedPHPModules',
 				'hasBigIntConversionPendingColumns',
@@ -329,7 +345,7 @@ class CheckSetupControllerTest extends TestCase {
 	 * @param string $remoteAddr
 	 * @param bool $result
 	 */
-	public function testForwardedForHeadersWorking(array $trustedProxies, string $remoteAddrNotForwarded, string $remoteAddr, bool $result) {
+	public function testForwardedForHeadersWorking(array $trustedProxies, string $remoteAddrNotForwarded, string $remoteAddr, bool $result): void {
 		$this->config->expects($this->once())
 			->method('getSystemValue')
 			->with('trusted_proxies', [])
@@ -350,7 +366,7 @@ class CheckSetupControllerTest extends TestCase {
 		);
 	}
 
-	public function dataForwardedForHeadersWorking() {
+	public function dataForwardedForHeadersWorking(): array {
 		return [
 			// description => trusted proxies, getHeader('REMOTE_ADDR'), getRemoteAddr, expected result
 			'no trusted proxies' => [[], '2.2.2.2', '2.2.2.2', true],
@@ -360,7 +376,28 @@ class CheckSetupControllerTest extends TestCase {
 		];
 	}
 
-	public function testForwardedHostPresentButTrustedProxiesEmpty() {
+	public function testForwardedHostPresentButTrustedProxiesNotAnArray(): void {
+		$this->config->expects($this->once())
+			->method('getSystemValue')
+			->with('trusted_proxies', [])
+			->willReturn('1.1.1.1');
+		$this->request->expects($this->atLeastOnce())
+			->method('getHeader')
+			->willReturnMap([
+				['REMOTE_ADDR', '1.1.1.1'],
+				['X-Forwarded-Host', 'nextcloud.test']
+			]);
+		$this->request->expects($this->any())
+			->method('getRemoteAddress')
+			->willReturn('1.1.1.1');
+
+		$this->assertEquals(
+			false,
+			self::invokePrivate($this->checkSetupController, 'forwardedForHeadersWorking')
+		);
+	}
+
+	public function testForwardedHostPresentButTrustedProxiesEmpty(): void {
 		$this->config->expects($this->once())
 			->method('getSystemValue')
 			->with('trusted_proxies', [])
@@ -441,8 +478,8 @@ class CheckSetupControllerTest extends TestCase {
 			->willReturn(true);
 		$this->checkSetupController
 			->expects($this->once())
-			->method('isOpcacheProperlySetup')
-			->willReturn(false);
+			->method('getOpcacheSetupRecommendations')
+			->willReturn(['recommendation1', 'recommendation2']);
 		$this->checkSetupController
 			->method('hasFreeTypeSupport')
 			->willReturn(false);
@@ -466,10 +503,6 @@ class CheckSetupControllerTest extends TestCase {
 		$this->checkSetupController
 			->expects($this->once())
 			->method('hasFileinfoInstalled')
-			->willReturn(true);
-		$this->checkSetupController
-			->expects($this->once())
-			->method('hasOpcacheLoaded')
 			->willReturn(true);
 		$this->checkSetupController
 			->expects($this->once())
@@ -553,6 +586,9 @@ class CheckSetupControllerTest extends TestCase {
 				}
 				return '';
 			});
+		$sqlitePlatform = $this->getMockBuilder(SqlitePlatform::class)->getMock();
+		$this->connection->method('getDatabasePlatform')
+			->willReturn($sqlitePlatform);
 
 		$expected = new DataResponse(
 			[
@@ -578,14 +614,12 @@ class CheckSetupControllerTest extends TestCase {
 					'eol' => true,
 					'version' => PHP_VERSION
 				],
-				'forwardedForHeadersWorking' => true,
+				'forwardedForHeadersWorking' => false,
 				'reverseProxyDocs' => 'reverse-proxy-doc-link',
 				'isCorrectMemcachedPHPModuleInstalled' => true,
 				'hasPassedCodeIntegrityCheck' => true,
 				'codeIntegrityCheckerDocumentation' => 'http://docs.example.org/server/go.php?to=admin-code-integrity',
-				'isOpcacheProperlySetup' => false,
-				'hasOpcacheLoaded' => true,
-				'phpOpcacheDocumentation' => 'http://docs.example.org/server/go.php?to=admin-php-opcache',
+				'OpcacheSetupRecommendations' => ['recommendation1', 'recommendation2'],
 				'isSettimelimitAvailable' => true,
 				'hasFreeTypeSupport' => false,
 				'isSqliteUsed' => false,
@@ -605,6 +639,10 @@ class CheckSetupControllerTest extends TestCase {
 				'OCA\Settings\SetupChecks\LegacySSEKeyFormat' => ['pass' => true, 'description' => 'The old server-side-encryption format is enabled. We recommend disabling this.', 'severity' => 'warning', 'linkToDocumentation' => ''],
 				'OCA\Settings\SetupChecks\CheckUserCertificates' => ['pass' => false, 'description' => 'There are some user imported SSL certificates present, that are not used anymore with Nextcloud 21. They can be imported on the command line via "occ security:certificates:import" command. Their paths inside the data directory are shown below.', 'severity' => 'warning', 'elements' => ['a', 'b']],
 				'imageMagickLacksSVGSupport' => false,
+				'isDefaultPhoneRegionSet' => false,
+				'OCA\Settings\SetupChecks\SupportedDatabase' => ['pass' => true, 'description' => '', 'severity' => 'info'],
+				'isFairUseOfFreePushService' => false,
+				'temporaryDirectoryWritable' => false,
 			]
 		);
 		$this->assertEquals($expected, $this->checkSetupController->check());
@@ -628,6 +666,9 @@ class CheckSetupControllerTest extends TestCase {
 				$this->memoryInfo,
 				$this->secureRandom,
 				$this->iniGetWrapper,
+				$this->connection,
+				$this->tempManager,
+				$this->notificationManager,
 			])
 			->setMethods(null)->getMock();
 
@@ -664,7 +705,7 @@ class CheckSetupControllerTest extends TestCase {
 			->expects($this->once())
 			->method('getCurlVersion')
 			->willReturn(['ssl_version' => 'OpenSSL/1.0.1c']);
-		$this->assertSame('cURL is using an outdated OpenSSL version (OpenSSL/1.0.1c). Please update your operating system or features such as installing and updating apps via the app store or Federated Cloud Sharing will not work reliably.', $this->invokePrivate($this->checkSetupController, 'isUsedTlsLibOutdated'));
+		$this->assertSame('cURL is using an outdated OpenSSL version (OpenSSL/1.0.1c). Please update your operating system or features such as installing and updating apps via the App Store or Federated Cloud Sharing will not work reliably.', $this->invokePrivate($this->checkSetupController, 'isUsedTlsLibOutdated'));
 	}
 
 	public function testIsUsedTlsLibOutdatedWithOlderOpenSslAndWithoutAppstore() {
@@ -688,7 +729,7 @@ class CheckSetupControllerTest extends TestCase {
 			->expects($this->once())
 			->method('getCurlVersion')
 			->willReturn(['ssl_version' => 'OpenSSL/1.0.2a']);
-		$this->assertSame('cURL is using an outdated OpenSSL version (OpenSSL/1.0.2a). Please update your operating system or features such as installing and updating apps via the app store or Federated Cloud Sharing will not work reliably.', $this->invokePrivate($this->checkSetupController, 'isUsedTlsLibOutdated'));
+		$this->assertSame('cURL is using an outdated OpenSSL version (OpenSSL/1.0.2a). Please update your operating system or features such as installing and updating apps via the App Store or Federated Cloud Sharing will not work reliably.', $this->invokePrivate($this->checkSetupController, 'isUsedTlsLibOutdated'));
 	}
 
 	public function testIsUsedTlsLibOutdatedWithMatchingOpenSslVersion() {
@@ -793,7 +834,7 @@ class CheckSetupControllerTest extends TestCase {
 			->method('newClient')
 			->willReturn($client);
 
-		$this->assertSame('cURL is using an outdated NSS version (NSS/1.0.2b). Please update your operating system or features such as installing and updating apps via the app store or Federated Cloud Sharing will not work reliably.', $this->invokePrivate($this->checkSetupController, 'isUsedTlsLibOutdated'));
+		$this->assertSame('cURL is using an outdated NSS version (NSS/1.0.2b). Please update your operating system or features such as installing and updating apps via the App Store or Federated Cloud Sharing will not work reliably.', $this->invokePrivate($this->checkSetupController, 'isUsedTlsLibOutdated'));
 	}
 
 
@@ -1382,22 +1423,25 @@ Array
 			});
 
 		$checkSetupController = new CheckSetupController(
-				'settings',
-				$this->request,
-				$this->config,
-				$this->clientService,
-				$this->urlGenerator,
-				$this->l10n,
-				$this->checker,
-				$this->logger,
-				$this->dispatcher,
-				$this->db,
-				$this->lockingProvider,
-				$this->dateTimeFormatter,
-				$this->memoryInfo,
-				$this->secureRandom,
-				$this->iniGetWrapper
-			);
+			'settings',
+			$this->request,
+			$this->config,
+			$this->clientService,
+			$this->urlGenerator,
+			$this->l10n,
+			$this->checker,
+			$this->logger,
+			$this->dispatcher,
+			$this->db,
+			$this->lockingProvider,
+			$this->dateTimeFormatter,
+			$this->memoryInfo,
+			$this->secureRandom,
+			$this->iniGetWrapper,
+			$this->connection,
+			$this->tempManager,
+			$this->notificationManager
+		);
 
 		$this->assertSame($expected, $this->invokePrivate($checkSetupController, 'isMysqlUsedWithoutUTF8MB4'));
 	}
@@ -1445,7 +1489,10 @@ Array
 			$this->dateTimeFormatter,
 			$this->memoryInfo,
 			$this->secureRandom,
-			$this->iniGetWrapper
+			$this->iniGetWrapper,
+			$this->connection,
+			$this->tempManager,
+			$this->notificationManager
 		);
 
 		$this->assertSame($expected, $this->invokePrivate($checkSetupController, 'isEnoughTempSpaceAvailableIfS3PrimaryStorageIsUsed'));

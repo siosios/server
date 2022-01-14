@@ -26,13 +26,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\User_LDAP\User;
 
 use OC\Cache\CappedMemoryCache;
 use OCA\User_LDAP\Access;
 use OCA\User_LDAP\FilesystemHelper;
-use OCA\User_LDAP\LogWrapper;
 use OCP\IAvatarManager;
 use OCP\IConfig;
 use OCP\IDBConnection;
@@ -40,6 +38,7 @@ use OCP\Image;
 use OCP\IUserManager;
 use OCP\Notification\IManager as INotificationManager;
 use OCP\Share\IManager;
+use Psr\Log\LoggerInterface;
 
 /**
  * Manager
@@ -66,8 +65,8 @@ class Manager {
 	/** @var FilesystemHelper */
 	protected $ocFilesystem;
 
-	/** @var LogWrapper */
-	protected $ocLog;
+	/** @var LoggerInterface */
+	protected $logger;
 
 	/** @var Image */
 	protected $image;
@@ -89,7 +88,7 @@ class Manager {
 	public function __construct(
 		IConfig $ocConfig,
 		FilesystemHelper $ocFilesystem,
-		LogWrapper $ocLog,
+		LoggerInterface $logger,
 		IAvatarManager $avatarManager,
 		Image $image,
 		IUserManager $userManager,
@@ -98,7 +97,7 @@ class Manager {
 	) {
 		$this->ocConfig = $ocConfig;
 		$this->ocFilesystem = $ocFilesystem;
-		$this->ocLog = $ocLog;
+		$this->logger = $logger;
 		$this->avatarManager = $avatarManager;
 		$this->image = $image;
 		$this->userManager = $userManager;
@@ -127,7 +126,7 @@ class Manager {
 	private function createAndCache($dn, $uid) {
 		$this->checkAccess();
 		$user = new User($uid, $dn, $this->access, $this->ocConfig,
-			$this->ocFilesystem, clone $this->image, $this->ocLog,
+			$this->ocFilesystem, clone $this->image, $this->logger,
 			$this->avatarManager, $this->userManager,
 			$this->notificationManager);
 		$this->usersByDN[$dn] = $user;
@@ -178,7 +177,7 @@ class Manager {
 			$this->access->getConnection()->ldapExtStorageHomeAttribute,
 		];
 
-		$homeRule = $this->access->getConnection()->homeFolderNamingRule;
+		$homeRule = (string)$this->access->getConnection()->homeFolderNamingRule;
 		if (strpos($homeRule, 'attr:') === 0) {
 			$attributes[] = substr($homeRule, strlen('attr:'));
 		}

@@ -6,6 +6,7 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = $vendorDir;
 
 return array(
+    'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
     'OCA\\Files_Sharing\\Activity\\Filter' => $baseDir . '/../lib/Activity/Filter.php',
     'OCA\\Files_Sharing\\Activity\\Providers\\Base' => $baseDir . '/../lib/Activity/Providers/Base.php',
     'OCA\\Files_Sharing\\Activity\\Providers\\Downloads' => $baseDir . '/../lib/Activity/Providers/Downloads.php',
@@ -36,6 +37,8 @@ return array(
     'OCA\\Files_Sharing\\Controller\\ShareesAPIController' => $baseDir . '/../lib/Controller/ShareesAPIController.php',
     'OCA\\Files_Sharing\\DeleteOrphanedSharesJob' => $baseDir . '/../lib/DeleteOrphanedSharesJob.php',
     'OCA\\Files_Sharing\\Event\\BeforeTemplateRenderedEvent' => $baseDir . '/../lib/Event/BeforeTemplateRenderedEvent.php',
+    'OCA\\Files_Sharing\\Event\\ShareLinkAccessedEvent' => $baseDir . '/../lib/Event/ShareLinkAccessedEvent.php',
+    'OCA\\Files_Sharing\\Event\\ShareMountedEvent' => $baseDir . '/../lib/Event/ShareMountedEvent.php',
     'OCA\\Files_Sharing\\Exceptions\\BrokenPath' => $baseDir . '/../lib/Exceptions/BrokenPath.php',
     'OCA\\Files_Sharing\\Exceptions\\S2SException' => $baseDir . '/../lib/Exceptions/S2SException.php',
     'OCA\\Files_Sharing\\Exceptions\\SharingRightsException' => $baseDir . '/../lib/Exceptions/SharingRightsException.php',
@@ -62,6 +65,9 @@ return array(
     'OCA\\Files_Sharing\\Migration\\OwncloudGuestShareType' => $baseDir . '/../lib/Migration/OwncloudGuestShareType.php',
     'OCA\\Files_Sharing\\Migration\\SetAcceptedStatus' => $baseDir . '/../lib/Migration/SetAcceptedStatus.php',
     'OCA\\Files_Sharing\\Migration\\SetPasswordColumn' => $baseDir . '/../lib/Migration/SetPasswordColumn.php',
+    'OCA\\Files_Sharing\\Migration\\Version11300Date20201120141438' => $baseDir . '/../lib/Migration/Version11300Date20201120141438.php',
+    'OCA\\Files_Sharing\\Migration\\Version21000Date20201223143245' => $baseDir . '/../lib/Migration/Version21000Date20201223143245.php',
+    'OCA\\Files_Sharing\\Migration\\Version22000Date20210216084241' => $baseDir . '/../lib/Migration/Version22000Date20210216084241.php',
     'OCA\\Files_Sharing\\MountProvider' => $baseDir . '/../lib/MountProvider.php',
     'OCA\\Files_Sharing\\Notification\\Listener' => $baseDir . '/../lib/Notification/Listener.php',
     'OCA\\Files_Sharing\\Notification\\Notifier' => $baseDir . '/../lib/Notification/Notifier.php',

@@ -14,7 +14,7 @@
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
  * @author Tobias Kaminsky <tobias@kaminsky.me>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -31,7 +31,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCA\DAV\Connector\Sabre;
 
 use OC\AppFramework\Http\Request;
@@ -41,6 +40,7 @@ use OCP\Files\StorageNotAvailableException;
 use OCP\IConfig;
 use OCP\IPreview;
 use OCP\IRequest;
+use OCP\IUserSession;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\Exception\NotFound;
 use Sabre\DAV\IFile;
@@ -65,6 +65,7 @@ class FilesPlugin extends ServerPlugin {
 	public const SIZE_PROPERTYNAME = '{http://owncloud.org/ns}size';
 	public const GETETAG_PROPERTYNAME = '{DAV:}getetag';
 	public const LASTMODIFIED_PROPERTYNAME = '{DAV:}lastmodified';
+	public const CREATIONDATE_PROPERTYNAME = '{DAV:}creationdate';
 	public const OWNER_ID_PROPERTYNAME = '{http://owncloud.org/ns}owner-id';
 	public const OWNER_DISPLAY_NAME_PROPERTYNAME = '{http://owncloud.org/ns}owner-display-name';
 	public const CHECKSUMS_PROPERTYNAME = '{http://owncloud.org/ns}checksums';
@@ -88,6 +89,11 @@ class FilesPlugin extends ServerPlugin {
 	 * @var Tree
 	 */
 	private $tree;
+
+	/**
+	 * @var IUserSession
+	 */
+	private $userSession;
 
 	/**
 	 * Whether this is public webdav.
@@ -129,11 +135,13 @@ class FilesPlugin extends ServerPlugin {
 								IConfig $config,
 								IRequest $request,
 								IPreview $previewManager,
+								IUserSession $userSession,
 								$isPublic = false,
 								$downloadAttachment = true) {
 		$this->tree = $tree;
 		$this->config = $config;
 		$this->request = $request;
+		$this->userSession = $userSession;
 		$this->isPublic = $isPublic;
 		$this->downloadAttachment = $downloadAttachment;
 		$this->previewManager = $previewManager;
@@ -202,8 +210,8 @@ class FilesPlugin extends ServerPlugin {
 		if (!$sourceNode instanceof Node) {
 			return;
 		}
-		list($sourceDir,) = \Sabre\Uri\split($source);
-		list($destinationDir,) = \Sabre\Uri\split($destination);
+		[$sourceDir,] = \Sabre\Uri\split($source);
+		[$destinationDir,] = \Sabre\Uri\split($destination);
 
 		if ($sourceDir !== $destinationDir) {
 			$sourceNodeFileInfo = $sourceNode->getFileInfo();
@@ -323,14 +331,22 @@ class FilesPlugin extends ServerPlugin {
 			});
 
 			$propFind->handle(self::SHARE_PERMISSIONS_PROPERTYNAME, function () use ($node, $httpRequest) {
+				$user = $this->userSession->getUser();
+				if ($user === null) {
+					return null;
+				}
 				return $node->getSharePermissions(
-					$httpRequest->getRawServerValue('PHP_AUTH_USER')
+					$user->getUID()
 				);
 			});
 
 			$propFind->handle(self::OCM_SHARE_PERMISSIONS_PROPERTYNAME, function () use ($node, $httpRequest) {
+				$user = $this->userSession->getUser();
+				if ($user === null) {
+					return null;
+				}
 				$ncPermissions = $node->getSharePermissions(
-					$httpRequest->getRawServerValue('PHP_AUTH_USER')
+					$user->getUID()
 				);
 				$ocmPermissions = $this->ncPermissions2ocmPermissions($ncPermissions);
 				return json_encode($ocmPermissions);
@@ -368,15 +384,25 @@ class FilesPlugin extends ServerPlugin {
 			});
 
 			$propFind->handle(self::SHARE_NOTE, function () use ($node, $httpRequest) {
+				$user = $this->userSession->getUser();
+				if ($user === null) {
+					return null;
+				}
 				return $node->getNoteFromShare(
-					$httpRequest->getRawServerValue('PHP_AUTH_USER')
+					$user->getUID()
 				);
 			});
-		}
 
-		if ($node instanceof \OCA\DAV\Connector\Sabre\Node) {
 			$propFind->handle(self::DATA_FINGERPRINT_PROPERTYNAME, function () use ($node) {
 				return $this->config->getSystemValue('data-fingerprint', '');
+			});
+			$propFind->handle(self::CREATIONDATE_PROPERTYNAME, function () use ($node) {
+				return (new \DateTimeImmutable())
+					->setTimestamp($node->getFileInfo()->getCreationTime())
+					->format(\DateTimeInterface::ATOM);
+			});
+			$propFind->handle(self::CREATION_TIME_PROPERTYNAME, function () use ($node) {
+				return $node->getFileInfo()->getCreationTime();
 			});
 		}
 
@@ -402,10 +428,6 @@ class FilesPlugin extends ServerPlugin {
 				}
 
 				return new ChecksumList($checksum);
-			});
-
-			$propFind->handle(self::CREATION_TIME_PROPERTYNAME, function () use ($node) {
-				return $node->getFileInfo()->getCreationTime();
 			});
 
 			$propFind->handle(self::UPLOAD_TIME_PROPERTYNAME, function () use ($node) {
@@ -479,6 +501,14 @@ class FilesPlugin extends ServerPlugin {
 			}
 			return false;
 		});
+		$propPatch->handle(self::CREATIONDATE_PROPERTYNAME, function ($time) use ($node) {
+			if (empty($time)) {
+				return false;
+			}
+			$dateTime = new \DateTimeImmutable($time);
+			$node->setCreationTime($dateTime->getTimestamp());
+			return true;
+		});
 		$propPatch->handle(self::CREATION_TIME_PROPERTYNAME, function ($time) use ($node) {
 			if (empty($time)) {
 				return false;
@@ -496,7 +526,7 @@ class FilesPlugin extends ServerPlugin {
 	public function sendFileIdHeader($filePath, \Sabre\DAV\INode $node = null) {
 		// chunked upload handling
 		if (isset($_SERVER['HTTP_OC_CHUNKED'])) {
-			list($path, $name) = \Sabre\Uri\split($filePath);
+			[$path, $name] = \Sabre\Uri\split($filePath);
 			$info = \OC_FileChunking::decodeName($name);
 			if (!empty($info)) {
 				$filePath = $path . '/' . $info['name'];

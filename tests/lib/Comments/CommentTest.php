@@ -51,7 +51,7 @@ class CommentTest extends TestCase {
 		$this->assertSame($object['id'], $comment->getObjectId());
 	}
 
-	
+
 	public function testSetIdIllegalInput() {
 		$this->expectException(\OCP\Comments\IllegalIDChangeException::class);
 
@@ -120,7 +120,7 @@ class CommentTest extends TestCase {
 		$comment->$setter($type, $id);
 	}
 
-	
+
 	public function testSetUberlongMessage() {
 		$this->expectException(\OCP\Comments\MessageTooLongException::class);
 
@@ -149,7 +149,7 @@ class CommentTest extends TestCase {
 					' cc @23452-4333-54353-2342 @yolo!' .
 					' however the most important thing to know is that www.croissant.com/@oil is not valid' .
 					' and won\'t match anything at all',
-				['foobar', 'barfoo', 'foo@bar.com', 'bar@foo.org@foobar.io', '23452-4333-54353-2342', 'yolo']
+				['bar@foo.org@foobar.io', '23452-4333-54353-2342', 'foo@bar.com', 'foobar', 'barfoo', 'yolo']
 			],
 			[
 				'@@chef is also a valid mention, no matter how strange it looks', ['@chef']
@@ -159,6 +159,9 @@ class CommentTest extends TestCase {
 			],
 			[
 				'Also @"guest/0123456789abcdef" are now supported', [], null, ['guest/0123456789abcdef']
+			],
+			[
+				'Also @"group/My Group ID 321" are now supported', [], null, [], ['My Group ID 321']
 			],
 		];
 	}
@@ -171,7 +174,7 @@ class CommentTest extends TestCase {
 	 * @param string|null $author
 	 * @param array $expectedGuests
 	 */
-	public function testMentions(string $message, array $expectedUids, ?string $author = null, array $expectedGuests = []): void {
+	public function testMentions(string $message, array $expectedUids, ?string $author = null, array $expectedGuests = [], array $expectedGroups = []): void {
 		$comment = new Comment();
 		$comment->setMessage($message);
 		if (!is_null($author)) {
@@ -183,6 +186,8 @@ class CommentTest extends TestCase {
 				$id = array_shift($expectedUids);
 			} elseif ($mention['type'] === 'guest') {
 				$id = array_shift($expectedGuests);
+			} elseif ($mention['type'] === 'group') {
+				$id = array_shift($expectedGroups);
 			} else {
 				$this->fail('Unexpected mention type');
 				continue;

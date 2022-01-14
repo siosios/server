@@ -10,7 +10,7 @@
  * @author Jakob Sack <mail@jakobsack.de>
  * @author Jan-Christoph Borchardt <hey@jancborchardt.net>
  * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ (skjnldsv) <skjnldsv@protonmail.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Jörn Friedrich Dreyer <jfd@butonic.de>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
@@ -20,7 +20,7 @@
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <pvince81@owncloud.com>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
  * @license AGPL-3.0
  *
@@ -37,9 +37,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 use OC\TemplateLayout;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\Util;
 
 require_once __DIR__.'/template/functions.php';
 
@@ -86,7 +86,7 @@ class OC_Template extends \OC\Template\Base {
 		/** @var \OCP\Defaults $themeDefaults */
 		$themeDefaults = \OC::$server->query(\OCP\Defaults::class);
 
-		list($path, $template) = $this->findTemplate($theme, $app, $name);
+		[$path, $template] = $this->findTemplate($theme, $app, $name);
 
 		// Set the private data
 		$this->renderAs = $renderAs;
@@ -102,28 +102,30 @@ class OC_Template extends \OC\Template\Base {
 	public static function initTemplateEngine($renderAs) {
 		if (self::$initTemplateEngineFirstRun) {
 
-			//apps that started before the template initialization can load their own scripts/styles
-			//so to make sure this scripts/styles here are loaded first we use OC_Util::addScript() with $prepend=true
-			//meaning the last script/style in this list will be loaded first
-			if (\OC::$server->getSystemConfig()->getValue('installed', false) && $renderAs !== TemplateResponse::RENDER_AS_ERROR && !\OCP\Util::needUpgrade()) {
-				if (\OC::$server->getConfig()->getAppValue('core', 'backgroundjobs_mode', 'ajax') == 'ajax') {
-					OC_Util::addScript('backgroundjobs', null, true);
-				}
-			}
+			// apps that started before the template initialization can load their own scripts/styles
+			// so to make sure this scripts/styles here are loaded first we put all core scripts first
+			// check lib/public/Util.php
 			OC_Util::addStyle('css-variables', null, true);
 			OC_Util::addStyle('server', null, true);
-			OC_Util::addTranslations('core', null, true);
 
-			if (\OC::$server->getSystemConfig()->getValue('installed', false)) {
-				OC_Util::addScript('merged-template-prepend', null, true);
-				OC_Util::addScript('dist/files_client', null, true);
-				OC_Util::addScript('dist/files_fileinfo', null, true);
+			// include common nextcloud webpack bundle
+			Util::addScript('core', 'common');
+			Util::addScript('core', 'main');
+			Util::addTranslations('core');
+
+			if (\OC::$server->getSystemConfig()->getValue('installed', false) && !\OCP\Util::needUpgrade()) {
+				Util::addScript('core', 'files_fileinfo');
+				Util::addScript('core', 'files_client');
+				Util::addScript('core', 'merged-template-prepend');
 			}
-			OC_Util::addScript('core', 'dist/main', true);
 
-			if (\OC::$server->getRequest()->isUserAgent([\OC\AppFramework\Http\Request::USER_AGENT_IE])) {
-				// shim for the davclient.js library
-				\OCP\Util::addScript('dist/files_iedavclient');
+			// If installed and background job is set to ajax, add dedicated script
+			if (\OC::$server->getSystemConfig()->getValue('installed', false)
+				&& $renderAs !== TemplateResponse::RENDER_AS_ERROR
+				&& !\OCP\Util::needUpgrade()) {
+				if (\OC::$server->getConfig()->getAppValue('core', 'backgroundjobs_mode', 'ajax') == 'ajax') {
+					Util::addScript('core', 'backgroundjobs');
+				}
 			}
 
 			self::$initTemplateEngineFirstRun = false;

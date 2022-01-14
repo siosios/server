@@ -5,6 +5,7 @@
  * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Lukas Reschke <lukas@statuscode.ch>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
@@ -25,7 +26,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
-
 namespace OCP\Comments;
 
 use OCP\IUser;
@@ -200,6 +200,17 @@ interface ICommentsManager {
 	 * @since 21.0.0
 	 */
 	public function getNumberOfCommentsForObjectSinceComment(string $objectType, string $objectId, int $lastRead, string $verb = ''): int;
+
+
+	/**
+	 * @param string $objectType
+	 * @param string $objectId
+	 * @param int $lastRead
+	 * @param string[] $verbs
+	 * @return int
+	 * @since 24.0.0
+	 */
+	public function getNumberOfCommentsWithVerbsForObjectSinceComment(string $objectType, string $objectId, int $lastRead, array $verbs): int;
 
 	/**
 	 * @param string $objectType
