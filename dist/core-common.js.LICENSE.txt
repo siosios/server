@@ -183,6 +183,15 @@
  */
 
 /*!
+ * jQuery UI Button 1.13.1
+ * http://jqueryui.com
+ *
+ * Copyright jQuery Foundation and other contributors
+ * Released under the MIT license.
+ * http://jquery.org/license
+ */
+
+/*!
  * jQuery UI Checkboxradio 1.13.0
  * http://jqueryui.com
  *
@@ -192,7 +201,25 @@
  */
 
 /*!
+ * jQuery UI Checkboxradio 1.13.1
+ * http://jqueryui.com
+ *
+ * Copyright jQuery Foundation and other contributors
+ * Released under the MIT license.
+ * http://jquery.org/license
+ */
+
+/*!
  * jQuery UI Controlgroup 1.13.0
+ * http://jqueryui.com
+ *
+ * Copyright jQuery Foundation and other contributors
+ * Released under the MIT license.
+ * http://jquery.org/license
+ */
+
+/*!
+ * jQuery UI Controlgroup 1.13.1
  * http://jqueryui.com
  *
  * Copyright jQuery Foundation and other contributors
@@ -255,7 +282,7 @@
  */
 
 /*!
- * jQuery UI Form Reset Mixin 1.13.0
+ * jQuery UI Form Reset Mixin 1.13.1
  * http://jqueryui.com
  *
  * Copyright jQuery Foundation and other contributors
@@ -264,7 +291,7 @@
  */
 
 /*!
- * jQuery UI Keycode 1.13.0
+ * jQuery UI Keycode 1.13.1
  * http://jqueryui.com
  *
  * Copyright jQuery Foundation and other contributors
@@ -273,7 +300,7 @@
  */
 
 /*!
- * jQuery UI Labels 1.13.0
+ * jQuery UI Labels 1.13.1
  * http://jqueryui.com
  *
  * Copyright jQuery Foundation and other contributors
@@ -348,6 +375,15 @@
  */
 
 /*!
+ * jQuery UI Widget 1.13.1
+ * http://jqueryui.com
+ *
+ * Copyright jQuery Foundation and other contributors
+ * Released under the MIT license.
+ * http://jquery.org/license
+ */
+
+/*!
  * vue-infinite-loading v2.4.5
  * (c) 2016-2020 PeachScript
  * MIT License
@@ -389,8 +425,6 @@
 * http://jqueryui.com
 * Includes: widget.js, position.js, data.js, disable-selection.js, effect.js, effects/effect-blind.js, effects/effect-bounce.js, effects/effect-clip.js, effects/effect-drop.js, effects/effect-explode.js, effects/effect-fade.js, effects/effect-fold.js, effects/effect-highlight.js, effects/effect-puff.js, effects/effect-pulsate.js, effects/effect-scale.js, effects/effect-shake.js, effects/effect-size.js, effects/effect-slide.js, effects/effect-transfer.js, focusable.js, form-reset-mixin.js, jquery-patch.js, keycode.js, labels.js, scroll-parent.js, tabbable.js, unique-id.js, widgets/accordion.js, widgets/autocomplete.js, widgets/button.js, widgets/checkboxradio.js, widgets/controlgroup.js, widgets/datepicker.js, widgets/dialog.js, widgets/draggable.js, widgets/droppable.js, widgets/menu.js, widgets/mouse.js, widgets/progressbar.js, widgets/resizable.js, widgets/selectable.js, widgets/selectmenu.js, widgets/slider.js, widgets/sortable.js, widgets/spinner.js, widgets/tabs.js, widgets/tooltip.js
 * Copyright jQuery Foundation and other contributors; Licensed MIT */
-
-/*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
 
 /**
  *

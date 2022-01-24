@@ -24,6 +24,7 @@
     "Invalid app password" : "Virheellinen sovellussalasana",
     "Could not complete login" : "Kirjautumista ei voitu suorittaa loppuun",
     "Your login token is invalid or has expired" : "Kirjautumispolettisi on virheellinen tai se on vanhentunut",
+    "This community release of Nextcloud is unsupported and instant notifications are unavailable." : "Tätä yhteisöjulkaisua Nextcloudista ei tueta, ja pikailmoitukset eivät ole saatavilla.",
     "Password reset is disabled" : "Salasanan palautus poistettu käytöstä",
     "Could not reset password because the token is expired" : "Salasanaa ei voitu nollata, koska poletti on vanhentunut",
     "Could not reset password because the token is invalid" : "Salasanaa ei voitu nollata, koska poletti on virheellinen",
@@ -36,6 +37,7 @@
     "Some of your link shares have been removed" : "Jotkin linkkijakosi on poistettu",
     "Due to a security bug we had to remove some of your link shares. Please see the link for more information." : "Tietoturvaongelman vuoksi jouduimme poistaa joitakin linkkijakojasi. Lue lisätietoja linkin kautta.",
     "The user limit of this instance is reached." : "Tämän instanssin käyttäjäraja on täynnä.",
+    "Enter your subscription key to increase the user limit. For more information about Nextcloud Enterprise see our website." : "Syötä tilausavaimesi lisätäksesi käyttäjärajaa. Lisätietoja Nextcloud Enterprisestä saat nettisivuiltamme.",
     "Preparing update" : "Valmistellaan päivitystä",
     "[%d / %d]: %s" : "[%d / %d]: %s",
     "Repair step:" : "Korjausvaihe:",
@@ -124,6 +126,7 @@
     "Your files are encrypted. There will be no way to get your data back after your password is reset. If you are not sure what to do, please contact your administrator before you continue. Do you really want to continue?" : "Tiedostosi on salattu. Niitä ei ole mahdollista palauttaa kun salasanasi on palautettu. Jos et ole varma mitä tehdä, ota yhteyttä ylläpitäjään ennen kuin jatkat. Oletko varma, että haluat jatkaa?",
     "I know what I'm doing" : "Tiedän mitä teen",
     "Resetting password" : "Salasanan palauttaminen",
+    "Install recommended apps" : "Asenna suositellut sovellukset",
     "Recommended apps" : "Suositellut sovellukset",
     "Loading apps …" : "Ladataan sovelluksia…",
     "Could not fetch list of apps from the App Store." : "Sovelluskaupasta ei voitu noutaa listaa sovelluksista.",
@@ -143,8 +146,6 @@
     "Back" : "Takaisin",
     "Login form is disabled." : "Kirjautumislomake on poistettu käytöstä.",
     "Edit Profile" : "Muokkaa profiilia",
-    "You haven't added any info yet" : "Et ole lisännyt tietoja vielä",
-    "{user} hasn't added any info yet" : "{user} ei ole lisännyt tietoja vielä",
     "Reset search" : "Tyhjennä haku",
     "Search for {name} only" : "Etsi vain {name}",
     "No results for {query}" : "Ei tuloksia haulle {query}",
@@ -279,9 +280,6 @@
     "You chose SQLite as database." : "Valitsit SQLiten tietokannaksi.",
     "SQLite should only be used for minimal and development instances. For production we recommend a different database backend." : "SQLite tulisi ottaa käyttöön vain minimaalisissa kehitysympäristöissä. Tuotantokäyttöön suosittelemme toista tietokantaratkaisua.",
     "If you use clients for file syncing, the use of SQLite is highly discouraged." : "Jos käytät asiakasohjelmia tiedostojen synkronointiin, SQLiten käyttöä ei suositella.",
-    "Install recommended apps" : "Asenna suositellut sovellukset",
-    "Finish setup" : "Viimeistele asennus",
-    "Finishing …" : "Viimeistellään…",
     "Need help?" : "Tarvitsetko apua?",
     "See the documentation" : "Tutustu ohjeisiin",
     "It looks like you are trying to reinstall your Nextcloud. However the file CAN_INSTALL is missing from your config directory. Please create the file CAN_INSTALL in your config folder to continue." : "Vaikuttaa siltä, että yrität Nextcloudin uudelleenasennusta. Tiedosto CAN_INSTALL puuttuu asetuskansiosta. Ole hyvä ja luo tiedosto CAN_INSTALL asetuskansioon jatkaaksesi.",
@@ -372,6 +370,8 @@
     "Password can not be changed. Please contact your administrator." : "Salasanan vaihtaminen ei onnistunut. Ota yhteys ylläpitäjään.",
     "Could not fetch list of apps from the app store." : "Ei voitu hakea sovelluskaupan listaa.",
     "Can't install this app because it is not compatible" : "Tätä sovellusta ei voi asentaa, koska se ei ole yhteensopiva",
-    "Can't install this app" : "Tätä sovellusta ei voi asentaa"
+    "Can't install this app" : "Tätä sovellusta ei voi asentaa",
+    "Finish setup" : "Viimeistele asennus",
+    "Finishing …" : "Viimeistellään…"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

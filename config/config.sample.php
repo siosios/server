@@ -354,6 +354,13 @@ $CONFIG = [
 'lost_password_link' => 'https://example.org/link/to/password/reset',
 
 /**
+ * URL to use as target for the logo link in the header (top-left logo)
+ *
+ * Defaults to the base URL of your Nextcloud instance
+ */
+'logo_url' => 'https://example.org',
+
+/**
  * Mail Parameters
  *
  * These configure the email settings for Nextcloud notifications and password
@@ -1572,7 +1579,7 @@ $CONFIG = [
  * Tables will be created with
  *  * character set: utf8mb4
  *  * collation:     utf8mb4_bin
- *  * row_format:    compressed
+ *  * row_format:    dynamic
  *
  * See:
  * https://dev.mysql.com/doc/refman/5.7/en/charset-unicode-utf8mb4.html
