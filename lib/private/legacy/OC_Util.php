@@ -580,7 +580,7 @@ class OC_Util {
 	/**
 	 * add a javascript file
 	 *
-	 * @deprecated 24.0.0
+	 * @deprecated 24.0.0 - Use \OCP\Util::addScript
 	 *
 	 * @param string $application application id
 	 * @param string|null $file filename
@@ -1130,11 +1130,12 @@ class OC_Util {
 	 * This function is used to sanitize HTML and should be applied on any
 	 * string or array of strings before displaying it on a web page.
 	 *
-	 * @param string|array $value
-	 * @return string|array an array of sanitized strings or a single sanitized string, depends on the input parameter.
+	 * @param string|string[] $value
+	 * @return string|string[] an array of sanitized strings or a single sanitized string, depends on the input parameter.
 	 */
 	public static function sanitizeHTML($value) {
 		if (is_array($value)) {
+			/** @var string[] $value */
 			$value = array_map(function ($value) {
 				return self::sanitizeHTML($value);
 			}, $value);
