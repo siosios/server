@@ -195,6 +195,14 @@
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						});
 					}
+					if (!data.wasEmailTestSuccessful) {
+						messages.push({
+							msg: t('core', 'You have not set or verified your email server configuration, yet. Please head over to the {mailSettingsStart}Basic settings{mailSettingsEnd} in order to set them. Afterwards, use the "Send email" button below the form to verify your settings.',)
+							.replace('{mailSettingsStart}', '<a href="' + OC.generateUrl('/settings/admin') + '">')
+							.replace('{mailSettingsEnd}', '</a>'),
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						});
+					}
 					if (!data.hasValidTransactionIsolationLevel) {
 						messages.push({
 							msg: t('core', 'Your database does not run with "READ COMMITTED" transaction isolation level. This can cause problems when multiple actions are executed in parallel.'),
@@ -514,6 +522,7 @@
 					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\LegacySSEKeyFormat', messages)
 					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\CheckUserCertificates', messages)
 					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\SupportedDatabase', messages)
+					OC.SetupChecks.addGenericSetupCheck(data, 'OCA\\Settings\\SetupChecks\\LdapInvalidUuids', messages)
 
 				} else {
 					messages.push({

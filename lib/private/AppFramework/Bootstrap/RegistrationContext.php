@@ -30,6 +30,10 @@ declare(strict_types=1);
 namespace OC\AppFramework\Bootstrap;
 
 use Closure;
+use OCP\Calendar\Resource\IBackend as IResourceBackend;
+use OCP\Calendar\Room\IBackend as IRoomBackend;
+use OCP\Talk\ITalkBackend;
+use RuntimeException;
 use function array_shift;
 use OC\Support\CrashReport\Registry;
 use OCP\AppFramework\App;
@@ -64,6 +68,15 @@ class RegistrationContext {
 
 	/** @var ServiceRegistration<ILinkAction>[] */
 	private $profileLinkActions = [];
+
+	/** @var null|ServiceRegistration<ITalkBackend> */
+	private $talkBackendRegistration = null;
+
+	/** @var ServiceRegistration<IResourceBackend>[] */
+	private $calendarResourceBackendRegistrations = [];
+
+	/** @var ServiceRegistration<IRoomBackend>[] */
+	private $calendarRoomBackendRegistrations = [];
 
 	/** @var ServiceFactoryRegistration[] */
 	private $services = [];
@@ -259,6 +272,27 @@ class RegistrationContext {
 					$actionClass
 				);
 			}
+
+			public function registerTalkBackend(string $backend): void {
+				$this->context->registerTalkBackend(
+					$this->appId,
+					$backend
+				);
+			}
+
+			public function registerCalendarResourceBackend(string $class): void {
+				$this->context->registerCalendarResourceBackend(
+					$this->appId,
+					$class
+				);
+			}
+
+			public function registerCalendarRoomBackend(string $class): void {
+				$this->context->registerCalendarRoomBackend(
+					$this->appId,
+					$class
+				);
+			}
 		};
 	}
 
@@ -347,6 +381,35 @@ class RegistrationContext {
 	 */
 	public function registerProfileLinkAction(string $appId, string $actionClass): void {
 		$this->profileLinkActions[] = new ServiceRegistration($appId, $actionClass);
+	}
+
+	/**
+	 * @psalm-param class-string<ITalkBackend> $backend
+	 */
+	public function registerTalkBackend(string $appId, string $backend) {
+		// Some safeguards for invalid registrations
+		if ($appId !== 'spreed') {
+			throw new RuntimeException("Only the Talk app is allowed to register a Talk backend");
+		}
+		if ($this->talkBackendRegistration !== null) {
+			throw new RuntimeException("There can only be one Talk backend");
+		}
+
+		$this->talkBackendRegistration = new ServiceRegistration($appId, $backend);
+	}
+
+	public function registerCalendarResourceBackend(string $appId, string $class) {
+		$this->calendarResourceBackendRegistrations[] = new ServiceRegistration(
+			$appId,
+			$class,
+		);
+	}
+
+	public function registerCalendarRoomBackend(string $appId, string $class) {
+		$this->calendarRoomBackendRegistrations[] = new ServiceRegistration(
+			$appId,
+			$class,
+		);
 	}
 
 	/**
@@ -599,5 +662,29 @@ class RegistrationContext {
 	 */
 	public function getProfileLinkActions(): array {
 		return $this->profileLinkActions;
+	}
+
+	/**
+	 * @return ServiceRegistration|null
+	 * @psalm-return ServiceRegistration<ITalkBackend>|null
+	 */
+	public function getTalkBackendRegistration(): ?ServiceRegistration {
+		return $this->talkBackendRegistration;
+	}
+
+	/**
+	 * @return ServiceRegistration[]
+	 * @psalm-return ServiceRegistration<IResourceBackend>[]
+	 */
+	public function getCalendarResourceBackendRegistrations(): array {
+		return $this->calendarResourceBackendRegistrations;
+	}
+
+	/**
+	 * @return ServiceRegistration[]
+	 * @psalm-return ServiceRegistration<IRoomBackend>[]
+	 */
+	public function getCalendarRoomBackendRegistrations(): array {
+		return $this->calendarRoomBackendRegistrations;
 	}
 }
