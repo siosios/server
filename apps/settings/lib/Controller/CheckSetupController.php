@@ -198,19 +198,24 @@ class CheckSetupController extends Controller {
 	}
 
 	/**
-	 * Checks if the Nextcloud server can connect to a specific URL using both HTTPS and HTTP
+	 * Checks if the Nextcloud server can connect to a specific URL
+	 * @param string $site site domain or full URL with http/https protocol
 	 * @return bool
 	 */
-	private function isSiteReachable($sitename) {
-		$httpSiteName = 'http://' . $sitename . '/';
-		$httpsSiteName = 'https://' . $sitename . '/';
-
+	private function isSiteReachable(string $site): bool {
 		try {
 			$client = $this->clientService->newClient();
-			$client->get($httpSiteName);
-			$client->get($httpsSiteName);
+			// if there is no protocol, test http:// AND https://
+			if (preg_match('/^https?:\/\//', $site) !== 1) {
+				$httpSite = 'http://' . $site . '/';
+				$client->get($httpSite);
+				$httpsSite = 'https://' . $site . '/';
+				$client->get($httpsSite);
+			} else {
+				$client->get($site);
+			}
 		} catch (\Exception $e) {
-			$this->logger->error('Cannot connect to: ' . $sitename, [
+			$this->logger->error('Cannot connect to: ' . $site, [
 				'app' => 'internet_connection_check',
 				'exception' => $e,
 			]);
@@ -469,7 +474,7 @@ Raw output
 	protected function getOpcacheSetupRecommendations(): array {
 		// If the module is not loaded, return directly to skip inapplicable checks
 		if (!extension_loaded('Zend OPcache')) {
-			return ['The PHP OPcache module is not loaded. <a target="_blank" rel="noreferrer noopener" class="external" href="' . $this->urlGenerator->linkToDocs('admin-php-opcache') . '">For better performance it is recommended</a> to load it into your PHP installation.'];
+			return ['The PHP OPcache module is not loaded. For better performance it is recommended to load it into your PHP installation.'];
 		}
 
 		$recommendations = [];
@@ -477,7 +482,7 @@ Raw output
 		// Check whether Nextcloud is allowed to use the OPcache API
 		$isPermitted = true;
 		$permittedPath = $this->iniGetWrapper->getString('opcache.restrict_api');
-		if (isset($permittedPath) && $permittedPath !== '' && !str_starts_with(\OC::$SERVERROOT, $permittedPath)) {
+		if (isset($permittedPath) && $permittedPath !== '' && !str_starts_with(\OC::$SERVERROOT, rtrim($permittedPath, '/'))) {
 			$isPermitted = false;
 		}
 

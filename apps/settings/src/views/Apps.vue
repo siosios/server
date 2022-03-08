@@ -75,8 +75,8 @@
 				</template>
 
 				<AppNavigationItem id="app-developer-docs"
-					href="settings.developerDocumentation"
-					:title="t('settings', 'Developer documentation') + ' ↗'" />
+					:title="t('settings', 'Developer documentation') + ' ↗'"
+					@click="openDeveloperDocumentation" />
 			</template>
 		</AppNavigation>
 
@@ -302,6 +302,9 @@ export default {
 				params: { category: this.category },
 			})
 		},
+		openDeveloperDocumentation() {
+			window.open(this.settings.developerDocumentation)
+		},
 	},
 }
 </script>
@@ -361,19 +364,25 @@ export default {
 	}
 }
 
-	.app-sidebar-tabs__release {
-		h2 {
-			border-bottom: 1px solid var(--color-border);
-		}
+// Align the appNavigation toggle with the apps header toolbar
+.app-navigation::v-deep button.app-navigation-toggle {
+	top: 8px;
+	right: -8px;
+}
 
-		// Overwrite changelog heading styles
-		::v-deep {
-			h3 {
-				font-size: 20px;
-			}
-			h4 {
-				font-size: 17px;
-			}
+.app-sidebar-tabs__release {
+	h2 {
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	// Overwrite changelog heading styles
+	::v-deep {
+		h3 {
+			font-size: 20px;
+		}
+		h4 {
+			font-size: 17px;
 		}
 	}
+}
 </style>

@@ -6,6 +6,7 @@ declare(strict_types=1);
  * @copyright 2022 Christopher Ng <chrng8@gmail.com>
  *
  * @author Christopher Ng <chrng8@gmail.com>
+ * @author Côme Chilliet <come.chilliet@nextcloud.com>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -55,4 +56,21 @@ interface IMigrator {
 		IImportSource $importSource,
 		OutputInterface $output
 	): void;
+
+	/**
+	 * Returns the version of the export format for this migrator
+	 *
+	 * @since 24.0.0
+	 */
+	public function getVersion(): int;
+
+	/**
+	 * Checks whether it is able to import a version of the export format for this migrator
+	 * Use $importSource->getMigratorVersion(static::class) to get the version from the archive
+	 *
+	 * @since 24.0.0
+	 */
+	public function canImport(
+		IImportSource $importSource
+	): bool;
 }

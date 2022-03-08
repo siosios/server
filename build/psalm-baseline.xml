@@ -243,11 +243,6 @@
       <code>$principal</code>
     </ParamNameMismatch>
   </file>
-  <file src="apps/dav/lib/CalDAV/InvitationResponse/InvitationResponseServer.php">
-    <UndefinedPropertyAssignment occurrences="1">
-      <code>$acl-&gt;defaultUsernamePath</code>
-    </UndefinedPropertyAssignment>
-  </file>
   <file src="apps/dav/lib/CalDAV/Plugin.php">
     <ImplementedReturnTypeMismatch occurrences="1">
       <code>string|null</code>
@@ -755,12 +750,6 @@
     <UndefinedFunction occurrences="1">
       <code>\Sabre\Uri\split($sabreNode-&gt;getPath())</code>
     </UndefinedFunction>
-    <UndefinedPropertyAssignment occurrences="1">
-      <code>$server-&gt;xml-&gt;namespacesMap</code>
-    </UndefinedPropertyAssignment>
-    <UndefinedPropertyFetch occurrences="1">
-      <code>$server-&gt;xml-&gt;namespacesMap</code>
-    </UndefinedPropertyFetch>
   </file>
   <file src="apps/dav/lib/Connector/Sabre/TagsPlugin.php">
     <NullableReturnStatement occurrences="1">
@@ -939,9 +928,6 @@
       <code>dispatch</code>
       <code>dispatch</code>
     </TooManyArguments>
-    <UndefinedPropertyAssignment occurrences="1">
-      <code>$acl-&gt;defaultUsernamePath</code>
-    </UndefinedPropertyAssignment>
   </file>
   <file src="apps/dav/lib/SystemTag/SystemTagsByIdCollection.php">
     <InvalidNullableReturnType occurrences="1">
@@ -1937,9 +1923,6 @@
     </InvalidScope>
   </file>
   <file src="apps/user_ldap/lib/Access.php">
-    <InvalidArgument occurrences="1">
-      <code>$record</code>
-    </InvalidArgument>
     <InvalidReturnStatement occurrences="2">
       <code>$uuid</code>
       <code>$values</code>
@@ -2716,21 +2699,9 @@
     </UndefinedMethod>
   </file>
   <file src="lib/private/Archive/TAR.php">
-    <InvalidReturnStatement occurrences="1">
-      <code>$this-&gt;tar-&gt;extractInString($path)</code>
-    </InvalidReturnStatement>
-    <InvalidReturnType occurrences="1">
-      <code>string</code>
-    </InvalidReturnType>
     <UndefinedDocblockClass occurrences="1">
       <code>$this-&gt;tar-&gt;extractInString($path)</code>
     </UndefinedDocblockClass>
-  </file>
-  <file src="lib/private/Archive/ZIP.php">
-    <ImplementedReturnTypeMismatch occurrences="2">
-      <code>boolean|null</code>
-      <code>boolean|null</code>
-    </ImplementedReturnTypeMismatch>
   </file>
   <file src="lib/private/Authentication/LoginCredentials/Store.php">
     <RedundantCondition occurrences="1">
@@ -2831,23 +2802,12 @@
       <code>$userId</code>
     </ParamNameMismatch>
   </file>
-  <file src="lib/private/Avatar/GuestAvatar.php">
-    <ImplementedReturnTypeMismatch occurrences="1">
-      <code>InMemoryFile</code>
-    </ImplementedReturnTypeMismatch>
-  </file>
   <file src="lib/private/Avatar/PlaceholderAvatar.php">
-    <ImplementedReturnTypeMismatch occurrences="1">
-      <code>ISimpleFile</code>
-    </ImplementedReturnTypeMismatch>
     <InvalidScalarArgument occurrences="1">
       <code>$data</code>
     </InvalidScalarArgument>
   </file>
   <file src="lib/private/Avatar/UserAvatar.php">
-    <ImplementedReturnTypeMismatch occurrences="1">
-      <code>ISimpleFile</code>
-    </ImplementedReturnTypeMismatch>
     <InvalidScalarArgument occurrences="3">
       <code>$data</code>
       <code>$data</code>
@@ -3516,9 +3476,6 @@
     <ImplementedReturnTypeMismatch occurrences="1">
       <code>string|false</code>
     </ImplementedReturnTypeMismatch>
-    <InvalidNullableReturnType occurrences="1">
-      <code>array</code>
-    </InvalidNullableReturnType>
     <InvalidOperand occurrences="2">
       <code>!$permissions</code>
       <code>$this-&gt;copyFromStorage($sourceStorage, $sourceInternalPath . '/' . $file, $targetInternalPath . '/' . $file)</code>
@@ -3533,9 +3490,6 @@
       <code>$storage-&gt;updater</code>
       <code>$storage-&gt;updater</code>
     </NoInterfaceProperties>
-    <NullableReturnStatement occurrences="1">
-      <code>$this-&gt;getStorageCache()-&gt;getAvailability()</code>
-    </NullableReturnStatement>
   </file>
   <file src="lib/private/Files/Storage/DAV.php">
     <InvalidClass occurrences="2">
@@ -4115,26 +4069,12 @@
       <code>$provider-&gt;getThumbnail($file, $maxWidth, $maxHeight)</code>
     </NullableReturnStatement>
   </file>
-  <file src="lib/private/Preview/Movie.php">
-    <InvalidScalarArgument occurrences="2">
-      <code>$second</code>
-      <code>$second</code>
-    </InvalidScalarArgument>
-  </file>
   <file src="lib/private/Preview/ProviderV1Adapter.php">
     <InvalidReturnStatement occurrences="1">
       <code>$thumbnail === false ? null: $thumbnail</code>
     </InvalidReturnStatement>
     <InvalidReturnType occurrences="1">
       <code>?IImage</code>
-    </InvalidReturnType>
-  </file>
-  <file src="lib/private/Preview/ProviderV2.php">
-    <InvalidReturnStatement occurrences="1">
-      <code>$file-&gt;getStorage()-&gt;getLocalFile($file-&gt;getInternalPath())</code>
-    </InvalidReturnStatement>
-    <InvalidReturnType occurrences="1">
-      <code>string</code>
     </InvalidReturnType>
   </file>
   <file src="lib/private/RedisFactory.php">
@@ -4640,9 +4580,6 @@
     <InvalidNullableReturnType occurrences="1">
       <code>getBackend</code>
     </InvalidNullableReturnType>
-    <InvalidPropertyAssignmentValue occurrences="1">
-      <code>$this-&gt;config-&gt;getUserValue($uid, 'login', 'lastLogin', 0)</code>
-    </InvalidPropertyAssignmentValue>
     <InvalidReturnStatement occurrences="1">
       <code>$image</code>
     </InvalidReturnStatement>

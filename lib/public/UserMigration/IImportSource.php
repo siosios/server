@@ -54,6 +54,16 @@ interface IImportSource {
 	public function getFileAsStream(string $path);
 
 	/**
+	 * List the files of a folder
+	 *
+	 * @param string $path Full path to the folder in the export archive.
+	 * @return array The list of files.
+	 *
+	 * @since 24.0.0
+	 */
+	public function getFolderListing(string $path): array;
+
+	/**
 	 * Copy files from the export to a Folder
 	 *
 	 * Folder $destination folder to copy into
@@ -62,6 +72,22 @@ interface IImportSource {
 	 * @since 24.0.0
 	 */
 	public function copyToFolder(Folder $destination, string $sourcePath): bool;
+
+	/**
+	 * @return array<string,int> Migrators and their versions from the export archive.
+	 *
+	 * @since 24.0.0
+	 */
+	public function getMigratorVersions(): array;
+
+	/**
+	 * @return ?int Version for this migrator from the export archive. Null means migrator missing.
+	 *
+	 * @param class-string<IMigrator> $migrator
+	 *
+	 * @since 24.0.0
+	 */
+	public function getMigratorVersion(string $migrator): ?int;
 
 	/**
 	 * Called after import is complete
