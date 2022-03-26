@@ -225,7 +225,7 @@
 					}
 					if (data.suggestedOverwriteCliURL !== '') {
 						messages.push({
-							msg: t('core', 'If your installation is not installed at the root of the domain and uses system cron, there can be issues with the URL generation. To avoid these problems, please set the "overwrite.cli.url" option in your config.php file to the webroot path of your installation (suggestion: "{suggestedOverwriteCliURL}")', {suggestedOverwriteCliURL: data.suggestedOverwriteCliURL}),
+							msg: t('core', 'Please make sure to set the "overwrite.cli.url" option in your config.php file to the URL that your users mainly use to access this Nextcloud. Suggestion: "{suggestedOverwriteCliURL}". Otherwise there might be problems with the URL generation via cron. (It is possible though that the suggested URL is not the URL that your users mainly use to access this Nextcloud. Best is to double check this in any case.)', {suggestedOverwriteCliURL: data.suggestedOverwriteCliURL}),
 							type: OC.SetupChecks.MESSAGE_TYPE_WARNING
 						});
 					}
@@ -420,6 +420,24 @@
 								'core',
 								'This instance is missing some recommended PHP modules. For improved performance and better compatibility it is highly recommended to install them.'
 							) + "<ul><code>" + listOfRecommendedPHPModules + "</code></ul>",
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						})
+					}
+					if (!data.isImagickEnabled) {
+						messages.push({
+							msg: t(
+								'core',
+								'The PHP module "imagick" is not enabled although the theming app is. For favicon generation to work correctly, you need to install and enable this module.'
+							),
+							type: OC.SetupChecks.MESSAGE_TYPE_INFO
+						})
+					}
+					if (!data.areWebauthnExtensionsEnabled) {
+						messages.push({
+							msg: t(
+								'core',
+								'The PHP modules "gmp" and/or "bcmath" are not enabled. If you use WebAuthn passwordless authentication, these modules are required.'
+							),
 							type: OC.SetupChecks.MESSAGE_TYPE_INFO
 						})
 					}
@@ -640,7 +658,6 @@
 					'X-Content-Type-Options': ['nosniff'],
 					'X-Robots-Tag': ['none'],
 					'X-Frame-Options': ['SAMEORIGIN', 'DENY'],
-					'X-Download-Options': ['noopen'],
 					'X-Permitted-Cross-Domain-Policies': ['none'],
 				};
 				for (var header in securityHeaders) {

@@ -34,7 +34,7 @@
 				@keyup.space="showModal">{{ t('dashboard', 'Customize') }}</a>
 		</div>
 
-		<Modal v-if="modal" size="normal" @close="closeModal">
+		<Modal v-if="modal" size="large" @close="closeModal">
 			<div class="modal__content">
 				<h3>{{ t('dashboard', 'Edit widgets') }}</h3>
 				<ol class="panels">
@@ -543,11 +543,15 @@ export default {
 	background-color: var(--color-background-translucent);
 	-webkit-backdrop-filter: var(--background-blur);
 	backdrop-filter: var(--background-blur);
+	opacity: 1 !important;
 
 	&:hover,
 	&:focus,
 	&:active {
-		background-color: var(--color-background-hover);
+		background-color: var(--color-background-hover)!important;
+	}
+	&:focus-visible {
+		border: 2px solid var(--color-main-text)!important;
 	}
 }
 
@@ -564,20 +568,30 @@ export default {
 	}
 	li {
 		label {
+			position: relative;
 			display: block;
-			padding: 48px 8px 16px 8px;
+			padding: 48px 16px 14px 16px;
 			margin: 8px;
-			width: 160px;
+			width: 140px;
 			background-color: var(--color-background-hover);
 			border: 2px solid var(--color-main-background);
 			border-radius: var(--border-radius-large);
 			background-size: 24px;
-			background-position: center 16px;
-			text-align: center;
+			background-position: 16px 16px;
+			text-align: left;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 
 			&:hover {
 				border-color: var(--color-primary);
 			}
+		}
+
+		input[type='checkbox'].checkbox + label:before {
+			position: absolute;
+			right: 12px;
+			top: 16px;
 		}
 
 		input:focus + label {

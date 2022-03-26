@@ -60,6 +60,7 @@ use OC\App\AppStore\Fetcher\AppFetcher;
 use OC\App\AppStore\Fetcher\CategoryFetcher;
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\AppFramework\Http\Request;
+use OC\AppFramework\Http\RequestId;
 use OC\AppFramework\Utility\TimeFactory;
 use OC\Authentication\Events\LoginFailed;
 use OC\Authentication\Listeners\LoginFailedListener;
@@ -95,6 +96,7 @@ use OC\Files\Mount\RootMountProvider;
 use OC\Files\Node\HookConnector;
 use OC\Files\Node\LazyRoot;
 use OC\Files\Node\Root;
+use OC\Files\SetupManager;
 use OC\Files\Storage\StorageFactory;
 use OC\Files\Template\TemplateManager;
 use OC\Files\Type\Loader;
@@ -143,6 +145,7 @@ use OC\Share20\ProviderFactory;
 use OC\Share20\ShareHelper;
 use OC\SystemTag\ManagerFactory as SystemTagManagerFactory;
 use OC\Tagging\TagMapper;
+use OC\Talk\Broker;
 use OC\Template\JSCombiner;
 use OCA\Theming\ImageManager;
 use OCA\Theming\ThemingDefaults;
@@ -203,6 +206,7 @@ use OCP\ILogger;
 use OCP\INavigationManager;
 use OCP\IPreview;
 use OCP\IRequest;
+use OCP\IRequestId;
 use OCP\ISearch;
 use OCP\IServerContainer;
 use OCP\ISession;
@@ -216,6 +220,7 @@ use OCP\L10N\IFactory;
 use OCP\LDAP\ILDAPProvider;
 use OCP\LDAP\ILDAPProviderFactory;
 use OCP\Lock\ILockingProvider;
+use OCP\Lockdown\ILockdownManager;
 use OCP\Log\ILogFactory;
 use OCP\Mail\IMailer;
 use OCP\Remote\Api\IApiFactory;
@@ -232,6 +237,7 @@ use OCP\Security\VerificationToken\IVerificationToken;
 use OCP\Share\IShareHelper;
 use OCP\SystemTag\ISystemTagManager;
 use OCP\SystemTag\ISystemTagObjectMapper;
+use OCP\Talk\IBroker;
 use OCP\User\Events\BeforePasswordUpdatedEvent;
 use OCP\User\Events\BeforeUserCreatedEvent;
 use OCP\User\Events\BeforeUserDeletedEvent;
@@ -423,7 +429,8 @@ class Server extends ServerContainer implements IServerContainer {
 				null,
 				$c->get(IUserMountCache::class),
 				$this->get(ILogger::class),
-				$this->get(IUserManager::class)
+				$this->get(IUserManager::class),
+				$this->get(IEventDispatcher::class),
 			);
 
 			$previewConnector = new \OC\Preview\WatcherConnector(
@@ -1028,7 +1035,7 @@ class Server extends ServerContainer implements IServerContainer {
 						: '',
 					'urlParams' => $urlParams,
 				],
-				$this->get(ISecureRandom::class),
+				$this->get(IRequestId::class),
 				$this->get(\OCP\IConfig::class),
 				$this->get(CsrfTokenManager::class),
 				$stream
@@ -1036,6 +1043,13 @@ class Server extends ServerContainer implements IServerContainer {
 		});
 		/** @deprecated 19.0.0 */
 		$this->registerDeprecatedAlias('Request', \OCP\IRequest::class);
+
+		$this->registerService(IRequestId::class, function (ContainerInterface $c): IRequestId {
+			return new RequestId(
+				$_SERVER['UNIQUE_ID'] ?? '',
+				$this->get(ISecureRandom::class)
+			);
+		});
 
 		$this->registerService(IMailer::class, function (Server $c) {
 			return new Mailer(
@@ -1091,6 +1105,11 @@ class Server extends ServerContainer implements IServerContainer {
 		/** @deprecated 19.0.0 */
 		$this->registerDeprecatedAlias('LockingProvider', ILockingProvider::class);
 
+		$this->registerAlias(ILockdownManager::class, 'LockdownManager');
+		$this->registerService(SetupManager::class, function ($c) {
+			// create the setupmanager through the mount manager to resolve the cyclic dependency
+			return $c->get(\OC\Files\Mount\Manager::class)->getSetupManager();
+		});
 		$this->registerAlias(IMountManager::class, \OC\Files\Mount\Manager::class);
 		/** @deprecated 19.0.0 */
 		$this->registerDeprecatedAlias('MountManager', IMountManager::class);
@@ -1204,7 +1223,7 @@ class Server extends ServerContainer implements IServerContainer {
 		$this->registerAlias(EventDispatcherInterface::class, \OC\EventDispatcher\SymfonyAdapter::class);
 
 		$this->registerService('CryptoWrapper', function (ContainerInterface $c) {
-			// FIXME: Instantiiated here due to cyclic dependency
+			// FIXME: Instantiated here due to cyclic dependency
 			$request = new Request(
 				[
 					'get' => $_GET,
@@ -1217,7 +1236,7 @@ class Server extends ServerContainer implements IServerContainer {
 						? $_SERVER['REQUEST_METHOD']
 						: null,
 				],
-				$c->get(ISecureRandom::class),
+				$c->get(IRequestId::class),
 				$c->get(\OCP\IConfig::class)
 			);
 
@@ -1391,6 +1410,8 @@ class Server extends ServerContainer implements IServerContainer {
 		$this->registerAlias(IInitialStateService::class, InitialStateService::class);
 
 		$this->registerAlias(\OCP\UserStatus\IManager::class, \OC\UserStatus\Manager::class);
+
+		$this->registerAlias(IBroker::class, Broker::class);
 
 		$this->connectDispatcher();
 	}

@@ -61,6 +61,8 @@ class CertificateManager implements ICertificateManager {
 	/** @var ISecureRandom */
 	protected $random;
 
+	private ?string $bundlePath = null;
+
 	/**
 	 * @param \OC\Files\View $view relative to data/
 	 * @param IConfig $config
@@ -190,6 +192,7 @@ class CertificateManager implements ICertificateManager {
 		if (!Filesystem::isValidPath($name) or Filesystem::isFileBlacklisted($name)) {
 			throw new \Exception('Filename is not valid');
 		}
+		$this->bundlePath = null;
 
 		$dir = $this->getPathToCertificates() . 'uploads/';
 		if (!$this->view->file_exists($dir)) {
@@ -217,6 +220,8 @@ class CertificateManager implements ICertificateManager {
 		if (!Filesystem::isValidPath($name)) {
 			return false;
 		}
+		$this->bundlePath = null;
+
 		$path = $this->getPathToCertificates() . 'uploads/';
 		if ($this->view->file_exists($path . $name)) {
 			$this->view->unlink($path . $name);
@@ -240,15 +245,22 @@ class CertificateManager implements ICertificateManager {
 	 * @return string
 	 */
 	public function getAbsoluteBundlePath(): string {
-		if (!$this->hasCertificates()) {
+		try {
+			if (!$this->bundlePath) {
+				if (!$this->hasCertificates()) {
+					$this->bundlePath = \OC::$SERVERROOT . '/resources/config/ca-bundle.crt';
+				}
+
+				if ($this->needsRebundling()) {
+					$this->createCertificateBundle();
+				}
+
+				$this->bundlePath = $this->view->getLocalFile($this->getCertificateBundle());
+			}
+			return $this->bundlePath;
+		} catch (\Exception $e) {
 			return \OC::$SERVERROOT . '/resources/config/ca-bundle.crt';
 		}
-
-		if ($this->needsRebundling()) {
-			$this->createCertificateBundle();
-		}
-
-		return $this->view->getLocalFile($this->getCertificateBundle());
 	}
 
 	/**

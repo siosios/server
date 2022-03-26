@@ -1107,6 +1107,14 @@ $CONFIG = [
 	'--convert-to png --outdir ',
 
 /**
+ * Set the URL of the Imaginary service to send image previews to.
+ * Also requires the OC\Preview\Imaginary provider to be enabled.
+ *
+ * See https://github.com/h2non/imaginary
+ */
+'preview_imaginary_url' => 'http://previews_hpb:8088/',
+
+/**
  * Only register providers that have been explicitly enabled
  *
  * The following providers are disabled by default due to performance or privacy
@@ -2097,4 +2105,11 @@ $CONFIG = [
  * Limit diagnostics event logging to events longer than the configured threshold in ms
  */
 'diagnostics.logging.threshold' => 0,
+
+/**
+ * Enable profile globally
+ *
+ * Defaults to ``true``
+ */
+'profile.enabled' => true,
 ];

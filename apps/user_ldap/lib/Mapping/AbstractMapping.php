@@ -280,12 +280,9 @@ abstract class AbstractMapping {
 	/**
 	 * Searches mapped names by the giving string in the name column
 	 *
-	 * @param string $search
-	 * @param string $prefixMatch
-	 * @param string $postfixMatch
 	 * @return string[]
 	 */
-	public function getNamesBySearch($search, $prefixMatch = "", $postfixMatch = "") {
+	public function getNamesBySearch(string $search, string $prefixMatch = "", string $postfixMatch = ""): array {
 		$statement = $this->dbc->prepare('
 			SELECT `owncloud_name`
 			FROM `' . $this->getTableName() . '`
@@ -438,14 +435,14 @@ abstract class AbstractMapping {
 		$picker = $this->dbc->getQueryBuilder();
 		$picker->select('owncloud_name')
 			->from($this->getTableName());
-		$cursor = $picker->execute();
+		$cursor = $picker->executeQuery();
 		$result = true;
-		while ($id = $cursor->fetchOne()) {
+		while (($id = $cursor->fetchOne()) !== false) {
 			$preCallback($id);
 			if ($isUnmapped = $this->unmap($id)) {
 				$postCallback($id);
 			}
-			$result &= $isUnmapped;
+			$result = $result && $isUnmapped;
 		}
 		$cursor->closeCursor();
 		return $result;

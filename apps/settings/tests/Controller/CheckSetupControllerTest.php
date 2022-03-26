@@ -197,6 +197,8 @@ class CheckSetupControllerTest extends TestCase {
 				'isSqliteUsed',
 				'isPHPMailerUsed',
 				'getAppDirsWithDifferentOwner',
+				'isImagickEnabled',
+				'areWebauthnExtensionsEnabled',
 				'hasRecommendedPHPModules',
 				'hasBigIntConversionPendingColumns',
 				'isMysqlUsedWithoutUTF8MB4',
@@ -550,6 +552,16 @@ class CheckSetupControllerTest extends TestCase {
 
 		$this->checkSetupController
 			->expects($this->once())
+			->method('isImagickEnabled')
+			->willReturn(false);
+
+		$this->checkSetupController
+			->expects($this->once())
+			->method('areWebauthnExtensionsEnabled')
+			->willReturn(false);
+
+		$this->checkSetupController
+			->expects($this->once())
 			->method('hasRecommendedPHPModules')
 			->willReturn([]);
 
@@ -642,6 +654,8 @@ class CheckSetupControllerTest extends TestCase {
 				'missingColumns' => [],
 				'isMemoryLimitSufficient' => true,
 				'appDirsWithDifferentOwner' => [],
+				'isImagickEnabled' => false,
+				'areWebauthnExtensionsEnabled' => false,
 				'recommendedPHPModules' => [],
 				'pendingBigIntConversionColumns' => [],
 				'isMysqlUsedWithoutUTF8MB4' => false,

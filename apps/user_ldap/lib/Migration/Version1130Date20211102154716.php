@@ -67,7 +67,7 @@ class Version1130Date20211102154716 extends SimpleMigrationStep {
 			// ldap_group_mapping_backup table. No need to recreate, but it
 			// should be empty.
 			// TRUNCATE is not available from Query Builder, but faster than DELETE FROM.
-			$sql = $this->dbc->getDatabasePlatform()->getTruncateTableSQL('ldap_group_mapping_backup', false);
+			$sql = $this->dbc->getDatabasePlatform()->getTruncateTableSQL('`*PREFIX*ldap_group_mapping_backup`', false);
 			$this->dbc->executeStatement($sql);
 		}
 	}
@@ -259,7 +259,7 @@ class Version1130Date20211102154716 extends SimpleMigrationStep {
 
 		$result = $select->executeQuery();
 		$idList = [];
-		while ($id = $result->fetchOne()) {
+		while (($id = $result->fetchOne()) !== false) {
 			$idList[] = $id;
 		}
 		$result->closeCursor();
@@ -278,7 +278,7 @@ class Version1130Date20211102154716 extends SimpleMigrationStep {
 			->having($select->expr()->gt($select->func()->count('owncloud_name'), $select->createNamedParameter(1)));
 
 		$result = $select->executeQuery();
-		while ($uuid = $result->fetchOne()) {
+		while (($uuid = $result->fetchOne()) !== false) {
 			yield $uuid;
 		}
 		$result->closeCursor();

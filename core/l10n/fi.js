@@ -147,6 +147,7 @@ OC.L10N.register(
     "Back" : "Takaisin",
     "Login form is disabled." : "Kirjautumislomake on poistettu käytöstä.",
     "Edit Profile" : "Muokkaa profiilia",
+    "You have not added any info yet" : "Et ole lisännyt tietoja vielä",
     "Reset search" : "Tyhjennä haku",
     "Search for {name} only" : "Etsi vain {name}",
     "No results for {query}" : "Ei tuloksia haulle {query}",
@@ -281,6 +282,8 @@ OC.L10N.register(
     "You chose SQLite as database." : "Valitsit SQLiten tietokannaksi.",
     "SQLite should only be used for minimal and development instances. For production we recommend a different database backend." : "SQLite tulisi ottaa käyttöön vain minimaalisissa kehitysympäristöissä. Tuotantokäyttöön suosittelemme toista tietokantaratkaisua.",
     "If you use clients for file syncing, the use of SQLite is highly discouraged." : "Jos käytät asiakasohjelmia tiedostojen synkronointiin, SQLiten käyttöä ei suositella.",
+    "Install" : "Asenna",
+    "Installing …" : "Asennetaan …",
     "Need help?" : "Tarvitsetko apua?",
     "See the documentation" : "Tutustu ohjeisiin",
     "It looks like you are trying to reinstall your Nextcloud. However the file CAN_INSTALL is missing from your config directory. Please create the file CAN_INSTALL in your config folder to continue." : "Vaikuttaa siltä, että yrität Nextcloudin uudelleenasennusta. Tiedosto CAN_INSTALL puuttuu asetuskansiosta. Ole hyvä ja luo tiedosto CAN_INSTALL asetuskansioon jatkaaksesi.",
@@ -368,7 +371,6 @@ OC.L10N.register(
     "Password can not be changed. Please contact your administrator." : "Salasanan vaihtaminen ei onnistunut. Ota yhteys ylläpitäjään.",
     "Could not fetch list of apps from the app store." : "Ei voitu hakea sovelluskaupan listaa.",
     "Can't install this app because it is not compatible" : "Tätä sovellusta ei voi asentaa, koska se ei ole yhteensopiva",
-    "Can't install this app" : "Tätä sovellusta ei voi asentaa",
-    "The PHP OPcache module is not properly configured:" : "PHP:n OPcache-moduulia ei ole määritetty oikein:"
+    "Can't install this app" : "Tätä sovellusta ei voi asentaa"
 },
 "nplurals=2; plural=(n != 1);");
