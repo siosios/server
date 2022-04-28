@@ -32,6 +32,7 @@ use OC\NotSquareException;
 use OCA\Settings\AppInfo\Application;
 use OCP\Accounts\IAccountManager;
 use OCP\IAvatarManager;
+use OCP\IL10N;
 use OCP\IUser;
 use OCP\UserMigration\IExportDestination;
 use OCP\UserMigration\IImportSource;
@@ -49,6 +50,8 @@ class AccountMigrator implements IMigrator {
 
 	private IAvatarManager $avatarManager;
 
+	private IL10N $l10n;
+
 	private const PATH_ROOT = Application::APP_ID . '/';
 
 	private const PATH_ACCOUNT_FILE = AccountMigrator::PATH_ROOT . 'account.json';
@@ -57,10 +60,12 @@ class AccountMigrator implements IMigrator {
 
 	public function __construct(
 		IAccountManager $accountManager,
-		IAvatarManager $avatarManager
+		IAvatarManager $avatarManager,
+		IL10N $l10n
 	) {
 		$this->accountManager = $accountManager;
 		$this->avatarManager = $avatarManager;
+		$this->l10n = $l10n;
 	}
 
 	/**
@@ -69,20 +74,24 @@ class AccountMigrator implements IMigrator {
 	public function export(IUser $user, IExportDestination $exportDestination, OutputInterface $output): void {
 		$output->writeln('Exporting account information in ' . AccountMigrator::PATH_ACCOUNT_FILE . '…');
 
-		$account = $this->accountManager->getAccount($user);
-		if ($exportDestination->addFileContents(AccountMigrator::PATH_ACCOUNT_FILE, json_encode($account)) === false) {
-			throw new AccountMigratorException('Could not export account information');
+		try {
+			$account = $this->accountManager->getAccount($user);
+			$exportDestination->addFileContents(AccountMigrator::PATH_ACCOUNT_FILE, json_encode($account));
+		} catch (Throwable $e) {
+			throw new AccountMigratorException('Could not export account information', 0, $e);
 		}
 
-		$avatar = $this->avatarManager->getAvatar($user->getUID());
-		if ($avatar->isCustomAvatar()) {
-			$avatarFile = $avatar->getFile(-1);
-			$exportPath = AccountMigrator::PATH_ROOT . AccountMigrator::AVATAR_BASENAME . '.' . $avatarFile->getExtension();
+		try {
+			$avatar = $this->avatarManager->getAvatar($user->getUID());
+			if ($avatar->isCustomAvatar()) {
+				$avatarFile = $avatar->getFile(-1);
+				$exportPath = AccountMigrator::PATH_ROOT . AccountMigrator::AVATAR_BASENAME . '.' . $avatarFile->getExtension();
 
-			$output->writeln('Exporting avatar to ' . $exportPath . '…');
-			if ($exportDestination->addFileAsStream($exportPath, $avatarFile->read()) === false) {
-				throw new AccountMigratorException('Could not export avatar');
+				$output->writeln('Exporting avatar to ' . $exportPath . '…');
+				$exportDestination->addFileAsStream($exportPath, $avatarFile->read());
 			}
+		} catch (Throwable $e) {
+			throw new AccountMigratorException('Could not export avatar', 0, $e);
 		}
 	}
 
@@ -90,7 +99,7 @@ class AccountMigrator implements IMigrator {
 	 * {@inheritDoc}
 	 */
 	public function import(IUser $user, IImportSource $importSource, OutputInterface $output): void {
-		if ($importSource->getMigratorVersion(static::class) === null) {
+		if ($importSource->getMigratorVersion($this->getId()) === null) {
 			$output->writeln('No version for ' . static::class . ', skipping import…');
 			return;
 		}
@@ -136,5 +145,26 @@ class AccountMigrator implements IMigrator {
 				throw new AccountMigratorException('Failed to import avatar', 0, $e);
 			}
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function getId(): string {
+		return 'account';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function getDisplayName(): string {
+		return $this->l10n->t('Profile information');
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function getDescription(): string {
+		return $this->l10n->t('Profile picture, full name, email, phone number, address, website, Twitter, organisation, role, headline, biography, and whether your profile is enabled');
 	}
 }

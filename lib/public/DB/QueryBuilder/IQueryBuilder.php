@@ -65,6 +65,11 @@ interface IQueryBuilder {
 	public const PARAM_DATE = 'datetime';
 
 	/**
+	 * @since 24.0.0
+	 */
+	public const PARAM_JSON = 'json';
+
+	/**
 	 * @since 9.0.0
 	 */
 	public const PARAM_INT_ARRAY = Connection::PARAM_INT_ARRAY;
@@ -829,7 +834,7 @@ interface IQueryBuilder {
 	/**
 	 * Adds an ordering to the query results.
 	 *
-	 * @param string $sort The ordering expression.
+	 * @param string|ILiteral|IParameter|IQueryFunction $sort The ordering expression.
 	 * @param string $order The ordering direction.
 	 *
 	 * @return $this This QueryBuilder instance.

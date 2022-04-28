@@ -116,15 +116,16 @@ class OC_Util {
 	}
 
 	/**
-	 * check if a password is required for each public link
+	 * Check if a password is required for each public link
 	 *
+	 * @param bool $checkGroupMembership Check group membership exclusion
 	 * @return boolean
 	 * @suppress PhanDeprecatedFunction
 	 */
-	public static function isPublicLinkPasswordRequired() {
+	public static function isPublicLinkPasswordRequired(bool $checkGroupMembership = true) {
 		/** @var IManager $shareManager */
 		$shareManager = \OC::$server->get(IManager::class);
-		return $shareManager->shareApiLinkEnforcePassword();
+		return $shareManager->shareApiLinkEnforcePassword($checkGroupMembership);
 	}
 
 	/**
@@ -733,6 +734,15 @@ class OC_Util {
 				'error' => $l->t('PHP modules have been installed, but they are still listed as missing?'),
 				'hint' => $l->t('Please ask your server administrator to restart the web server.')
 			];
+		}
+
+		foreach (['secret', 'instanceid', 'passwordsalt'] as $requiredConfig) {
+			if ($config->getValue($requiredConfig, '') === '' && !\OC::$CLI && $config->getValue('installed', false)) {
+				$errors[] = [
+					'error' => $l->t('The required %s config variable is not configured in the config.php file.', [$requiredConfig]),
+					'hint' => $l->t('Please ask your server administrator to check the Nextcloud configuration.')
+				];
+			}
 		}
 
 		$errors = array_merge($errors, self::checkDatabaseVersion());

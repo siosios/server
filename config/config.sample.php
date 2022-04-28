@@ -962,6 +962,14 @@ $CONFIG = [
  */
 'log_rotate_size' => 100 * 1024 * 1024,
 
+/**
+ * Enable built-in profiler. Helpful when trying to debug performance
+ * issues.
+ *
+ * Note that this has a performance impact and shouldn't be enabled
+ * on production.
+ */
+'profiler' => false,
 
 /**
  * Alternate Code Locations
@@ -1459,6 +1467,8 @@ $CONFIG = [
 		'region' => 'RegionOne',
 		// The Identity / Keystone endpoint
 		'url' => 'http://8.21.28.222:5000/v2.0',
+		// uploadPartSize: size of the uploaded chunks, defaults to 524288000
+		'uploadPartSize' => 524288000,
 		// required on dev-/trystack
 		'tenantName' => 'facebook100000123456789',
 		// dev-/trystack uses swift by default, the lib defaults to 'cloudFiles'
@@ -1533,6 +1543,18 @@ $CONFIG = [
 'sharing.managerFactory' => '\OC\Share20\ProviderFactory',
 
 /**
+ * Enables expiration for link share passwords sent by email (sharebymail).
+ * The passwords will expire after the configured interval, the users can
+ * still request a new one in the public link page.
+ */
+'sharing.enable_mail_link_password_expiration' => false,
+
+/**
+ * Expiration interval for passwords, in seconds.
+ */
+'sharing.mail_link_password_expiration_interval' => 3600,
+
+/**
  * Define max number of results returned by the search for auto-completion of
  * users, groups, etc. The value must not be lower than 0 (for unlimited).
  *
@@ -1571,6 +1593,11 @@ $CONFIG = [
  * Set to false to stop sending a mail when users receive a share
  */
 'sharing.enable_share_mail' => true,
+
+/**
+ * Set to true to enable the feature to add exceptions for share password enforcement
+ */
+'sharing.allow_disabled_password_enforcement_groups' => false,
 
 /**
  * Set to true to always transfer incoming shares by default
@@ -2112,4 +2139,15 @@ $CONFIG = [
  * Defaults to ``true``
  */
 'profile.enabled' => true,
+
+/**
+ * Enable file metadata collection
+ *
+ * This is helpful for the mobile clients and will enable a few optimization in
+ * the future for the preview generation.
+ *
+ * Note that when enabled, this data will be stored in the database and might increase
+ * the database storage.
+ */
+'enable_file_metadata' => true,
 ];

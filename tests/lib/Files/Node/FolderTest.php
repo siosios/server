@@ -38,8 +38,12 @@ use OCP\Files\Storage;
  * @package Test\Files\Node
  */
 class FolderTest extends NodeTest {
-	protected function createTestNode($root, $view, $path) {
-		return new Folder($root, $view, $path);
+	protected function createTestNode($root, $view, $path, array $data = [], $internalPath = '', $storage = null) {
+		if ($data || $internalPath || $storage) {
+			return new Folder($root, $view, $path, $this->getFileInfo($data, $internalPath, $storage));
+		} else {
+			return new Folder($root, $view, $path);
+		}
 	}
 
 	protected function getNodeClass() {
@@ -74,6 +78,8 @@ class FolderTest extends NodeTest {
 				new FileInfo('/bar/foo/asd', null, 'foo/asd', ['fileid' => 2, 'path' => '/bar/foo/asd', 'name' => 'asd', 'size' => 100, 'mtime' => 50, 'mimetype' => 'text/plain'], null),
 				new FileInfo('/bar/foo/qwerty', null, 'foo/qwerty', ['fileid' => 3, 'path' => '/bar/foo/qwerty', 'name' => 'qwerty', 'size' => 200, 'mtime' => 55, 'mimetype' => 'httpd/unix-directory'], null),
 			]);
+		$view->method('getFileInfo')
+			->willReturn($this->createMock(FileInfo::class));
 
 		$node = new Folder($root, $view, '/bar/foo');
 		$children = $node->getDirectoryListing();
@@ -512,9 +518,8 @@ class FolderTest extends NodeTest {
 			->with('/bar/foo')
 			->willReturn([]);
 
-		$root->method('getMount')
-			->with('/bar/foo')
-			->willReturn($mount);
+		$manager->method('getMountsByMountProvider')
+			->willReturn([$mount]);
 
 		$node = new Folder($root, $view, '/bar/foo');
 		$result = $node->getById(1);
@@ -559,9 +564,8 @@ class FolderTest extends NodeTest {
 			->with(1)
 			->willReturn($fileInfo);
 
-		$root->method('getMount')
-			->with('/bar')
-			->willReturn($mount);
+		$manager->method('getMountsByMountProvider')
+			->willReturn([$mount]);
 
 		$node = new Folder($root, $view, '/bar');
 		$result = $node->getById(1);
@@ -606,13 +610,8 @@ class FolderTest extends NodeTest {
 			->with(1)
 			->willReturn($fileInfo);
 
-		$root->method('getMountsIn')
-			->with('/bar/foo')
-			->willReturn([]);
-
-		$root->method('getMount')
-			->with('/bar/foo')
-			->willReturn($mount);
+		$manager->method('getMountsByMountProvider')
+			->willReturn([$mount]);
 
 		$node = new Folder($root, $view, '/bar/foo');
 		$result = $node->getById(1);
@@ -661,13 +660,8 @@ class FolderTest extends NodeTest {
 			->with(1)
 			->willReturn($fileInfo);
 
-		$root->method('getMountsIn')
-			->with('/bar/foo')
-			->willReturn([$mount2]);
-
-		$root->method('getMount')
-			->with('/bar/foo')
-			->willReturn($mount1);
+		$manager->method('getMountsByMountProvider')
+			->willReturn([$mount1, $mount2]);
 
 		$node = new Folder($root, $view, '/bar/foo');
 		$result = $node->getById(1);

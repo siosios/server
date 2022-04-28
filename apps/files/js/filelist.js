@@ -791,7 +791,7 @@
 			if (e && _.isString(e.dir)) {
 				var currentDir = this.getCurrentDirectory();
 				// this._currentDirectory is NULL when fileList is first initialised
-				if( (this._currentDirectory || this.$el.find('#dir').val()) && currentDir === e.dir) {
+				if(this._currentDirectory && currentDir === e.dir) {
 					return;
 				}
 				this.changeDirectory(e.dir, true, true, undefined, true);
@@ -1781,7 +1781,8 @@
 			td.append(linkElem);
 			tr.append(td);
 
-			var isDarkTheme = OCA.Accessibility && OCA.Accessibility.theme === 'dark'
+			var enabledThemes = window.OCA?.Theming?.enabledThemes || []
+			var isDarkTheme = enabledThemes.join('').indexOf('dark') !== -1
 
 			try {
 				var maxContrastHex = window.getComputedStyle(document.documentElement)

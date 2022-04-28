@@ -622,9 +622,6 @@
     <UndefinedFunction occurrences="1">
       <code>\Sabre\Uri\split($sourceNode-&gt;getPath())</code>
     </UndefinedFunction>
-    <UndefinedInterfaceMethod occurrences="1">
-      <code>$info</code>
-    </UndefinedInterfaceMethod>
   </file>
   <file src="apps/dav/lib/Connector/Sabre/FakeLockerPlugin.php">
     <TooManyArguments occurrences="1">
@@ -829,10 +826,6 @@
     </InvalidScalarArgument>
   </file>
   <file src="apps/dav/lib/Files/FileSearchBackend.php">
-    <InvalidArgument occurrences="2">
-      <code>$argument</code>
-      <code>$operator-&gt;arguments</code>
-    </InvalidArgument>
     <InvalidReturnStatement occurrences="1">
       <code>$value</code>
     </InvalidReturnStatement>
@@ -842,9 +835,6 @@
     <ParamNameMismatch occurrences="1">
       <code>$search</code>
     </ParamNameMismatch>
-    <UndefinedDocblockClass occurrences="1">
-      <code>$operator-&gt;arguments[0]-&gt;name</code>
-    </UndefinedDocblockClass>
     <UndefinedPropertyFetch occurrences="1">
       <code>$operator-&gt;arguments[0]-&gt;name</code>
     </UndefinedPropertyFetch>
@@ -858,9 +848,7 @@
     <InvalidReturnStatement occurrences="1">
       <code>$this-&gt;backend-&gt;getArbiterPath()</code>
     </InvalidReturnStatement>
-    <InvalidReturnType occurrences="1">
-      <code>isValidScope</code>
-    </InvalidReturnType>
+    <InvalidReturnType occurrences="1"/>
   </file>
   <file src="apps/dav/lib/Files/RootCollection.php">
     <UndefinedFunction occurrences="1">
@@ -1023,7 +1011,6 @@
     </RedundantCondition>
     <TypeDoesNotContainType occurrences="2">
       <code>get_class($res) === 'OpenSSLAsymmetricKey'</code>
-      <code>is_object($res)</code>
     </TypeDoesNotContainType>
   </file>
   <file src="apps/encryption/lib/Crypto/EncryptAll.php">
@@ -1230,11 +1217,6 @@
     <InvalidArgument occurrences="1">
       <code>$legacyEvent</code>
     </InvalidArgument>
-  </file>
-  <file src="apps/files/lib/Service/DirectEditingService.php">
-    <UndefinedInterfaceMethod occurrences="1">
-      <code>getEditors</code>
-    </UndefinedInterfaceMethod>
   </file>
   <file src="apps/files/lib/Service/OwnershipTransferService.php">
     <InvalidIterator occurrences="1">
@@ -2373,11 +2355,6 @@
       <code>$this</code>
     </InvalidScope>
   </file>
-  <file src="core/templates/layout.guest.php">
-    <InvalidArgument occurrences="1">
-      <code>false</code>
-    </InvalidArgument>
-  </file>
   <file src="core/templates/layout.public.php">
     <UndefinedInterfaceMethod occurrences="1">
       <code>getIcon</code>
@@ -2637,11 +2614,6 @@
     <MoreSpecificImplementedParamType occurrences="1">
       <code>$default</code>
     </MoreSpecificImplementedParamType>
-  </file>
-  <file src="lib/private/AppFramework/Utility/SimpleContainer.php">
-    <UndefinedMethod occurrences="1">
-      <code>getName</code>
-    </UndefinedMethod>
   </file>
   <file src="lib/private/Archive/TAR.php">
     <UndefinedDocblockClass occurrences="1">
@@ -3222,7 +3194,6 @@
     </UndefinedThisPropertyAssignment>
   </file>
   <file src="lib/private/Files/Node/Folder.php">
-    <InvalidArgument occurrences="1"/>
     <InvalidReturnStatement occurrences="1">
       <code>new NonExistingFolder($this-&gt;root, $this-&gt;view, $path)</code>
     </InvalidReturnStatement>
@@ -3678,11 +3649,7 @@
       <code>null</code>
       <code>null</code>
     </NullableReturnStatement>
-    <RedundantCondition occurrences="5">
-      <code>$result</code>
-      <code>$result &amp;&amp; in_array('delete', $hooks) and $result</code>
-      <code>Constants::PERMISSION_READ</code>
-      <code>Constants::PERMISSION_READ</code>
+    <RedundantCondition occurrences="1">
       <code>is_resource($source)</code>
     </RedundantCondition>
     <UndefinedDocblockClass occurrences="2">

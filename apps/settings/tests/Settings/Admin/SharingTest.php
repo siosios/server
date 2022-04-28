@@ -83,6 +83,8 @@ class SharingTest extends TestCase {
 				['core', 'shareapi_restrict_user_enumeration_to_group', 'no', 'no'],
 				['core', 'shareapi_restrict_user_enumeration_to_phone', 'no', 'no'],
 				['core', 'shareapi_restrict_user_enumeration_full_match', 'yes', 'yes'],
+				['core', 'shareapi_restrict_user_enumeration_full_match_userid', 'yes', 'yes'],
+				['core', 'shareapi_restrict_user_enumeration_full_match_ignore_second_display_name', 'no', 'no'],
 				['core', 'shareapi_enabled', 'yes', 'yes'],
 				['core', 'shareapi_default_expire_date', 'no', 'no'],
 				['core', 'shareapi_expire_after_n_days', '7', '7'],
@@ -116,6 +118,8 @@ class SharingTest extends TestCase {
 				'restrictUserEnumerationToGroup' => 'no',
 				'restrictUserEnumerationToPhone' => 'no',
 				'restrictUserEnumerationFullMatch' => 'yes',
+				'restrictUserEnumerationFullMatchUserId' => 'yes',
+				'restrictUserEnumerationFullMatchIgnoreSecondDisplayName' => 'no',
 				'enforceLinkPassword' => false,
 				'onlyShareWithGroupMembers' => false,
 				'shareAPIEnabled' => 'yes',
@@ -135,6 +139,8 @@ class SharingTest extends TestCase {
 				'shareRemoteExpireAfterNDays' => '7',
 				'shareRemoteEnforceExpireDate' => 'no',
 				'allowLinksExcludeGroups' => '',
+				'passwordExcludedGroups' => '',
+				'passwordExcludedGroupsFeatureEnabled' => false,
 			],
 			''
 		);
@@ -156,6 +162,8 @@ class SharingTest extends TestCase {
 				['core', 'shareapi_restrict_user_enumeration_to_group', 'no', 'no'],
 				['core', 'shareapi_restrict_user_enumeration_to_phone', 'no', 'no'],
 				['core', 'shareapi_restrict_user_enumeration_full_match', 'yes', 'yes'],
+				['core', 'shareapi_restrict_user_enumeration_full_match_userid', 'yes', 'yes'],
+				['core', 'shareapi_restrict_user_enumeration_full_match_ignore_second_display_name', 'no', 'no'],
 				['core', 'shareapi_enabled', 'yes', 'yes'],
 				['core', 'shareapi_default_expire_date', 'no', 'no'],
 				['core', 'shareapi_expire_after_n_days', '7', '7'],
@@ -189,6 +197,8 @@ class SharingTest extends TestCase {
 				'restrictUserEnumerationToGroup' => 'no',
 				'restrictUserEnumerationToPhone' => 'no',
 				'restrictUserEnumerationFullMatch' => 'yes',
+				'restrictUserEnumerationFullMatchUserId' => 'yes',
+				'restrictUserEnumerationFullMatchIgnoreSecondDisplayName' => 'no',
 				'enforceLinkPassword' => false,
 				'onlyShareWithGroupMembers' => false,
 				'shareAPIEnabled' => 'yes',
@@ -208,6 +218,8 @@ class SharingTest extends TestCase {
 				'shareRemoteExpireAfterNDays' => '7',
 				'shareRemoteEnforceExpireDate' => 'no',
 				'allowLinksExcludeGroups' => '',
+				'passwordExcludedGroups' => '',
+				'passwordExcludedGroupsFeatureEnabled' => false,
 			],
 			''
 		);

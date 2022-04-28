@@ -48,12 +48,17 @@ use OC\DB\MissingColumnInformation;
 use OC\DB\MissingIndexInformation;
 use OC\DB\MissingPrimaryKeyInformation;
 use OC\DB\SchemaWrapper;
+use OC\Metadata\FileEventListener;
 use OCP\AppFramework\App;
 use OCP\EventDispatcher\IEventDispatcher;
+use OCP\Files\Events\Node\NodeDeletedEvent;
+use OCP\Files\Events\Node\NodeWrittenEvent;
+use OCP\Files\Events\NodeRemovedFromCache;
 use OCP\IDBConnection;
 use OCP\User\Events\BeforeUserDeletedEvent;
 use OCP\User\Events\UserDeletedEvent;
 use OCP\Util;
+use OCP\IConfig;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
@@ -213,6 +218,13 @@ class Application extends App {
 						$subject->addHintForMissingSubject($table->getName(), 'direct_edit_timestamp');
 					}
 				}
+
+				if ($schema->hasTable('preferences')) {
+					$table = $schema->getTable('preferences');
+					if (!$table->hasIndex('preferences_app_key')) {
+						$subject->addHintForMissingSubject($table->getName(), 'preferences_app_key');
+					}
+				}
 			}
 		);
 
@@ -301,5 +313,15 @@ class Application extends App {
 		$eventDispatcher->addServiceListener(BeforeUserDeletedEvent::class, UserDeletedFilesCleanupListener::class);
 		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedFilesCleanupListener::class);
 		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedWebAuthnCleanupListener::class);
+
+		// Metadata
+		/** @var IConfig $config */
+		$config = $container->get(IConfig::class);
+		if ($config->getSystemValueBool('enable_file_metadata', true)) {
+			$eventDispatcher = \OC::$server->get(IEventDispatcher::class);
+			$eventDispatcher->addServiceListener(NodeDeletedEvent::class, FileEventListener::class);
+			$eventDispatcher->addServiceListener(NodeRemovedFromCache::class, FileEventListener::class);
+			$eventDispatcher->addServiceListener(NodeWrittenEvent::class, FileEventListener::class);
+		}
 	}
 }

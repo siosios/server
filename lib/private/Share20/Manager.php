@@ -57,7 +57,6 @@ use OCP\HintException;
 use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
@@ -75,6 +74,7 @@ use OCP\Share\IManager;
 use OCP\Share\IProviderFactory;
 use OCP\Share\IShare;
 use OCP\Share\IShareProvider;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
@@ -85,8 +85,7 @@ class Manager implements IManager {
 
 	/** @var IProviderFactory */
 	private $factory;
-	/** @var ILogger */
-	private $logger;
+	private LoggerInterface $logger;
 	/** @var IConfig */
 	private $config;
 	/** @var ISecureRandom */
@@ -125,7 +124,7 @@ class Manager implements IManager {
 	private $knownUserService;
 
 	public function __construct(
-		ILogger $logger,
+		LoggerInterface $logger,
 		IConfig $config,
 		ISecureRandom $secureRandom,
 		IHasher $hasher,
@@ -951,7 +950,7 @@ class Manager implements IManager {
 				return;
 			}
 		} catch (\Exception $e) {
-			$this->logger->logException($e, ['message' => 'Share notification mail could not be sent']);
+			$this->logger->error('Share notification mail could not be sent', ['exception' => $e]);
 		}
 	}
 
@@ -1149,11 +1148,18 @@ class Manager implements IManager {
 			// If a password is set. Hash it!
 			if (!empty($share->getPassword())) {
 				$share->setPassword($this->hasher->hash($share->getPassword()));
+				if ($share->getShareType() === IShare::TYPE_EMAIL) {
+					// Shares shared by email have temporary passwords
+					$this->setSharePasswordExpirationTime($share);
+				}
 
 				return true;
 			} else {
 				// Empty string and null are seen as NOT password protected
 				$share->setPassword(null);
+				if ($share->getShareType() === IShare::TYPE_EMAIL) {
+					$share->setPasswordExpirationTime(null);
+				}
 				return true;
 			}
 		} else {
@@ -1164,6 +1170,24 @@ class Manager implements IManager {
 
 		return false;
 	}
+
+	/**
+	 * Set the share's password expiration time
+	 */
+	private function setSharePasswordExpirationTime(IShare $share): void {
+		if (!$this->config->getSystemValue('sharing.enable_mail_link_password_expiration', false)) {
+			// Sets password expiration date to NULL
+			$share->setPasswordExpirationTime();
+			return;
+		}
+		// Sets password expiration date
+		$expirationTime = null;
+		$now = new \DateTime();
+		$expirationInterval = $this->config->getSystemValue('sharing.mail_link_password_expiration_interval', 3600);
+		$expirationTime = $now->add(new \DateInterval('PT' . $expirationInterval . 'S'));
+		$share->setPasswordExpirationTime($expirationTime);
+	}
+
 
 	/**
 	 * Delete all the children of this share
@@ -1553,6 +1577,12 @@ class Manager implements IManager {
 			return false;
 		}
 
+		// Makes sure password hasn't expired
+		$expirationTime = $share->getPasswordExpirationTime();
+		if ($expirationTime !== null && $expirationTime < new \DateTime()) {
+			return false;
+		}
+
 		$newHash = '';
 		if (!$this->hasher->verify($password, $share->getPassword(), $newHash)) {
 			return false;
@@ -1784,9 +1814,21 @@ class Manager implements IManager {
 	/**
 	 * Is password on public link requires
 	 *
+	 * @param bool Check group membership exclusion
 	 * @return bool
 	 */
-	public function shareApiLinkEnforcePassword() {
+	public function shareApiLinkEnforcePassword(bool $checkGroupMembership = true) {
+		$excludedGroups = $this->config->getAppValue('core', 'shareapi_enforce_links_password_excluded_groups', '');
+		if ($excludedGroups !== '' && $checkGroupMembership) {
+			$excludedGroups = json_decode($excludedGroups);
+			$user = $this->userSession->getUser();
+			if ($user) {
+				$userGroups = $this->groupManager->getUserGroupIds($user);
+				if ((bool)array_intersect($excludedGroups, $userGroups)) {
+					return false;
+				}
+			}
+		}
 		return $this->config->getAppValue('core', 'shareapi_enforce_links_password', 'no') === 'yes';
 	}
 

@@ -1,5 +1,5 @@
 window.addEventListener('DOMContentLoaded', () => {
-	$('#excludedGroups,#linksExcludedGroups').each((index, element) => {
+	$('#excludedGroups,#linksExcludedGroups,#passwordsExcludedGroups').each(function(index, element) {
 		OC.Settings.setupGroupsSelect($(element))
 		$(element).change((ev) => {
 			let groups = ev.val || []
@@ -93,6 +93,10 @@ window.addEventListener('DOMContentLoaded', () => {
 		$('#setDefaultRemoteExpireDate').toggleClass('hidden', !this.checked)
 	})
 
+	$('#enforceLinkPassword').change(function() {
+		$('#selectPasswordsExcludedGroups').toggleClass('hidden', !this.checked)
+	})
+
 	$('#publicShareDisclaimer').change(function() {
 		$('#publicShareDisclaimerText').toggleClass('hidden', !this.checked)
 		if (!this.checked) {
@@ -149,6 +153,11 @@ window.addEventListener('DOMContentLoaded', () => {
 		$('#shareapi_restrict_user_enumeration_to_group_setting').toggleClass('hidden', !this.checked)
 		$('#shareapi_restrict_user_enumeration_to_phone_setting').toggleClass('hidden', !this.checked)
 		$('#shareapi_restrict_user_enumeration_combinewarning_setting').toggleClass('hidden', !this.checked)
+	})
+
+	$('#shareapi_restrict_user_enumeration_full_match').on('change', function() {
+		$('#shareapi_restrict_user_enumeration_full_match_userid_setting').toggleClass('hidden', !this.checked)
+		$('#shareapi_restrict_user_enumeration_full_match_ignore_second_display_name_setting').toggleClass('hidden', !this.checked)
 	})
 
 	$('#allowLinks').change(function() {

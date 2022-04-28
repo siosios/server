@@ -120,6 +120,18 @@
 } ?> />
 			<label for="enforceLinkPassword"><?php p($l->t('Enforce password protection'));?></label><br/>
 
+<?php if ($_['passwordExcludedGroupsFeatureEnabled']) { ?>
+			<div id="selectPasswordsExcludedGroups" class="indent <?php if (!$_['enforceLinkPassword']) { p('hidden'); } ?>">
+				<div class="indent">
+					<label for="shareapi_enforce_links_password_excluded_groups"><?php p($l->t('Exclude groups from password requirements:'));?>
+					<br />
+					<input name="shareapi_enforce_links_password_excluded_groups" id="passwordsExcludedGroups" value="<?php p($_['passwordExcludedGroups']) ?>" style="width: 400px" class="noJSAutoUpdate"/>
+				</div>
+			</div>
+<?php } ?>
+
+			<input type="checkbox" name="shareapi_default_expire_date" id="shareapiDefaultExpireDate" class="checkbox" value="1" <?php if ($_['shareDefaultExpireDateSet'] === 'yes') { print_unescaped('checked="checked"'); } ?> />
+
 			<input type="checkbox" name="shareapi_default_expire_date" id="shareapiDefaultExpireDate" class="checkbox"
 				   value="1" <?php if ($_['shareDefaultExpireDateSet'] === 'yes') {
 	print_unescaped('checked="checked"');
@@ -233,7 +245,25 @@
 					<?php if ($_['restrictUserEnumerationFullMatch'] === 'yes') {
 	print_unescaped('checked="checked"');
 } ?> />
-			<label for="shareapi_restrict_user_enumeration_full_match"><?php p($l->t('Allow username autocompletion when entering the full name or email address (ignoring missing phonebook match and being in the same group)'));?></label><br />
+			<label for="shareapi_restrict_user_enumeration_full_match"><?php p($l->t('Allow autocompletion when entering the full name or email address (ignoring missing phonebook match and being in the same group)'));?></label><br />
+		</p>
+		<p id="shareapi_restrict_user_enumeration_full_match_userid_setting" class="double-indent <?php if ($_['shareAPIEnabled'] === 'no' || $_['restrictUserEnumerationFullMatch'] === 'no') {
+	p('hidden');
+}?>">
+			<input type="checkbox" name="shareapi_restrict_user_enumeration_full_match_userid" value="1" id="shareapi_restrict_user_enumeration_full_match_userid" class="checkbox"
+					<?php if ($_['restrictUserEnumerationFullMatchUserId'] === 'yes') {
+	print_unescaped('checked="checked"');
+} ?> />
+			<label for="shareapi_restrict_user_enumeration_full_match_userid"><?php p($l->t('Match username when restricting to full match'));?></label><br />
+		</p>
+		<p id="shareapi_restrict_user_enumeration_full_match_ignore_second_display_name_setting" class="double-indent <?php if ($_['shareAPIEnabled'] === 'no' || $_['restrictUserEnumerationFullMatch'] === 'no') {
+	p('hidden');
+}?>">
+			<input type="checkbox" name="shareapi_restrict_user_enumeration_full_match_ignore_second_display_name" value="1" id="shareapi_restrict_user_enumeration_full_match_ignore_second_display_name" class="checkbox"
+					<?php if ($_['restrictUserEnumerationFullMatchIgnoreSecondDisplayName'] === 'yes') {
+	print_unescaped('checked="checked"');
+} ?> />
+			<label for="shareapi_restrict_user_enumeration_full_match_ignore_second_display_name"><?php p($l->t('Ignore second display name in parentheses if any (example: "First display name (second ignored display name)")'));?></label><br />
 		</p>
 
 		<p>

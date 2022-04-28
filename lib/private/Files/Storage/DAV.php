@@ -275,6 +275,7 @@ class DAV extends Common {
 						'{http://open-collaboration-services.org/ns}share-permissions',
 						'{DAV:}resourcetype',
 						'{DAV:}getetag',
+						'{DAV:}quota-available-bytes',
 					]
 				);
 				$this->statCache->set($path, $response);
@@ -428,8 +429,7 @@ class DAV extends Common {
 		$this->init();
 		$path = $this->cleanPath($path);
 		try {
-			// TODO: cacheable ?
-			$response = $this->client->propfind($this->encodePath($path), ['{DAV:}quota-available-bytes']);
+			$response = $this->propfind($path);
 			if ($response === false) {
 				return FileInfo::SPACE_UNKNOWN;
 			}
@@ -587,8 +587,8 @@ class DAV extends Common {
 				return false;
 			}
 			return [
-				'mtime' => strtotime($response['{DAV:}getlastmodified']),
-				'size' => (int)isset($response['{DAV:}getcontentlength']) ? $response['{DAV:}getcontentlength'] : 0,
+				'mtime' => isset($response['{DAV:}getlastmodified']) ? strtotime($response['{DAV:}getlastmodified']) : null,
+				'size' => (int)($response['{DAV:}getcontentlength'] ?? 0),
 			];
 		} catch (\Exception $e) {
 			$this->convertException($e, $path);
@@ -804,9 +804,12 @@ class DAV extends Common {
 				} else {
 					return false;
 				}
-			} else {
+			} elseif (isset($response['{DAV:}getlastmodified'])) {
 				$remoteMtime = strtotime($response['{DAV:}getlastmodified']);
 				return $remoteMtime > $time;
+			} else {
+				// neither `getetag` nor `getlastmodified` is set
+				return false;
 			}
 		} catch (ClientHttpException $e) {
 			if ($e->getHttpStatus() === 405) {

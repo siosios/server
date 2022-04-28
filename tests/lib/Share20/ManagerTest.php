@@ -41,7 +41,6 @@ use OCP\IConfig;
 use OCP\IGroup;
 use OCP\IGroupManager;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\IServerContainer;
 use OCP\IURLGenerator;
 use OCP\IUser;
@@ -60,6 +59,7 @@ use OCP\Share\IShare;
 use OCP\Share\IShareProvider;
 use PHPUnit\Framework\MockObject\MockBuilder;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
@@ -73,7 +73,7 @@ class ManagerTest extends \Test\TestCase {
 
 	/** @var Manager */
 	protected $manager;
-	/** @var ILogger|MockObject */
+	/** @var LoggerInterface|MockObject */
 	protected $logger;
 	/** @var IConfig|MockObject */
 	protected $config;
@@ -113,7 +113,7 @@ class ManagerTest extends \Test\TestCase {
 	protected $knownUserService;
 
 	protected function setUp(): void {
-		$this->logger = $this->createMock(ILogger::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 		$this->config = $this->createMock(IConfig::class);
 		$this->secureRandom = $this->createMock(ISecureRandom::class);
 		$this->hasher = $this->createMock(IHasher::class);
@@ -505,14 +505,46 @@ class ManagerTest extends \Test\TestCase {
 		$this->expectExceptionMessage('Passwords are enforced for link and mail shares');
 
 		$this->config->method('getAppValue')->willReturnMap([
+			['core', 'shareapi_enforce_links_password_excluded_groups', '', ''],
 			['core', 'shareapi_enforce_links_password', 'no', 'yes'],
 		]);
 
 		self::invokePrivate($this->manager, 'verifyPassword', [null]);
 	}
 
+	public function testVerifyPasswordNotEnforcedGroup() {
+		$this->config->method('getAppValue')->willReturnMap([
+			['core', 'shareapi_enforce_links_password_excluded_groups', '', '["admin"]'],
+			['core', 'shareapi_enforce_links_password', 'no', 'yes'],
+		]);
+
+		// Create admin user
+		$user = $this->createMock(IUser::class);
+		$this->userSession->method('getUser')->willReturn($user);
+		$this->groupManager->method('getUserGroupIds')->with($user)->willReturn(['admin']);
+
+		$result = self::invokePrivate($this->manager, 'verifyPassword', [null]);
+		$this->assertNull($result);
+	}
+
+	public function testVerifyPasswordNotEnforcedMultipleGroups() {
+		$this->config->method('getAppValue')->willReturnMap([
+			['core', 'shareapi_enforce_links_password_excluded_groups', '', '["admin", "special"]'],
+			['core', 'shareapi_enforce_links_password', 'no', 'yes'],
+		]);
+
+		// Create admin user
+		$user = $this->createMock(IUser::class);
+		$this->userSession->method('getUser')->willReturn($user);
+		$this->groupManager->method('getUserGroupIds')->with($user)->willReturn(['special']);
+
+		$result = self::invokePrivate($this->manager, 'verifyPassword', [null]);
+		$this->assertNull($result);
+	}
+
 	public function testVerifyPasswordNull() {
 		$this->config->method('getAppValue')->willReturnMap([
+			['core', 'shareapi_enforce_links_password_excluded_groups', '', ''],
 			['core', 'shareapi_enforce_links_password', 'no', 'no'],
 		]);
 
@@ -522,6 +554,7 @@ class ManagerTest extends \Test\TestCase {
 
 	public function testVerifyPasswordHook() {
 		$this->config->method('getAppValue')->willReturnMap([
+			['core', 'shareapi_enforce_links_password_excluded_groups', '', ''],
 			['core', 'shareapi_enforce_links_password', 'no', 'no'],
 		]);
 
@@ -543,6 +576,7 @@ class ManagerTest extends \Test\TestCase {
 		$this->expectExceptionMessage('password not accepted');
 
 		$this->config->method('getAppValue')->willReturnMap([
+			['core', 'shareapi_enforce_links_password_excluded_groups', '', ''],
 			['core', 'shareapi_enforce_links_password', 'no', 'no'],
 		]);
 

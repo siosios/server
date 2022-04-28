@@ -47,7 +47,6 @@ use OC\Search\SearchQuery;
 use OC\Template\JSCombiner;
 use OC\Template\JSConfigHelper;
 use OC\Template\SCSSCacher;
-use OCP\App\IAppManager;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\Defaults;
 use OCP\IConfig;
@@ -55,8 +54,8 @@ use OCP\IInitialStateService;
 use OCP\INavigationManager;
 use OCP\IUserSession;
 use OCP\Support\Subscription\IRegistry;
-use OCP\UserStatus\IManager as IUserStatusManager;
 use OCP\Util;
+use Psr\Log\LoggerInterface;
 
 class TemplateLayout extends \OC_Template {
 	private static $versionHash = '';
@@ -82,6 +81,13 @@ class TemplateLayout extends \OC_Template {
 		/** @var IInitialStateService */
 		$this->initialState = \OC::$server->get(IInitialStateService::class);
 
+		// Add fallback theming variables if theming is disabled
+		if ($renderAs !== TemplateResponse::RENDER_AS_USER
+			|| !\OC::$server->getAppManager()->isEnabledForUser('theming')) {
+			// TODO cache generated default theme if enabled for fallback if server is erroring ?
+			Util::addStyle('theming', 'default');
+		}
+
 		// Decide which page we show
 		if ($renderAs === TemplateResponse::RENDER_AS_USER) {
 			/** @var INavigationManager */
@@ -95,8 +101,18 @@ class TemplateLayout extends \OC_Template {
 			}
 
 			$this->initialState->provideInitialState('core', 'active-app', $this->navigationManager->getActiveEntry());
-			$this->initialState->provideInitialState('unified-search', 'limit-default', SearchQuery::LIMIT_DEFAULT);
+			$this->initialState->provideInitialState('unified-search', 'limit-default', (int)$this->config->getAppValue('core', 'unified-search.limit-default', (string)SearchQuery::LIMIT_DEFAULT));
+			$this->initialState->provideInitialState('unified-search', 'min-search-length', (int)$this->config->getAppValue('core', 'unified-search.min-search-length', (string)2));
+			$this->initialState->provideInitialState('unified-search', 'live-search', $this->config->getAppValue('core', 'unified-search.live-search', 'yes') === 'yes');
 			Util::addScript('core', 'unified-search', 'core');
+
+			// Set body data-theme
+			$this->assign('enabledThemes', []);
+			if (\OC::$server->getAppManager()->isEnabledForUser('theming') && class_exists('\OCA\Theming\Service\ThemesService')) {
+				/** @var \OCA\Theming\Service\ThemesService */
+				$themesService = \OC::$server->get(\OCA\Theming\Service\ThemesService::class);
+				$this->assign('enabledThemes', $themesService->getEnabledThemes());
+			}
 
 			// set logo link target
 			$logoUrl = $this->config->getSystemValueString('logo_url', '');
@@ -139,28 +155,6 @@ class TemplateLayout extends \OC_Template {
 			} else {
 				$this->assign('userAvatarSet', true);
 				$this->assign('userAvatarVersion', $this->config->getUserValue(\OC_User::getUser(), 'avatar', 'version', 0));
-				if (\OC::$server->get(IAppManager::class)->isEnabledForUser('user_status')) {
-					$userStatusManager = \OC::$server->get(IUserStatusManager::class);
-					$userStatuses = $userStatusManager->getUserStatuses([$user->getUID()]);
-					if (array_key_exists($user->getUID(), $userStatuses)) {
-						$this->assign('userStatus', $userStatuses[$user->getUID()]);
-					} else {
-						$this->assign('userStatus', false);
-					}
-				} else {
-					$this->assign('userStatus', false);
-				}
-			}
-
-			// check if app menu icons should be inverted
-			try {
-				/** @var \OCA\Theming\Util $util */
-				$util = \OC::$server->query(\OCA\Theming\Util::class);
-				$this->assign('themingInvertMenu', $util->invertTextColor(\OC::$server->getThemingDefaults()->getColorPrimary()));
-			} catch (\OCP\AppFramework\QueryException $e) {
-				$this->assign('themingInvertMenu', false);
-			} catch (\OCP\AutoloadNotAllowedException $e) {
-				$this->assign('themingInvertMenu', false);
 			}
 		} elseif ($renderAs === TemplateResponse::RENDER_AS_ERROR) {
 			parent::__construct('core', 'layout.guest', '', false);
@@ -345,7 +339,7 @@ class TemplateLayout extends \OC_Template {
 		}
 
 		$locator = new \OC\Template\CSSResourceLocator(
-			\OC::$server->getLogger(),
+			\OC::$server->get(LoggerInterface::class),
 			$theme,
 			[ \OC::$SERVERROOT => \OC::$WEBROOT ],
 			[ \OC::$SERVERROOT => \OC::$WEBROOT ],
@@ -380,7 +374,7 @@ class TemplateLayout extends \OC_Template {
 		$theme = \OC_Util::getTheme();
 
 		$locator = new \OC\Template\JSResourceLocator(
-			\OC::$server->getLogger(),
+			\OC::$server->get(LoggerInterface::class),
 			$theme,
 			[ \OC::$SERVERROOT => \OC::$WEBROOT ],
 			[ \OC::$SERVERROOT => \OC::$WEBROOT ],

@@ -160,6 +160,7 @@ class ComposerStaticInitDAV
         'OCA\\DAV\\Connector\\Sabre\\BlockLegacyClientPlugin' => __DIR__ . '/..' . '/../lib/Connector/Sabre/BlockLegacyClientPlugin.php',
         'OCA\\DAV\\Connector\\Sabre\\CachingTree' => __DIR__ . '/..' . '/../lib/Connector/Sabre/CachingTree.php',
         'OCA\\DAV\\Connector\\Sabre\\ChecksumList' => __DIR__ . '/..' . '/../lib/Connector/Sabre/ChecksumList.php',
+        'OCA\\DAV\\Connector\\Sabre\\ChecksumUpdatePlugin' => __DIR__ . '/..' . '/../lib/Connector/Sabre/ChecksumUpdatePlugin.php',
         'OCA\\DAV\\Connector\\Sabre\\CommentPropertiesPlugin' => __DIR__ . '/..' . '/../lib/Connector/Sabre/CommentPropertiesPlugin.php',
         'OCA\\DAV\\Connector\\Sabre\\CopyEtagHeaderPlugin' => __DIR__ . '/..' . '/../lib/Connector/Sabre/CopyEtagHeaderPlugin.php',
         'OCA\\DAV\\Connector\\Sabre\\DavAclPlugin' => __DIR__ . '/..' . '/../lib/Connector/Sabre/DavAclPlugin.php',
@@ -287,6 +288,7 @@ class ComposerStaticInitDAV
         'OCA\\DAV\\Migration\\Version1016Date20201109085907' => __DIR__ . '/..' . '/../lib/Migration/Version1016Date20201109085907.php',
         'OCA\\DAV\\Migration\\Version1017Date20210216083742' => __DIR__ . '/..' . '/../lib/Migration/Version1017Date20210216083742.php',
         'OCA\\DAV\\Migration\\Version1018Date20210312100735' => __DIR__ . '/..' . '/../lib/Migration/Version1018Date20210312100735.php',
+        'OCA\\DAV\\Profiler\\ProfilerPlugin' => __DIR__ . '/..' . '/../lib/Profiler/ProfilerPlugin.php',
         'OCA\\DAV\\Provisioning\\Apple\\AppleProvisioningNode' => __DIR__ . '/..' . '/../lib/Provisioning/Apple/AppleProvisioningNode.php',
         'OCA\\DAV\\Provisioning\\Apple\\AppleProvisioningPlugin' => __DIR__ . '/..' . '/../lib/Provisioning/Apple/AppleProvisioningPlugin.php',
         'OCA\\DAV\\RootCollection' => __DIR__ . '/..' . '/../lib/RootCollection.php',
@@ -316,6 +318,9 @@ class ComposerStaticInitDAV
         'OCA\\DAV\\Upload\\UploadHome' => __DIR__ . '/..' . '/../lib/Upload/UploadHome.php',
         'OCA\\DAV\\UserMigration\\CalendarMigrator' => __DIR__ . '/..' . '/../lib/UserMigration/CalendarMigrator.php',
         'OCA\\DAV\\UserMigration\\CalendarMigratorException' => __DIR__ . '/..' . '/../lib/UserMigration/CalendarMigratorException.php',
+        'OCA\\DAV\\UserMigration\\ContactsMigrator' => __DIR__ . '/..' . '/../lib/UserMigration/ContactsMigrator.php',
+        'OCA\\DAV\\UserMigration\\ContactsMigratorException' => __DIR__ . '/..' . '/../lib/UserMigration/ContactsMigratorException.php',
+        'OCA\\DAV\\UserMigration\\InvalidAddressBookException' => __DIR__ . '/..' . '/../lib/UserMigration/InvalidAddressBookException.php',
         'OCA\\DAV\\UserMigration\\InvalidCalendarException' => __DIR__ . '/..' . '/../lib/UserMigration/InvalidCalendarException.php',
     );
 
