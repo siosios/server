@@ -108,6 +108,11 @@ OC.L10N.register(
     "{actor} updated contact {card} in address book {addressbook}" : "{actor}がアドレス帳 {addressbook}の連絡先 {card}を更新しました",
     "You updated contact {card} in address book {addressbook}" : "アドレス帳 {addressbook}の連絡先 {card}を更新しました",
     "A <strong>contact</strong> or <strong>address book</strong> was modified" : "連絡先やアドレス帳が変更されたとき",
+    "File is not updatable: %1$s" : "ファイルが更新できません:%1$s",
+    "Could not write to final file, canceled by hook" : "最終ファイルへの書き込みができなかったため、フックによりキャンセルされた",
+    "Could not write file contents" : "ファイルの内容を書き込むことができませんでした",
+    "_%n byte_::_%n bytes_" : ["%n bytes"],
+    "Could not open file" : "ファイルを開くことができませんでした",
     "System is in maintenance mode." : "システムはメンテナンスモードです。",
     "Upgrade needed" : "アップグレードが必要です",
     "Your %s needs to be configured to use HTTPS in order to use CalDAV and CardDAV with iOS/macOS." : "iOS / macOSでCalDAVおよびCardDAVを使用するには、%sにHTTPSを設定する必要があります。",
@@ -148,7 +153,6 @@ OC.L10N.register(
     "Are you accepting the invitation?" : "招待を受け入れていますか？",
     "Tentative" : "暫定的",
     "Comment" : "コメント",
-    "Your attendance was updated successfully." : "出席は正常に更新されました。",
-    "Calendar and tasks" : "カレンダーとタスク"
+    "Your attendance was updated successfully." : "出席は正常に更新されました。"
 },
 "nplurals=1; plural=0;");

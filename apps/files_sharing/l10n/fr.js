@@ -124,6 +124,7 @@ OC.L10N.register(
     "Could not lock path" : "Impossible de verrouiller le chemin",
     "Wrong or no update parameter given" : "Mauvais ou aucun paramètre donné ",
     "Share must at least have READ or CREATE permissions" : "Le partage nécessite de disposer à minima des permissions de LECTURE et de CREATION",
+    "Share must have READ permission if UPDATE or DELETE permission is set" : "Le partage doit disposer de l'autorisation LECTURE si l'autorisation METTRE À JOUR ou SUPPRIMER est définie",
     "\"Sending the password by Nextcloud Talk\" for sharing a file or folder failed because Nextcloud Talk is not enabled." : "\"L'envoi du mot de passe par Nextcloud Talk\" pour partager un fichier a échoué car Nextcloud Talk n'est pas activé",
     "shared by %s" : "partagé par %s",
     "Download all files" : "Télécharger tous les fichiers",
@@ -250,10 +251,7 @@ OC.L10N.register(
     "By uploading files, you agree to the %1$sterms of service%2$s." : "En envoyant des fichiers, vous acceptez les %1$sconditions d'utilisation%2$s.",
     "Add to your Nextcloud" : "Ajouter à votre Nextcloud",
     "Wrong path, file/folder doesn't exist" : "Mauvais chemin, Le fichier/dossier n'existe pas",
-    "invalid permissions" : "permissions invalides",
-    "Can't change permissions for public share links" : "Impossible de changer les permissions pour les liens de partage public",
-    "Sharing sending the password by Nextcloud Talk failed because Nextcloud Talk is not enabled" : "Le partage de l'envoi du mot de passe par Nextcloud Talk a échoué parce que Nextcloud Talk n'est pas activé.",
-    "Download %s" : "Télécharger %s",
-    "Cannot change permissions for public share links" : "Impossible de changer les autorisations pour les liens publics partagés"
+    "Cannot change permissions for public share links" : "Impossible de changer les autorisations pour les liens publics partagés",
+    "Sharing sending the password by Nextcloud Talk failed because Nextcloud Talk is not enabled" : "Le partage de l'envoi du mot de passe par Nextcloud Talk a échoué parce que Nextcloud Talk n'est pas activé."
 },
 "nplurals=2; plural=(n > 1);");
