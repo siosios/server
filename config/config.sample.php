@@ -1791,7 +1791,7 @@ $CONFIG = [
 
 /**
  * Enforce the user theme. This will disable the user theming settings
- * This must be a valid ITheme ID. 
+ * This must be a valid ITheme ID.
  * E.g. light, dark, highcontrast, dark-highcontrast...
  */
 'enforce_theme' => '',
@@ -2146,6 +2146,8 @@ $CONFIG = [
 
 /**
  * Limit diagnostics event logging to events longer than the configured threshold in ms
+ *
+ * when set to 0 no diagnostics events will be logged
  */
 'diagnostics.logging.threshold' => 0,
 
@@ -2166,4 +2168,18 @@ $CONFIG = [
  * the database storage.
  */
 'enable_file_metadata' => true,
+
+/**
+ * Allows to override the default scopes for Account data.
+ * The list of overridable properties and valid values for scopes are in
+ * OCP\Accounts\IAccountManager. Values added here are merged with
+ * default values, which are in OC\Accounts\AccountManager
+ *
+ * For instance, if the phone property should default to the private scope
+ * instead of the local one:
+ * [
+ *   \OCP\Accounts\IAccountManager::PROPERTY_PHONE => \OCP\Accounts\IAccountManager::SCOPE_PRIVATE
+ * ]
+ */
+'account_manager.default_property_scope' => []
 ];
