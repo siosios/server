@@ -6,6 +6,10 @@ namespace Composer\Autoload;
 
 class ComposerStaticInit749170dad3f5e7f9ca158f5a9f04f6a2
 {
+    public static $files = array (
+        '03ae51fe9694f2f597f918142c49ff7a' => __DIR__ . '/../../..' . '/lib/public/Log/functions.php',
+    );
+
     public static $prefixLengthsPsr4 = array (
         'O' => 
         array (
@@ -177,6 +181,7 @@ class ComposerStaticInit749170dad3f5e7f9ca158f5a9f04f6a2
         'OCP\\Collaboration\\Resources\\IProvider' => __DIR__ . '/../../..' . '/lib/public/Collaboration/Resources/IProvider.php',
         'OCP\\Collaboration\\Resources\\IProviderManager' => __DIR__ . '/../../..' . '/lib/public/Collaboration/Resources/IProviderManager.php',
         'OCP\\Collaboration\\Resources\\IResource' => __DIR__ . '/../../..' . '/lib/public/Collaboration/Resources/IResource.php',
+        'OCP\\Collaboration\\Resources\\LoadAdditionalScriptsEvent' => __DIR__ . '/../../..' . '/lib/public/Collaboration/Resources/LoadAdditionalScriptsEvent.php',
         'OCP\\Collaboration\\Resources\\ResourceException' => __DIR__ . '/../../..' . '/lib/public/Collaboration/Resources/ResourceException.php',
         'OCP\\Command\\IBus' => __DIR__ . '/../../..' . '/lib/public/Command/IBus.php',
         'OCP\\Command\\ICommand' => __DIR__ . '/../../..' . '/lib/public/Command/ICommand.php',
@@ -189,6 +194,8 @@ class ComposerStaticInit749170dad3f5e7f9ca158f5a9f04f6a2
         'OCP\\Comments\\IllegalIDChangeException' => __DIR__ . '/../../..' . '/lib/public/Comments/IllegalIDChangeException.php',
         'OCP\\Comments\\MessageTooLongException' => __DIR__ . '/../../..' . '/lib/public/Comments/MessageTooLongException.php',
         'OCP\\Comments\\NotFoundException' => __DIR__ . '/../../..' . '/lib/public/Comments/NotFoundException.php',
+        'OCP\\Config\\BeforePreferenceDeletedEvent' => __DIR__ . '/../../..' . '/lib/public/Config/BeforePreferenceDeletedEvent.php',
+        'OCP\\Config\\BeforePreferenceSetEvent' => __DIR__ . '/../../..' . '/lib/public/Config/BeforePreferenceSetEvent.php',
         'OCP\\Console\\ConsoleEvent' => __DIR__ . '/../../..' . '/lib/public/Console/ConsoleEvent.php',
         'OCP\\Constants' => __DIR__ . '/../../..' . '/lib/public/Constants.php',
         'OCP\\Contacts\\ContactsMenu\\IAction' => __DIR__ . '/../../..' . '/lib/public/Contacts/ContactsMenu/IAction.php',
@@ -595,6 +602,7 @@ class ComposerStaticInit749170dad3f5e7f9ca158f5a9f04f6a2
         'OCP\\UserMigration\\IExportDestination' => __DIR__ . '/../../..' . '/lib/public/UserMigration/IExportDestination.php',
         'OCP\\UserMigration\\IImportSource' => __DIR__ . '/../../..' . '/lib/public/UserMigration/IImportSource.php',
         'OCP\\UserMigration\\IMigrator' => __DIR__ . '/../../..' . '/lib/public/UserMigration/IMigrator.php',
+        'OCP\\UserMigration\\ISizeEstimationMigrator' => __DIR__ . '/../../..' . '/lib/public/UserMigration/ISizeEstimationMigrator.php',
         'OCP\\UserMigration\\TMigratorBasicVersionHandling' => __DIR__ . '/../../..' . '/lib/public/UserMigration/TMigratorBasicVersionHandling.php',
         'OCP\\UserMigration\\UserMigrationException' => __DIR__ . '/../../..' . '/lib/public/UserMigration/UserMigrationException.php',
         'OCP\\UserStatus\\IManager' => __DIR__ . '/../../..' . '/lib/public/UserStatus/IManager.php',
@@ -1006,6 +1014,8 @@ class ComposerStaticInit749170dad3f5e7f9ca158f5a9f04f6a2
         'OC\\Core\\Db\\LoginFlowV2Mapper' => __DIR__ . '/../../..' . '/core/Db/LoginFlowV2Mapper.php',
         'OC\\Core\\Db\\ProfileConfig' => __DIR__ . '/../../..' . '/core/Db/ProfileConfig.php',
         'OC\\Core\\Db\\ProfileConfigMapper' => __DIR__ . '/../../..' . '/core/Db/ProfileConfigMapper.php',
+        'OC\\Core\\Events\\BeforePasswordResetEvent' => __DIR__ . '/../../..' . '/core/Events/BeforePasswordResetEvent.php',
+        'OC\\Core\\Events\\PasswordResetEvent' => __DIR__ . '/../../..' . '/core/Events/PasswordResetEvent.php',
         'OC\\Core\\Exception\\LoginFlowV2NotFoundException' => __DIR__ . '/../../..' . '/core/Exception/LoginFlowV2NotFoundException.php',
         'OC\\Core\\Exception\\ResetPasswordException' => __DIR__ . '/../../..' . '/core/Exception/ResetPasswordException.php',
         'OC\\Core\\Middleware\\TwoFactorMiddleware' => __DIR__ . '/../../..' . '/core/Middleware/TwoFactorMiddleware.php',
@@ -1058,6 +1068,7 @@ class ComposerStaticInit749170dad3f5e7f9ca158f5a9f04f6a2
         'OC\\Core\\Migrations\\Version24000Date20220202150027' => __DIR__ . '/../../..' . '/core/Migrations/Version24000Date20220202150027.php',
         'OC\\Core\\Migrations\\Version24000Date20220404230027' => __DIR__ . '/../../..' . '/core/Migrations/Version24000Date20220404230027.php',
         'OC\\Core\\Migrations\\Version24000Date20220425072957' => __DIR__ . '/../../..' . '/core/Migrations/Version24000Date20220425072957.php',
+        'OC\\Core\\Migrations\\Version25000Date20220515204012' => __DIR__ . '/../../..' . '/core/Migrations/Version25000Date20220515204012.php',
         'OC\\Core\\Notification\\CoreNotifier' => __DIR__ . '/../../..' . '/core/Notification/CoreNotifier.php',
         'OC\\Core\\Service\\LoginFlowV2Service' => __DIR__ . '/../../..' . '/core/Service/LoginFlowV2Service.php',
         'OC\\DB\\Adapter' => __DIR__ . '/../../..' . '/lib/private/DB/Adapter.php',

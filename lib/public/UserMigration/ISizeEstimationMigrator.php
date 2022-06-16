@@ -1,9 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
 /**
- * @copyright 2021 François Freitag <mail@franek.fr>
+ * @copyright 2022 Christopher Ng <chrng8@gmail.com>
  *
- * @author François Freitag <mail@franek.fr>
+ * @author Christopher Ng <chrng8@gmail.com>
+ * @author Côme Chilliet <come.chilliet@nextcloud.com>
  *
- * @license AGPL-3.0-or-later
+ * @license GNU AGPL version 3 or any later version
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -12,7 +17,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
@@ -20,7 +25,19 @@
  *
  */
 
-const babelJest = require('babel-jest')
-const babelConfig = require('@nextcloud/babel-config')
+namespace OCP\UserMigration;
 
-module.exports = babelJest.createTransformer(babelConfig)
+use OCP\IUser;
+
+/**
+ * @since 25.0.0
+ */
+interface ISizeEstimationMigrator {
+	/**
+	 * Returns an estimate of the exported data size in KiB.
+	 * Should be fast, favor performance over accuracy.
+	 *
+	 * @since 25.0.0
+	 */
+	public function getEstimatedExportSize(IUser $user): int;
+}

@@ -22,20 +22,19 @@
 
 <template>
 	<SettingsSection :title="t('settings', 'Background jobs')"
-		:description="t('settings', `For the server to work properly, it's important to configure background jobs correctly. Cron is the recommended setting. Please see the documentation for more information.`)"
+		:description="t('settings', 'For the server to work properly, it\'s important to configure background jobs correctly. Cron is the recommended setting. Please see the documentation for more information.')"
 		:doc-url="backgroundJobsDocUrl">
-
 		<template v-if="lastCron !== 0">
 			<span v-if="oldExecution" class="error">
 				{{ t('settings', 'Last job execution ran {time}. Something seems wrong.', {time: relativeTime}) }}
 			</span>
 
 			<span v-else-if="longExecutionNotCron" class="warning">
-				{{ t('settings', "Some jobs haven’t been executed since {maxAgeRelativeTime}. Please consider increasing the execution frequency.", {maxAgeRelativeTime}) }}
+				{{ t('settings', "Some jobs have not been executed since {maxAgeRelativeTime}. Please consider increasing the execution frequency.", {maxAgeRelativeTime}) }}
 			</span>
 
-			<span class="warning" v-else-if="longExecutionCron">
-				{{ t('settings', "Some jobs haven’t been executed since {maxAgeRelativeTime}. Please consider switching to system cron.", {maxAgeRelativeTime}) }}
+			<span v-else-if="longExecutionCron" class="warning">
+				{{ t('settings', "Some jobs have not been executed since {maxAgeRelativeTime}. Please consider switching to system cron.", {maxAgeRelativeTime}) }}
 			</span>
 
 			<span v-else>
@@ -43,8 +42,8 @@
 			</span>
 		</template>
 
-		<span class="error" v-else>
-			{{ t('settings', 'Background job didn’t run yet!') }}
+		<span v-else class="error">
+			{{ t('settings', 'Background job did not run yet!') }}
 		</span>
 
 		<CheckboxRadioSwitch type="radio"
@@ -66,11 +65,11 @@
 		</CheckboxRadioSwitch>
 		<em>{{ t('settings', 'cron.php is registered at a webcron service to call cron.php every 5 minutes over HTTP. Use case: Very small instance (1–5 users depending on the usage).') }}</em>
 
-		<CheckboxRadioSwitch type="radio"
+		<CheckboxRadioSwitch v-if="cliBasedCronPossible"
+			type="radio"
 			:checked.sync="backgroundJobsMode"
 			value="cron"
 			name="backgroundJobsMode"
-			v-if="cliBasedCronPossible"
 			@update:checked="onBackgroundJobModeChanged">
 			{{ t('settings', 'Cron (Recommended)') }}
 		</CheckboxRadioSwitch>
@@ -137,7 +136,7 @@ export default {
 		},
 		longExecutionCron() {
 			return Date.now() / 1000 - this.cronMaxAge > 12 * 3600 && this.backgroundJobsMode === 'cron'
-		}
+		},
 	},
 	methods: {
 		async onBackgroundJobModeChanged(backgroundJobsMode) {
@@ -150,10 +149,10 @@ export default {
 
 			try {
 				const { data } = await axios.post(url, {
-					value: backgroundJobsMode
+					value: backgroundJobsMode,
 				})
 				this.handleResponse({
-					status: data.ocs?.meta?.status
+					status: data.ocs?.meta?.status,
 				})
 			} catch (e) {
 				this.handleResponse({
@@ -184,7 +183,7 @@ export default {
 			} catch (error) {
 				console.error(error)
 			}
-		}
+		},
 	},
 }
 </script>
