@@ -210,7 +210,7 @@ body {
 }
 
 /* CONTENT ------------------------------------------------------------------ */
-#controls {
+.files-controls {
   box-sizing: border-box;
   position: -webkit-sticky;
   position: sticky;
@@ -229,7 +229,7 @@ body {
 }
 
 /* position controls for apps with app-navigation */
-.viewer-mode #app-navigation + #app-content #controls {
+.viewer-mode #app-navigation + #app-content .files-controls {
   left: 0;
 }
 
@@ -237,7 +237,7 @@ body {
   box-sizing: border-box;
 }
 
-#controls .actions > div > .button, #controls .actions > div button, #controls .actions > .button, #controls .actions button {
+.files-controls .actions > div > .button, .files-controls .actions > div button, .files-controls .actions > .button, .files-controls .actions button {
   box-sizing: border-box;
   display: inline-block;
   display: flex;
@@ -247,7 +247,7 @@ body {
   align-items: center;
   justify-content: center;
 }
-#controls .actions > div .button.hidden, #controls .actions .button.hidden {
+.files-controls .actions > div .button.hidden, .files-controls .actions .button.hidden {
   display: none;
 }
 
@@ -430,51 +430,6 @@ body {
 
 td.avatar {
   border-radius: 0;
-}
-
-#notification-container {
-  left: 50%;
-  max-width: 60%;
-  position: fixed;
-  top: 0;
-  text-align: center;
-  transform: translateX(-50%);
-  z-index: 8000;
-}
-
-#notification {
-  margin: 0 auto;
-  z-index: 8000;
-  background-color: var(--color-main-background);
-  border: 0;
-  padding: 1px 8px;
-  display: none;
-  position: relative;
-  top: 0;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
-  opacity: 0.9;
-  overflow-x: hidden;
-  overflow-y: auto;
-  max-height: 100px;
-}
-#notification span {
-  cursor: pointer;
-  margin-left: 1em;
-}
-#notification .row {
-  position: relative;
-}
-#notification .row .close {
-  display: inline-block;
-  vertical-align: middle;
-  position: absolute;
-  right: 0;
-  top: 0;
-  margin-top: 2px;
-}
-#notification .row.closeable {
-  padding-right: 20px;
 }
 
 tr .action:not(.permanent), .selectedActions > a {
@@ -1454,8 +1409,23 @@ div[contenteditable=true].primary:not(:disabled):active,
 .pager li a.primary:not(:disabled):hover,
 .pager li a.primary:not(:disabled):focus,
 .pager li a.primary:not(:disabled):active {
-  background-color: var(--color-primary-element-light);
-  border-color: var(--color-primary-element-light);
+  background-color: var(--color-primary-element-hover);
+  border-color: var(--color-primary-element-hover);
+}
+div.select2-drop .select2-search input.primary:not(:disabled):focus, div.select2-drop .select2-search input.primary:not(:disabled):focus-visible,
+select.primary:not(:disabled):focus,
+select.primary:not(:disabled):focus-visible,
+button:not(.button-vue).primary:not(:disabled):focus,
+button:not(.button-vue).primary:not(:disabled):focus-visible, .button.primary:not(:disabled):focus, .button.primary:not(:disabled):focus-visible,
+input:not([type=range]).primary:not(:disabled):focus,
+input:not([type=range]).primary:not(:disabled):focus-visible,
+textarea.primary:not(:disabled):focus,
+textarea.primary:not(:disabled):focus-visible,
+div[contenteditable=true].primary:not(:disabled):focus,
+div[contenteditable=true].primary:not(:disabled):focus-visible,
+.pager li a.primary:not(:disabled):focus,
+.pager li a.primary:not(:disabled):focus-visible {
+  box-shadow: 0 0 0 2px var(--color-main-text);
 }
 div.select2-drop .select2-search input.primary:not(:disabled):active,
 select.primary:not(:disabled):active,
@@ -2320,23 +2290,6 @@ label.infield {
   outline: none;
 }
 
-/* removed until content-focusing issue is fixed */
-#skip-to-content a {
-  position: absolute;
-  left: -10000px;
-  top: auto;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-#skip-to-content a:focus {
-  left: 76px;
-  top: -9px;
-  color: var(--color-primary-text);
-  width: auto;
-  height: auto;
-}
-
 /* HEADERS ------------------------------------------------------------------ */
 #body-user #header,
 #body-settings #header,
@@ -2812,7 +2765,7 @@ nav[role=navigation] {
   transform: translateY(-7px);
 }
 #appmenu:hover li span {
-  opacity: 0.6;
+  opacity: 1;
   bottom: 2px;
   z-index: -1;
   /* fix clickability issue - otherwise we need to move the span into the link */
@@ -2898,21 +2851,16 @@ nav[role=navigation] {
 }
 
 /* Skip navigation links – show only on keyboard focus */
-.skip-navigation {
-  padding: 11px;
+#skip-actions {
   position: absolute;
   overflow: hidden;
   z-index: 9999;
   top: -999px;
   left: 3px;
-  /* Force primary color, otherwise too light focused color */
-  background: var(--color-primary) !important;
+  height: 50px;
+  padding: 11px;
 }
-.skip-navigation.skip-content {
-  left: 300px;
-  margin-left: 3px;
-}
-.skip-navigation:focus, .skip-navigation:active {
+#skip-actions:focus-within {
   top: 50px;
 }
 
@@ -3906,7 +3854,6 @@ kbd {
   top: 0;
   left: 0;
   display: block;
-  filter: var(--background-invert-if-dark);
 }
 #app-settings-header .settings-button:focus-visible {
   box-shadow: 0 0 0 2px inset var(--color-primary) !important;
@@ -4269,6 +4216,25 @@ kbd {
 .popovermenu li > .menuitem:hover,
 .popovermenu li > .menuitem:focus {
   background-color: var(--color-background-hover);
+}
+.bubble li > button:focus, .bubble li > button:focus-visible,
+.bubble li > a:focus,
+.bubble li > a:focus-visible,
+.bubble li > .menuitem:focus,
+.bubble li > .menuitem:focus-visible,
+.app-navigation-entry-menu li > button:focus,
+.app-navigation-entry-menu li > button:focus-visible,
+.app-navigation-entry-menu li > a:focus,
+.app-navigation-entry-menu li > a:focus-visible,
+.app-navigation-entry-menu li > .menuitem:focus,
+.app-navigation-entry-menu li > .menuitem:focus-visible,
+.popovermenu li > button:focus,
+.popovermenu li > button:focus-visible,
+.popovermenu li > a:focus,
+.popovermenu li > a:focus-visible,
+.popovermenu li > .menuitem:focus,
+.popovermenu li > .menuitem:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary-element);
 }
 .bubble li > button.active,
 .bubble li > a.active,
@@ -4894,12 +4860,12 @@ kbd {
   }
 
   /* position controls for apps with app-navigation */
-  #app-navigation + #app-content #controls {
+  #app-navigation + #app-content .files-controls {
     padding-left: 44px;
   }
 
   /* .viewer-mode is when text editor, PDF viewer, etc is open */
-  #body-user .app-files.viewer-mode #controls {
+  #body-user .app-files.viewer-mode .files-controls {
     padding-left: 0 !important;
   }
 
@@ -4916,13 +4882,13 @@ kbd {
     display: none;
   }
 
-  #body-settings #controls {
+  #body-settings .files-controls {
     min-width: 1024px !important;
   }
 
   /* do not show dates in filepicker */
-  #oc-dialog-filepicker-content .filelist #headerSize,
-#oc-dialog-filepicker-content .filelist #headerDate,
+  #oc-dialog-filepicker-content .filelist .column-size,
+#oc-dialog-filepicker-content .filelist .column-mtime,
 #oc-dialog-filepicker-content .filelist .filesize,
 #oc-dialog-filepicker-content .filelist .date {
     display: none;
@@ -4969,11 +4935,6 @@ kbd {
   }
   #header .header-right > div#settings::after {
     right: 27px;
-  }
-
-  #notification-container {
-    max-width: 100%;
-    width: 100%;
   }
 }
 /**

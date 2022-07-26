@@ -290,22 +290,11 @@ input[type='email'] {
 }
 input[type='text']:focus-visible,
 input[type='password']:focus-visible {
-	outline: var(--color-primary) auto 2px;
+	outline: var(--color-primary) auto 2px !important;
 }
 input[type='password'].password-with-toggle, input[type='text'].password-with-toggle {
 	width: 219px;
 	padding-right: 40px;
-}
-.toggle-password {
-	position: absolute;
-	top: 1px;
-	right: 5px;
-	padding: 14px;
-	height: 16px;
-}
-.toggle-password:hover,
-.toggle-password:focus {
-	opacity: .6;
 }
 input.login {
 	width: 260px;

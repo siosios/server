@@ -45,12 +45,12 @@ OC.L10N.register(
     "Downloaded by {email}" : "Letöltötte: {email}",
     "{file} downloaded via public link" : "{file} nyilvános hivatkozással letöltve",
     "{email} downloaded {file}" : "{email} letöltötte: {file}",
-    "Shared with group {group}" : "Megosztva ezzel a(z) {group} csoporttal",
+    "Shared with group {group}" : "Megosztva a(z) {group} csoporttal",
     "Removed share for group {group}" : "{group} csoport megosztása eltávolítva",
     "{actor} shared with group {group}" : "{actor} megosztotta a(z) {group} csoporttal",
     "{actor} removed share for group {group}" : "{actor} eltávolította a(z) {group} csoport megosztását",
     "Share for group {group} expired" : "A(z) {group} csoport megosztása lejárt",
-    "You shared {file} with group {group}" : "Megosztottad a(z) {file} fájlt a(z) {group} csoporttal",
+    "You shared {file} with group {group}" : "Megosztotta a(z) {file} fájlt a(z) {group} csoporttal",
     "You removed group {group} from {file}" : "Eltávolította a(z) {group} csoportot erről: {file}",
     "{actor} shared {file} with group {group}" : "{actor} megosztotta a(z) {file} fájlt a(z) {group} csoporttal",
     "{actor} removed group {group} from {file}" : "{actor} eltávolította a(z) {group} csoportot erről: {file}",
@@ -244,7 +244,8 @@ OC.L10N.register(
     "sharing is disabled" : "a megosztás letiltásra került",
     "For more info, please ask the person who sent this link." : "További információért forduljon ahhoz, aki ezt a hivatkozást küldte.",
     "Share note" : "Jegyzet megosztása",
-    "Toggle grid view" : "Rácsnézet be/ki",
+    "Show list view" : "Listanézet megjelenítése",
+    "Show grid view" : "Rácsnézet megjelenítése",
     "Upload files to %s" : "Fájlok feltöltése ide: %s",
     "Note" : "Megjegyzés",
     "Select or drop files" : "Válasszon vagy dobjon ide fájlokat",
@@ -256,6 +257,7 @@ OC.L10N.register(
     "Wrong path, file/folder doesn't exist" : "Hibás útvonal, a fájl/mappa nem létezik",
     "Cannot change permissions for public share links" : "Nem lehet módosítani a nyilvános megosztási hivatkozások jogosultságait",
     "Sharing sending the password by Nextcloud Talk failed because Nextcloud Talk is not enabled" : "A megosztás jelszavának Nextcloud Beszélgetéssel történő elküldése sikertelen, mert a Nextcloud Beszélgetés nem engedélyezett",
-    "Sorry, this link doesn’t seem to work anymore." : "Sajnos úgy tűnik, ez a hivatkozás már nem működik."
+    "Sorry, this link doesn’t seem to work anymore." : "Sajnos úgy tűnik, ez a hivatkozás már nem működik.",
+    "Toggle grid view" : "Rácsnézet be/ki"
 },
 "nplurals=2; plural=(n != 1);");

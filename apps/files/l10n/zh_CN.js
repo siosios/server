@@ -39,6 +39,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "无法加载文件 \"{file}\" 的信息",
     "Files" : "文件",
     "Details" : "详细信息",
+    "Show list view" : "显示列表视图",
+    "Show grid view" : "显示网格视图",
     "Please select tag(s) to add to the selection" : "请选择要添加到所选项目的标签",
     "Apply tag(s) to selection" : "将标签应用到所选项目",
     "Pending" : "等待",
@@ -184,7 +186,6 @@ OC.L10N.register(
     "%s used" : "已使用 %s",
     "%s%% of %s used" : "%s 已使用 %s 中的 %%",
     "%1$s of %2$s used" : "已使用 %2$s 中的 %1$s",
-    "Settings" : "设置",
     "Show hidden files" : "显示隐藏文件",
     "Crop image previews" : "裁剪图片预览",
     "WebDAV" : "WebDAV",
@@ -210,6 +211,7 @@ OC.L10N.register(
     "New text file.txt" : "新建文本文档.txt",
     "Select" : "选择",
     "You don’t have permission to upload or create files here" : "您没有权限在此上传或创建文件",
-    "Cannot transfer ownership of a file or folder you don't own" : "无法转让您未拥有的文件或文件夹的所有权"
+    "Cannot transfer ownership of a file or folder you don't own" : "无法转让您未拥有的文件或文件夹的所有权",
+    "Settings" : "设置"
 },
 "nplurals=1; plural=0;");

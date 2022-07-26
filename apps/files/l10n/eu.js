@@ -40,6 +40,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "Ezin izan da \"{file}\" fitxategiaren informazioa kargatu",
     "Files" : "Fitxategiak",
     "Details" : "Xehetasunak",
+    "Show list view" : "Erakutsi zerrenda ikuspegia",
+    "Show grid view" : "Erakutsi sareta-ikuspegia",
     "Please select tag(s) to add to the selection" : "Hautatu etiketa(k) hautapenera gehitzeko",
     "Apply tag(s) to selection" : "Aplikatu etiketa(k) hautapenari",
     "Select directory \"{dirName}\"" : "Hautatu \"{dirName}\" direktorioa",
@@ -189,7 +191,7 @@ OC.L10N.register(
     "%s used" : "%s erabilita",
     "%s%% of %s used" : "%s%% / %s erabilita",
     "%1$s of %2$s used" : "%1$s / %2$s erabilita",
-    "Settings" : "Ezarpenak",
+    "Files settings" : "FItxategien ezarpenak",
     "Show hidden files" : "Erakutsi ezkutuko fitxategiak",
     "Crop image previews" : "Moztu irudien aurrebistak",
     "WebDAV" : "WebDAV",
@@ -215,6 +217,7 @@ OC.L10N.register(
     "New text file.txt" : "Testu-fitxategi berria.txt",
     "Select" : "Hautatu",
     "You don’t have permission to upload or create files here" : "Ez duzu baimenik fitxategiak hona kargatu edo hemen sortzeko",
-    "Cannot transfer ownership of a file or folder you don't own" : "Ezin da zurea ez den fitxategi edo karpeta baten jabetza transferitu"
+    "Cannot transfer ownership of a file or folder you don't own" : "Ezin da zurea ez den fitxategi edo karpeta baten jabetza transferitu",
+    "Settings" : "Ezarpenak"
 },
 "nplurals=2; plural=(n != 1);");

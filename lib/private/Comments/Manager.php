@@ -170,7 +170,6 @@ class Manager implements ICommentsManager {
 
 		if ($comment->getId() === '') {
 			$comment->setChildrenCount(0);
-			$comment->setLatestChildDateTime(new \DateTime('0000-00-00 00:00:00', new \DateTimeZone('UTC')));
 			$comment->setLatestChildDateTime(null);
 		}
 
@@ -1653,7 +1652,7 @@ class Manager implements ICommentsManager {
 	public function deleteCommentsExpiredAtObject(string $objectType, string $objectId = ''): bool {
 		$qb = $this->dbConn->getQueryBuilder();
 		$qb->delete('comments')
-			->where($qb->expr()->lt('expire_date',
+			->where($qb->expr()->lte('expire_date',
 				$qb->createNamedParameter($this->timeFactory->getDateTime(), IQueryBuilder::PARAM_DATE)))
 			->andWhere($qb->expr()->eq('object_type', $qb->createNamedParameter($objectType)));
 

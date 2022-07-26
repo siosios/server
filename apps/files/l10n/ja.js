@@ -39,6 +39,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "\"{file}\" ファイルの情報を読み込めませんでした",
     "Files" : "ファイル",
     "Details" : "詳細",
+    "Show list view" : "リストビューで表示",
+    "Show grid view" : "グリッドビューで表示",
     "Please select tag(s) to add to the selection" : "選択項目に付与するタグを選択してください",
     "Apply tag(s) to selection" : "選択項目にタグを適用",
     "Select directory \"{dirName}\"" : "ディレクトリを選択: \"{dirName}\"",
@@ -188,7 +190,6 @@ OC.L10N.register(
     "%s used" : "%s 使用中",
     "%s%% of %s used" : "%s%% 使用中、全体は%s",
     "%1$s of %2$s used" : "%2$s 中%1$s 使用中",
-    "Settings" : "設定",
     "Show hidden files" : "隠しファイルを表示",
     "Crop image previews" : "プレビュー画像を切り抜く",
     "WebDAV" : "WebDAV",
@@ -214,6 +215,7 @@ OC.L10N.register(
     "New text file.txt" : "新規のテキストファイル作成",
     "Select" : "選択",
     "You don’t have permission to upload or create files here" : "ここにファイルをアップロードまたは作成する権限がありません",
-    "Cannot transfer ownership of a file or folder you don't own" : "所有していないファイルまたはフォルダーの所有権を譲渡することはできません"
+    "Cannot transfer ownership of a file or folder you don't own" : "所有していないファイルまたはフォルダーの所有権を譲渡することはできません",
+    "Settings" : "設定"
 },
 "nplurals=1; plural=0;");

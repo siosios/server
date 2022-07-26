@@ -40,6 +40,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "\"{file}\" dosyasının bilgileri alınamadı",
     "Files" : "Dosyalar",
     "Details" : "Ayrıntılar",
+    "Show list view" : "Liste görünümüne geç",
+    "Show grid view" : "Tablo görünümüne geç",
     "Please select tag(s) to add to the selection" : "Seçime eklemek için etiketleri seçin",
     "Apply tag(s) to selection" : "Etiketleri seçime uygula",
     "Select directory \"{dirName}\"" : "\"{dirName}\" klasörünü seçin",
@@ -189,7 +191,7 @@ OC.L10N.register(
     "%s used" : "%s kullanılıyor",
     "%s%% of %s used" : "%s%%/%s kullanılmış",
     "%1$s of %2$s used" : "%1$s / %2$s kullanıldı",
-    "Settings" : "Ayarlar",
+    "Files settings" : "Dosyalar ayarları",
     "Show hidden files" : "Gizli dosyaları görüntüle",
     "Crop image previews" : "Görsel ön izlemeleri kırpılsın",
     "WebDAV" : "WebDAV",
@@ -215,6 +217,7 @@ OC.L10N.register(
     "New text file.txt" : "Yeni metin dosyası.txt",
     "Select" : "Seçin",
     "You don’t have permission to upload or create files here" : "Buraya dosya yükleme ya da ekleme izniniz yok",
-    "Cannot transfer ownership of a file or folder you don't own" : "Sahibi olmadığınız bir dosya ya da klasörün sahipliğini aktaramazsınız"
+    "Cannot transfer ownership of a file or folder you don't own" : "Sahibi olmadığınız bir dosya ya da klasörün sahipliğini aktaramazsınız",
+    "Settings" : "Ayarlar"
 },
 "nplurals=2; plural=(n > 1);");

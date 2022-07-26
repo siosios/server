@@ -2455,42 +2455,6 @@
   <file src="lib/private/Authentication/WebAuthn/CredentialRepository.php">
     <InvalidCatch occurrences="2"/>
   </file>
-  <file src="lib/private/Avatar/Avatar.php">
-    <ImplementedReturnTypeMismatch occurrences="1">
-      <code>Color</code>
-    </ImplementedReturnTypeMismatch>
-    <InvalidReturnStatement occurrences="1">
-      <code>$finalPalette[$this-&gt;hashToInt($hash, $steps * 3)]</code>
-    </InvalidReturnStatement>
-    <InvalidReturnType occurrences="1">
-      <code>Color</code>
-    </InvalidReturnType>
-    <ParamNameMismatch occurrences="1">
-      <code>$hash</code>
-    </ParamNameMismatch>
-  </file>
-  <file src="lib/private/Avatar/AvatarManager.php">
-    <ParamNameMismatch occurrences="1">
-      <code>$userId</code>
-    </ParamNameMismatch>
-  </file>
-  <file src="lib/private/Avatar/PlaceholderAvatar.php">
-    <InvalidScalarArgument occurrences="1">
-      <code>$data</code>
-    </InvalidScalarArgument>
-  </file>
-  <file src="lib/private/Avatar/UserAvatar.php">
-    <InvalidScalarArgument occurrences="3">
-      <code>$data</code>
-      <code>$data</code>
-      <code>(int) $this-&gt;config-&gt;getUserValue($this-&gt;user-&gt;getUID(), 'avatar', 'version', 0) + 1</code>
-    </InvalidScalarArgument>
-  </file>
-  <file src="lib/private/BackgroundJob/JobList.php">
-    <InvalidScalarArgument occurrences="1">
-      <code>$job-&gt;getId()</code>
-    </InvalidScalarArgument>
-  </file>
   <file src="lib/private/BackgroundJob/QueuedJob.php">
     <MoreSpecificImplementedParamType occurrences="1">
       <code>$jobList</code>
@@ -2532,9 +2496,6 @@
     <InvalidDocblock occurrences="1">
       <code>public function getForObjectSince(</code>
     </InvalidDocblock>
-    <NullArgument occurrences="1">
-      <code>null</code>
-    </NullArgument>
   </file>
   <file src="lib/private/Config.php">
     <InvalidOperand occurrences="2">
@@ -4229,11 +4190,6 @@
     <InvalidParamDefault occurrences="1">
       <code>array</code>
     </InvalidParamDefault>
-  </file>
-  <file src="lib/public/IAvatar.php">
-    <UndefinedDocblockClass occurrences="1">
-      <code>Color</code>
-    </UndefinedDocblockClass>
   </file>
   <file src="lib/public/IContainer.php">
     <InvalidThrow occurrences="2">

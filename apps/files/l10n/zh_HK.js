@@ -40,6 +40,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "無法讀取 \"{file}\" 的詳細資料",
     "Files" : "檔案",
     "Details" : "詳細資料",
+    "Show list view" : "顯示清單視圖",
+    "Show grid view" : "顯示網格視圖",
     "Please select tag(s) to add to the selection" : "請選擇要添加到所選項目中的標籤",
     "Apply tag(s) to selection" : "將標籤應用於所選項目",
     "Select directory \"{dirName}\"" : "選擇目錄「{dirName}」",
@@ -189,7 +191,7 @@ OC.L10N.register(
     "%s used" : "使用了 %s 的存儲空間",
     "%s%% of %s used" : "%s 在 %s 中使用了 %%",
     "%1$s of %2$s used" : "在 %2$s 中使用了 %1$s",
-    "Settings" : "設定",
+    "Files settings" : "檔案設定",
     "Show hidden files" : "顯示隱藏檔",
     "Crop image previews" : "圖片裁剪預覽",
     "WebDAV" : "WebDAV",
@@ -215,6 +217,7 @@ OC.L10N.register(
     "New text file.txt" : "新文字檔.txt",
     "Select" : "選擇",
     "You don’t have permission to upload or create files here" : "您無權限上傳或建立檔案",
-    "Cannot transfer ownership of a file or folder you don't own" : "無法轉移您未擁有的檔案或是資料夾所有權。"
+    "Cannot transfer ownership of a file or folder you don't own" : "無法轉移您未擁有的檔案或是資料夾所有權。",
+    "Settings" : "設定"
 },
 "nplurals=1; plural=0;");

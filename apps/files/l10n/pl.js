@@ -40,6 +40,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "Nie można załadować informacji o pliku \"{file}\"",
     "Files" : "Pliki",
     "Details" : "Szczegóły",
+    "Show list view" : "Pokaż widok listy",
+    "Show grid view" : "Pokaż widok siatki",
     "Please select tag(s) to add to the selection" : "Wybierz etykietę(y) do dodania dla zaznaczenia",
     "Apply tag(s) to selection" : "Zastosuj etykietę(y) dla zaznaczenia",
     "Select directory \"{dirName}\"" : "Wybierz katalog \"{dirName}\"",
@@ -98,7 +100,7 @@ OC.L10N.register(
     "Path" : "Ścieżka",
     "_%n byte_::_%n bytes_" : ["%n bajt","%n bajty","%n bajtów","%n bajtów"],
     "Favorited" : "Ulubiony",
-    "Favorite" : "Ulubione",
+    "Favorite" : "Ulubiony",
     "You can only favorite a single file or folder at a time" : "Możesz dodać do ulubionych tylko pojedynczy plik lub katalog",
     "New folder" : "Nowy katalog",
     "Upload file" : "Wyślij plik",
@@ -189,7 +191,6 @@ OC.L10N.register(
     "%s used" : "Wykorzystane: %s",
     "%s%% of %s used" : "Wykorzystane: %s%% z %s",
     "%1$s of %2$s used" : "Wykorzystane: %1$s z %2$s",
-    "Settings" : "Ustawienia",
     "Show hidden files" : "Pokaż ukryte pliki",
     "Crop image previews" : "Przytnij podglądy obrazów",
     "WebDAV" : "WebDAV",
@@ -215,6 +216,7 @@ OC.L10N.register(
     "New text file.txt" : "Nowy plik tekstowy.txt",
     "Select" : "Wybierz",
     "You don’t have permission to upload or create files here" : "Nie masz uprawnień do wysyłania lub tworzenia plików w tym miejscu",
-    "Cannot transfer ownership of a file or folder you don't own" : "Nie można przenieść prawa własności do pliku lub katalogu, którego nie jesteś właścicielem"
+    "Cannot transfer ownership of a file or folder you don't own" : "Nie można przenieść prawa własności do pliku lub katalogu, którego nie jesteś właścicielem",
+    "Settings" : "Ustawienia"
 },
 "nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);");

@@ -49,12 +49,11 @@ $getUserAvatar = static function (int $size) use ($_): string {
 			<input type="hidden" id="initial-state-<?php p($app); ?>" value="<?php p(base64_encode($initialState)); ?>">
 		<?php }?>
 
-		<a href="#app-content" class="button primary skip-navigation skip-content"><?php p($l->t('Skip to main content')); ?></a>
-		<a href="#app-navigation" class="button primary skip-navigation"><?php p($l->t('Skip to navigation of app')); ?></a>
-
-		<div id="notification-container">
-			<div id="notification"></div>
+		<div id="skip-actions">
+			<?php if ($_['id-app-content'] !== null) { ?><a href="<?php p($_['id-app-content']); ?>" class="button primary skip-navigation skip-content"><?php p($l->t('Skip to main content')); ?></a><?php } ?>
+			<?php if ($_['id-app-navigation'] !== null) { ?><a href="<?php p($_['id-app-navigation']); ?>" class="button primary skip-navigation"><?php p($l->t('Skip to navigation of app')); ?></a><?php } ?>
 		</div>
+
 		<header role="banner" id="header">
 			<div class="header-left">
 				<a href="<?php print_unescaped($_['logoUrl'] ?: link_to('', 'index.php')); ?>"
@@ -73,9 +72,9 @@ $getUserAvatar = static function (int $size) use ($_): string {
 								<?php if (isset($entry['target']) && $entry['target']): ?> target="_blank" rel="noreferrer noopener"<?php endif; ?>
 								<?php if ($entry['active']): ?> class="active"<?php endif; ?>
 								aria-label="<?php p($entry['name']); ?>">
-									<svg width="24" height="20" viewBox="0 0 24 20" alt=""<?php if ($entry['unread'] !== 0) { ?> class="has-unread"<?php } ?>>
+									<svg width="24" height="20" viewBox="0 0 24 20"<?php if ($entry['unread'] !== 0) { ?> class="has-unread"<?php } ?>>
 										<defs>
-											<mask id="hole">
+											<mask id="hole-appmenu-<?php p($entry['id']); ?>">
 												<rect width="100%" height="100%" fill="white"/>
 												<circle r="4.5" cx="21" cy="3" fill="black"/>
 											</mask>
@@ -109,10 +108,10 @@ $getUserAvatar = static function (int $size) use ($_): string {
 										<?php if (isset($entry['target']) && $entry['target']): ?> target="_blank" rel="noreferrer noopener"<?php endif; ?>
 										<?php if ($entry['active']): ?> class="active"<?php endif; ?>
 										aria-label="<?php p($entry['name']); ?>">
-										<svg width="20" height="20" viewBox="0 0 16 16" alt=""<?php if ($entry['unread'] !== 0) { ?> class="has-unread"<?php } ?>>
+										<svg width="20" height="20" viewBox="0 0 16 16"<?php if ($entry['unread'] !== 0) { ?> class="has-unread"<?php } ?>>
 											<defs>
 												<filter id="invertMenuMore-<?php p($entry['id']); ?>"><feColorMatrix in="SourceGraphic" type="matrix" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0"></feColorMatrix></filter>
-												<mask id="hole">
+												<mask id="hole-<?php p($entry['id']); ?>">
 													<rect width="100%" height="100%" fill="white"/>
 													<circle r="4.5" cx="17" cy="3" fill="black"/>
 												</mask>

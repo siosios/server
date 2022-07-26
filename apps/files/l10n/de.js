@@ -21,6 +21,7 @@ OC.L10N.register(
     "Target folder \"{dir}\" does not exist any more" : "Ziel-Verzeichnis \"{dir}\" existiert nicht mehr",
     "Not enough free space" : "Nicht genügend freier Speicherplatz",
     "An unknown error has occurred" : "Es ist ein unbekannter Fehler aufgetreten",
+    "File could not be uploaded" : "Datei konnte nicht hochgeladen werden.",
     "Uploading …" : "Lade hoch…",
     "{loadedSize} of {totalSize} ({bitrate})" : "{loadedSize} von {totalSize} ({bitrate})",
     "Uploading that item is not supported" : "Hochladen von Daten dieser Art wird nicht unterstützt.",
@@ -39,6 +40,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "Die Informationen zur Datei \"{file}\" konnten nicht geladen werden",
     "Files" : "Dateien",
     "Details" : "Details",
+    "Show list view" : "Listenansicht anzeigen",
+    "Show grid view" : "Rasteransicht anzeigen",
     "Please select tag(s) to add to the selection" : "Bitte wähle das/die Schlagwort(e) aus, das/die Du zur Auswahl hinzufügen möchtest",
     "Apply tag(s) to selection" : "Schlagwort(e) auf die Auswahl anwenden",
     "Select directory \"{dirName}\"" : "Verzeichnis \"{dirName}\" auswählen",
@@ -188,7 +191,6 @@ OC.L10N.register(
     "%s used" : "%s verwendet",
     "%s%% of %s used" : "%s%% von %s verwendet",
     "%1$s of %2$s used" : "%1$s von %2$s verwendet",
-    "Settings" : "Einstellungen",
     "Show hidden files" : "Versteckte Dateien anzeigen",
     "Crop image previews" : "Bildvorschauen zuschneiden",
     "WebDAV" : "WebDAV",
@@ -214,6 +216,7 @@ OC.L10N.register(
     "New text file.txt" : "Neue Textdatei file.txt",
     "Select" : "Auswählen",
     "You don’t have permission to upload or create files here" : "Du hast keine Berechtigung, hier Dateien hochzuladen oder zu erstellen",
-    "Cannot transfer ownership of a file or folder you don't own" : "Der Besitz einer Datei oder eines Ordners, den Du nicht besitzt, kann nicht übertragen werden"
+    "Cannot transfer ownership of a file or folder you don't own" : "Der Besitz einer Datei oder eines Ordners, den Du nicht besitzt, kann nicht übertragen werden",
+    "Settings" : "Einstellungen"
 },
 "nplurals=2; plural=(n != 1);");

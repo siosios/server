@@ -40,6 +40,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "Nem sikerült betölteni a(z) „{file}” fájl információit",
     "Files" : "Fájlok",
     "Details" : "Részletek",
+    "Show list view" : "Listanézet megjelenítése",
+    "Show grid view" : "Rácsnézet megjelenítése",
     "Please select tag(s) to add to the selection" : "Válassza ki a kijelöléshez adandó címkéket",
     "Apply tag(s) to selection" : "Címkék alkalmazása a kijelölésre",
     "Select directory \"{dirName}\"" : "A(z) „{dirName}” könyvtár kiválasztása",
@@ -189,7 +191,6 @@ OC.L10N.register(
     "%s used" : "%s használt",
     "%s%% of %s used" : "%s %% / %s felhasználva",
     "%1$s of %2$s used" : "%1$s / %2$s felhasználva",
-    "Settings" : "Beállítások",
     "Show hidden files" : "Rejtett fájlok megjelenítése",
     "Crop image previews" : "Kép előnézetek vágása",
     "WebDAV" : "WebDAV",
@@ -215,6 +216,7 @@ OC.L10N.register(
     "New text file.txt" : "Új szövegfájl.txt",
     "Select" : "Kiválasztás",
     "You don’t have permission to upload or create files here" : "Nincs jogosultsága fájlok ide feltöltéséhez vagy létrehozásához",
-    "Cannot transfer ownership of a file or folder you don't own" : "Nem ruházható át olyan fájl vagy mappa tulajdonjoga, amely nem Öné"
+    "Cannot transfer ownership of a file or folder you don't own" : "Nem ruházható át olyan fájl vagy mappa tulajdonjoga, amely nem Öné",
+    "Settings" : "Beállítások"
 },
 "nplurals=2; plural=(n != 1);");

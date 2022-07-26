@@ -40,6 +40,8 @@ OC.L10N.register(
     "Could not load info for file \"{file}\"" : "Die Informationen zur Datei \"{file}\" konnten nicht geladen werden",
     "Files" : "Dateien",
     "Details" : "Details",
+    "Show list view" : "Listenansicht anzeigen",
+    "Show grid view" : "Rasteransicht anzeigen",
     "Please select tag(s) to add to the selection" : "Bitte wählen Sie das/die Schlagwort(e) aus, das/die Sie zur Auswahl hinzufügen möchten",
     "Apply tag(s) to selection" : "Schlagwort(e) auf die Auswahl anwenden",
     "Select directory \"{dirName}\"" : "Ordner \"{dirName}\" auswählen",
@@ -189,7 +191,7 @@ OC.L10N.register(
     "%s used" : "%s verwendet",
     "%s%% of %s used" : "%s%% von %s verwendet",
     "%1$s of %2$s used" : "%1$s von %2$s verwendet",
-    "Settings" : "Einstellungen",
+    "Files settings" : "Dateien-Einstellungen",
     "Show hidden files" : "Versteckte Dateien anzeigen",
     "Crop image previews" : "Bildvorschauen zuschneiden",
     "WebDAV" : "WebDAV",
@@ -215,6 +217,7 @@ OC.L10N.register(
     "New text file.txt" : "Neue Textdatei file.txt",
     "Select" : "Auswählen",
     "You don’t have permission to upload or create files here" : "Sie haben keine Berechtigung, hier Dateien hochzuladen oder zu erstellen",
-    "Cannot transfer ownership of a file or folder you don't own" : "Der Besitz einer Datei oder eines Ordners, den Sie nicht besitzen, kann nicht übertragen werden"
+    "Cannot transfer ownership of a file or folder you don't own" : "Der Besitz einer Datei oder eines Ordners, den Sie nicht besitzen, kann nicht übertragen werden",
+    "Settings" : "Einstellungen"
 },
 "nplurals=2; plural=(n != 1);");
