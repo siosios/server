@@ -69,7 +69,7 @@
     "debounce": "^1.2.1",
     "dompurify": "^2.3.6",
     "escape-html": "^1.0.3",
-    "focus-trap": "^7.4.0",
+    "focus-trap": "^7.4.3",
     "handlebars": "^4.7.7",
     "ical.js": "^1.4.0",
     "is-svg": "^5.0.0",
