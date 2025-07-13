@@ -1,32 +1,12 @@
 <?php
+
+declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Julius Härtl <jus@bitgrid.net>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <vincent@nextcloud.com>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
-namespace OCA\DAV\Tests\Unit\Connector\Sabre;
+namespace OCA\DAV\Tests\unit\Connector\Sabre;
 
 use OC\Files\FileInfo;
 use OC\Files\Filesystem;
@@ -34,20 +14,23 @@ use OC\Files\Node\Node;
 use OC\Files\Storage\Wrapper\Quota;
 use OC\Files\View;
 use OCA\DAV\Connector\Sabre\Directory;
+use OCA\DAV\Connector\Sabre\Exception\Forbidden;
+use OCA\DAV\Connector\Sabre\Exception\InvalidPath;
+use OCA\Files_Sharing\External\Storage;
 use OCP\Constants;
 use OCP\Files\ForbiddenException;
+use OCP\Files\InvalidPathException;
 use OCP\Files\Mount\IMountPoint;
+use OCP\Files\StorageNotAvailableException;
+use PHPUnit\Framework\MockObject\MockObject;
 use Test\Traits\UserTrait;
 
-class TestViewDirectory extends \OC\Files\View {
-	private $updatables;
-	private $deletables;
-	private $canRename;
-
-	public function __construct($updatables, $deletables, $canRename = true) {
-		$this->updatables = $updatables;
-		$this->deletables = $deletables;
-		$this->canRename = $canRename;
+class TestViewDirectory extends View {
+	public function __construct(
+		private $updatables,
+		private $deletables,
+		private $canRename = true,
+	) {
 	}
 
 	public function isUpdatable($path) {
@@ -62,7 +45,7 @@ class TestViewDirectory extends \OC\Files\View {
 		return $this->deletables[$path];
 	}
 
-	public function rename($path1, $path2) {
+	public function rename($source, $target, array $options = []) {
 		return $this->canRename;
 	}
 
@@ -78,29 +61,27 @@ class TestViewDirectory extends \OC\Files\View {
 class DirectoryTest extends \Test\TestCase {
 	use UserTrait;
 
-	/** @var \OC\Files\View | \PHPUnit\Framework\MockObject\MockObject */
-	private $view;
-	/** @var \OC\Files\FileInfo | \PHPUnit\Framework\MockObject\MockObject */
-	private $info;
+	private View&MockObject $view;
+	private FileInfo&MockObject $info;
 
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->view = $this->createMock('OC\Files\View');
-		$this->info = $this->createMock('OC\Files\FileInfo');
+		$this->view = $this->createMock(View::class);
+		$this->info = $this->createMock(FileInfo::class);
 		$this->info->method('isReadable')
 			->willReturn(true);
 		$this->info->method('getType')
 			->willReturn(Node::TYPE_FOLDER);
 		$this->info->method('getName')
-			->willReturn("folder");
+			->willReturn('folder');
 		$this->info->method('getPath')
-			->willReturn("/admin/files/folder");
+			->willReturn('/admin/files/folder');
 		$this->info->method('getPermissions')
 			->willReturn(Constants::PERMISSION_READ);
 	}
 
-	private function getDir($path = '/') {
+	private function getDir(string $path = '/'): Directory {
 		$this->view->expects($this->once())
 			->method('getRelativePath')
 			->willReturn($path);
@@ -127,7 +108,7 @@ class DirectoryTest extends \Test\TestCase {
 
 
 	public function testDeleteForbidden(): void {
-		$this->expectException(\OCA\DAV\Connector\Sabre\Exception\Forbidden::class);
+		$this->expectException(Forbidden::class);
 
 		// deletion allowed
 		$this->info->expects($this->once())
@@ -193,12 +174,8 @@ class DirectoryTest extends \Test\TestCase {
 	}
 
 	public function testGetChildren(): void {
-		$info1 = $this->getMockBuilder(FileInfo::class)
-			->disableOriginalConstructor()
-			->getMock();
-		$info2 = $this->getMockBuilder(FileInfo::class)
-			->disableOriginalConstructor()
-			->getMock();
+		$info1 = $this->createMock(FileInfo::class);
+		$info2 = $this->createMock(FileInfo::class);
 		$info1->method('getName')
 			->willReturn('first');
 		$info1->method('getPath')
@@ -233,7 +210,7 @@ class DirectoryTest extends \Test\TestCase {
 		$dir = new Directory($this->view, $this->info);
 		$nodes = $dir->getChildren();
 
-		$this->assertEquals(2, count($nodes));
+		$this->assertCount(2, $nodes);
 
 		// calling a second time just returns the cached values,
 		// does not call getDirectoryContents again
@@ -271,7 +248,7 @@ class DirectoryTest extends \Test\TestCase {
 
 		$this->view->expects($this->once())
 			->method('getFileInfo')
-			->willThrowException(new \OCP\Files\StorageNotAvailableException());
+			->willThrowException(new StorageNotAvailableException());
 
 		$dir = new Directory($this->view, $this->info);
 		$dir->getChild('.');
@@ -279,11 +256,11 @@ class DirectoryTest extends \Test\TestCase {
 
 
 	public function testGetChildThrowInvalidPath(): void {
-		$this->expectException(\OCA\DAV\Connector\Sabre\Exception\InvalidPath::class);
+		$this->expectException(InvalidPath::class);
 
 		$this->view->expects($this->once())
 			->method('verifyPath')
-			->willThrowException(new \OCP\Files\InvalidPathException());
+			->willThrowException(new InvalidPathException());
 		$this->view->expects($this->never())
 			->method('getFileInfo');
 
@@ -292,20 +269,19 @@ class DirectoryTest extends \Test\TestCase {
 	}
 
 	public function testGetQuotaInfoUnlimited(): void {
-		self::createUser('user', 'password');
+		$this->createUser('user', 'password');
 		self::loginAsUser('user');
 		$mountPoint = $this->createMock(IMountPoint::class);
-		$storage = $this->getMockBuilder(Quota::class)
-			->disableOriginalConstructor()
-			->getMock();
+		$storage = $this->createMock(Quota::class);
 		$mountPoint->method('getStorage')
 			->willReturn($storage);
 
 		$storage->expects($this->any())
 			->method('instanceOfStorage')
 			->willReturnMap([
-				'\OCA\Files_Sharing\SharedStorage' => false,
-				'\OC\Files\Storage\Wrapper\Quota' => false,
+				['\OCA\Files_Sharing\SharedStorage', false],
+				['\OC\Files\Storage\Wrapper\Quota', false],
+				[Storage::class, false],
 			]);
 
 		$storage->expects($this->once())
@@ -335,6 +311,10 @@ class DirectoryTest extends \Test\TestCase {
 			->method('getRelativePath')
 			->willReturn('/foo');
 
+		$this->info->expects($this->once())
+			->method('getInternalPath')
+			->willReturn('/foo');
+
 		$mountPoint->method('getMountPoint')
 			->willReturn('/user/files/mymountpoint');
 
@@ -343,12 +323,10 @@ class DirectoryTest extends \Test\TestCase {
 	}
 
 	public function testGetQuotaInfoSpecific(): void {
-		self::createUser('user', 'password');
+		$this->createUser('user', 'password');
 		self::loginAsUser('user');
 		$mountPoint = $this->createMock(IMountPoint::class);
-		$storage = $this->getMockBuilder(Quota::class)
-			->disableOriginalConstructor()
-			->getMock();
+		$storage = $this->createMock(Quota::class);
 		$mountPoint->method('getStorage')
 			->willReturn($storage);
 
@@ -357,6 +335,7 @@ class DirectoryTest extends \Test\TestCase {
 			->willReturnMap([
 				['\OCA\Files_Sharing\SharedStorage', false],
 				['\OC\Files\Storage\Wrapper\Quota', true],
+				[Storage::class, false],
 			]);
 
 		$storage->expects($this->once())
@@ -379,6 +358,10 @@ class DirectoryTest extends \Test\TestCase {
 			->method('getMountPoint')
 			->willReturn($mountPoint);
 
+		$this->info->expects($this->once())
+			->method('getInternalPath')
+			->willReturn('/foo');
+
 		$mountPoint->method('getMountPoint')
 			->willReturn('/user/files/mymountpoint');
 
@@ -390,39 +373,33 @@ class DirectoryTest extends \Test\TestCase {
 		$this->assertEquals([200, 800], $dir->getQuotaInfo()); //200 used, 800 free
 	}
 
-	/**
-	 * @dataProvider moveFailedProvider
-	 */
-	public function testMoveFailed($source, $destination, $updatables, $deletables): void {
+	#[\PHPUnit\Framework\Attributes\DataProvider('moveFailedProvider')]
+	public function testMoveFailed(string $source, string $destination, array $updatables, array $deletables): void {
 		$this->expectException(\Sabre\DAV\Exception\Forbidden::class);
 
 		$this->moveTest($source, $destination, $updatables, $deletables);
 	}
 
-	/**
-	 * @dataProvider moveSuccessProvider
-	 */
-	public function testMoveSuccess($source, $destination, $updatables, $deletables): void {
+	#[\PHPUnit\Framework\Attributes\DataProvider('moveSuccessProvider')]
+	public function testMoveSuccess(string $source, string $destination, array $updatables, array $deletables): void {
 		$this->moveTest($source, $destination, $updatables, $deletables);
 		$this->addToAssertionCount(1);
 	}
 
-	/**
-	 * @dataProvider moveFailedInvalidCharsProvider
-	 */
-	public function testMoveFailedInvalidChars($source, $destination, $updatables, $deletables): void {
-		$this->expectException(\OCA\DAV\Connector\Sabre\Exception\InvalidPath::class);
+	#[\PHPUnit\Framework\Attributes\DataProvider('moveFailedInvalidCharsProvider')]
+	public function testMoveFailedInvalidChars(string $source, string $destination, array $updatables, array $deletables): void {
+		$this->expectException(InvalidPath::class);
 
 		$this->moveTest($source, $destination, $updatables, $deletables);
 	}
 
-	public function moveFailedInvalidCharsProvider() {
+	public static function moveFailedInvalidCharsProvider(): array {
 		return [
-			['a/b', 'a/*', ['a' => true, 'a/b' => true, 'a/c*' => false], []],
+			['a/valid', "a/i\nvalid", ['a' => true, 'a/valid' => true, 'a/c*' => false], []],
 		];
 	}
 
-	public function moveFailedProvider() {
+	public static function moveFailedProvider(): array {
 		return [
 			['a/b', 'a/c', ['a' => false, 'a/b' => false, 'a/c' => false], []],
 			['a/b', 'b/b', ['a' => false, 'a/b' => false, 'b' => false, 'b/b' => false], []],
@@ -433,7 +410,7 @@ class DirectoryTest extends \Test\TestCase {
 		];
 	}
 
-	public function moveSuccessProvider() {
+	public static function moveSuccessProvider(): array {
 		return [
 			['a/b', 'b/b', ['a' => true, 'a/b' => true, 'b' => true, 'b/b' => false], ['a/b' => true]],
 			// older files with special chars can still be renamed to valid names
@@ -441,12 +418,7 @@ class DirectoryTest extends \Test\TestCase {
 		];
 	}
 
-	/**
-	 * @param $source
-	 * @param $destination
-	 * @param $updatables
-	 */
-	private function moveTest($source, $destination, $updatables, $deletables): void {
+	private function moveTest(string $source, string $destination, array $updatables, array $deletables): void {
 		$view = new TestViewDirectory($updatables, $deletables);
 
 		$sourceInfo = new FileInfo($source, null, null, [
@@ -458,7 +430,7 @@ class DirectoryTest extends \Test\TestCase {
 
 		$sourceNode = new Directory($view, $sourceInfo);
 		$targetNode = $this->getMockBuilder(Directory::class)
-			->setMethods(['childExists'])
+			->onlyMethods(['childExists'])
 			->setConstructorArgs([$view, $targetInfo])
 			->getMock();
 		$targetNode->expects($this->any())->method('childExists')
@@ -484,7 +456,7 @@ class DirectoryTest extends \Test\TestCase {
 
 		$sourceNode = new Directory($view, $sourceInfo);
 		$targetNode = $this->getMockBuilder(Directory::class)
-			->setMethods(['childExists'])
+			->onlyMethods(['childExists'])
 			->setConstructorArgs([$view, $targetInfo])
 			->getMock();
 		$targetNode->expects($this->once())->method('childExists')

@@ -1,23 +1,9 @@
 <?php
+
 /**
- * ownCloud
- *
- * @author Joas Schilling
- * @copyright 2014 Joas Schilling nickvergessen@owncloud.com
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU AFFERO GENERAL PUBLIC LICENSE for more details.
- *
- * You should have received a copy of the GNU Affero General Public
- * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace Test;
@@ -25,21 +11,61 @@ namespace Test;
 use DOMDocument;
 use DOMNode;
 use OC\Command\QueueBus;
+use OC\Files\Cache\Storage;
 use OC\Files\Config\MountProviderCollection;
 use OC\Files\Filesystem;
 use OC\Files\Mount\CacheMountProvider;
 use OC\Files\Mount\LocalHomeMountProvider;
 use OC\Files\Mount\RootMountProvider;
+use OC\Files\ObjectStore\PrimaryObjectStoreConfig;
 use OC\Files\SetupManager;
+use OC\Files\View;
 use OC\Template\Base;
+use OCP\AppFramework\QueryException;
 use OCP\Command\IBus;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Defaults;
 use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\IL10N;
+use OCP\IUserManager;
+use OCP\IUserSession;
+use OCP\Lock\ILockingProvider;
+use OCP\Lock\LockedException;
 use OCP\Security\ISecureRandom;
-use Psr\Log\LoggerInterface;
+use OCP\Server;
+
+if (version_compare(\PHPUnit\Runner\Version::id(), 10, '>=')) {
+	trait OnNotSuccessfulTestTrait {
+		protected function onNotSuccessfulTest(\Throwable $t): never {
+			$this->restoreAllServices();
+
+			// restore database connection
+			if (!$this->IsDatabaseAccessAllowed()) {
+				\OC::$server->registerService(IDBConnection::class, function () {
+					return self::$realDatabase;
+				});
+			}
+
+			parent::onNotSuccessfulTest($t);
+		}
+	}
+} else {
+	trait OnNotSuccessfulTestTrait {
+		protected function onNotSuccessfulTest(\Throwable $t): void {
+			$this->restoreAllServices();
+
+			// restore database connection
+			if (!$this->IsDatabaseAccessAllowed()) {
+				\OC::$server->registerService(IDBConnection::class, function () {
+					return self::$realDatabase;
+				});
+			}
+
+			parent::onNotSuccessfulTest($t);
+		}
+	}
+}
 
 abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	/** @var \OC\Command\QueueBus */
@@ -54,6 +80,8 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	/** @var array */
 	protected $services = [];
 
+	use OnNotSuccessfulTestTrait;
+
 	/**
 	 * @param string $name
 	 * @param mixed $newService
@@ -64,7 +92,11 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 			return false;
 		}
 
-		$this->services[$name] = \OC::$server->query($name);
+		try {
+			$this->services[$name] = Server::get($name);
+		} catch (QueryException $e) {
+			$this->services[$name] = false;
+		}
 		$container = \OC::$server->getAppContainerForService($name);
 		$container = $container ?? \OC::$server;
 
@@ -86,9 +118,13 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 			$container = \OC::$server->getAppContainerForService($name);
 			$container = $container ?? \OC::$server;
 
-			$container->registerService($name, function () use ($oldService) {
-				return $oldService;
-			});
+			if ($oldService !== false) {
+				$container->registerService($name, function () use ($oldService) {
+					return $oldService;
+				});
+			} else {
+				unset($container[$oldService]);
+			}
 
 
 			unset($this->services[$name]);
@@ -134,9 +170,9 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 		if (!$this->IsDatabaseAccessAllowed()) {
 			self::$wasDatabaseAllowed = false;
 			if (is_null(self::$realDatabase)) {
-				self::$realDatabase = \OC::$server->getDatabaseConnection();
+				self::$realDatabase = Server::get(IDBConnection::class);
 			}
-			\OC::$server->registerService(IDBConnection::class, function () {
+			\OC::$server->registerService(IDBConnection::class, function (): void {
 				$this->fail('Your test case is not allowed to access the database.');
 			});
 		}
@@ -148,19 +184,6 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 				call_user_func([$this, $methodName]);
 			}
 		}
-	}
-
-	protected function onNotSuccessfulTest(\Throwable $t): void {
-		$this->restoreAllServices();
-
-		// restore database connection
-		if (!$this->IsDatabaseAccessAllowed()) {
-			\OC::$server->registerService(IDBConnection::class, function () {
-				return self::$realDatabase;
-			});
-		}
-
-		parent::onNotSuccessfulTest($t);
 	}
 
 	protected function tearDown(): void {
@@ -176,7 +199,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 		// further cleanup
 		$hookExceptions = \OC_Hook::$thrownExceptions;
 		\OC_Hook::$thrownExceptions = [];
-		\OC::$server->getLockingProvider()->releaseAll();
+		Server::get(ILockingProvider::class)->releaseAll();
 		if (!empty($hookExceptions)) {
 			throw $hookExceptions[0];
 		}
@@ -185,11 +208,11 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 		$errors = libxml_get_errors();
 		libxml_clear_errors();
 		if (!empty($errors)) {
-			self::assertEquals([], $errors, "There have been xml parsing errors");
+			self::assertEquals([], $errors, 'There have been xml parsing errors');
 		}
 
 		if ($this->IsDatabaseAccessAllowed()) {
-			\OC\Files\Cache\Storage::getGlobalCache()->clearCache();
+			Storage::getGlobalCache()->clearCache();
 		}
 
 		// tearDown the traits
@@ -230,7 +253,11 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 			$property->setAccessible(true);
 
 			if (!empty($parameters)) {
-				$property->setValue($object, array_pop($parameters));
+				if ($property->isStatic()) {
+					$property->setValue(null, array_pop($parameters));
+				} else {
+					$property->setValue($object, array_pop($parameters));
+				}
 			}
 
 			if (is_object($object)) {
@@ -238,6 +265,8 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 			}
 
 			return $property->getValue();
+		} elseif ($reflection->hasConstant($methodName)) {
+			return $reflection->getConstant($methodName);
 		}
 
 		return false;
@@ -251,11 +280,35 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	 * @return string
 	 */
 	protected static function getUniqueID($prefix = '', $length = 13) {
-		return $prefix . \OC::$server->getSecureRandom()->generate(
+		return $prefix . Server::get(ISecureRandom::class)->generate(
 			$length,
 			// Do not use dots and slashes as we use the value for file names
 			ISecureRandom::CHAR_DIGITS . ISecureRandom::CHAR_LOWER . ISecureRandom::CHAR_UPPER
 		);
+	}
+
+	/**
+	 * Filter methods
+	 *
+	 * Returns all methods of the given class,
+	 * that are public or abstract and not in the ignoreMethods list,
+	 * to be able to fill onlyMethods() with an inverted list.
+	 *
+	 * @param string $className
+	 * @param string[] $filterMethods
+	 * @return string[]
+	 */
+	public function filterClassMethods(string $className, array $filterMethods): array {
+		$class = new \ReflectionClass($className);
+
+		$methods = [];
+		foreach ($class->getMethods() as $method) {
+			if (($method->isPublic() || $method->isAbstract()) && !in_array($method->getName(), $filterMethods, true)) {
+				$methods[] = $method->getName();
+			}
+		}
+
+		return $methods;
 	}
 
 	public static function tearDownAfterClass(): void {
@@ -266,9 +319,9 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 				return self::$realDatabase;
 			});
 		}
-		$dataDir = \OC::$server->getConfig()->getSystemValueString('datadirectory', \OC::$SERVERROOT . '/data-autotest');
-		if (self::$wasDatabaseAllowed && \OC::$server->getDatabaseConnection()) {
-			$db = \OC::$server->getDatabaseConnection();
+		$dataDir = Server::get(IConfig::class)->getSystemValueString('datadirectory', \OC::$SERVERROOT . '/data-autotest');
+		if (self::$wasDatabaseAllowed && Server::get(IDBConnection::class)) {
+			$db = Server::get(IDBConnection::class);
 			if ($db->inTransaction()) {
 				$db->rollBack();
 				throw new \Exception('There was a transaction still in progress and needed to be rolled back. Please fix this in your test.');
@@ -284,18 +337,19 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 		self::tearDownAfterClassCleanStrayLocks();
 
 		/** @var SetupManager $setupManager */
-		$setupManager = \OC::$server->get(SetupManager::class);
+		$setupManager = Server::get(SetupManager::class);
 		$setupManager->tearDown();
 
 		/** @var MountProviderCollection $mountProviderCollection */
-		$mountProviderCollection = \OC::$server->get(MountProviderCollection::class);
+		$mountProviderCollection = Server::get(MountProviderCollection::class);
 		$mountProviderCollection->clearProviders();
 
 		/** @var IConfig $config */
-		$config = \OC::$server->get(IConfig::class);
+		$config = Server::get(IConfig::class);
 		$mountProviderCollection->registerProvider(new CacheMountProvider($config));
 		$mountProviderCollection->registerHomeProvider(new LocalHomeMountProvider());
-		$mountProviderCollection->registerRootProvider(new RootMountProvider($config, \OC::$server->get(LoggerInterface::class)));
+		$objectStoreConfig = Server::get(PrimaryObjectStoreConfig::class);
+		$mountProviderCollection->registerRootProvider(new RootMountProvider($objectStoreConfig, $config));
 
 		$setupManager->setupRoot();
 
@@ -329,6 +383,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	 */
 	protected static function tearDownAfterClassCleanFileCache(IQueryBuilder $queryBuilder) {
 		$queryBuilder->delete('filecache')
+			->runAcrossAllShards()
 			->execute();
 	}
 
@@ -365,7 +420,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	protected static function tearDownAfterClassCleanStrayDataUnlinkDir($dir) {
 		if ($dh = @opendir($dir)) {
 			while (($file = readdir($dh)) !== false) {
-				if (\OC\Files\Filesystem::isIgnoredDir($file)) {
+				if (Filesystem::isIgnoredDir($file)) {
 					continue;
 				}
 				$path = $dir . '/' . $file;
@@ -391,7 +446,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	 * Clean up the list of locks
 	 */
 	protected static function tearDownAfterClassCleanStrayLocks() {
-		\OC::$server->getLockingProvider()->releaseAll();
+		Server::get(ILockingProvider::class)->releaseAll();
 	}
 
 	/**
@@ -402,14 +457,14 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	 */
 	protected static function loginAsUser($user = '') {
 		self::logout();
-		\OC\Files\Filesystem::tearDown();
+		Filesystem::tearDown();
 		\OC_User::setUserId($user);
-		$userObject = \OC::$server->getUserManager()->get($user);
+		$userObject = Server::get(IUserManager::class)->get($user);
 		if (!is_null($userObject)) {
 			$userObject->updateLastLoginTimestamp();
 		}
 		\OC_Util::setupFS($user);
-		if (\OC::$server->getUserManager()->userExists($user)) {
+		if (Server::get(IUserManager::class)->userExists($user)) {
 			\OC::$server->getUserFolder($user);
 		}
 	}
@@ -421,7 +476,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 		\OC_Util::tearDownFS();
 		\OC_User::setUserId('');
 		// needed for fully logout
-		\OC::$server->getUserSession()->setUser(null);
+		Server::get(IUserSession::class)->setUser(null);
 	}
 
 	/**
@@ -448,26 +503,26 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	/**
 	 * Check if the given path is locked with a given type
 	 *
-	 * @param \OC\Files\View $view view
+	 * @param View $view view
 	 * @param string $path path to check
 	 * @param int $type lock type
 	 * @param bool $onMountPoint true to check the mount point instead of the
-	 * mounted storage
+	 *                           mounted storage
 	 *
 	 * @return boolean true if the file is locked with the
-	 * given type, false otherwise
+	 *                 given type, false otherwise
 	 */
 	protected function isFileLocked($view, $path, $type, $onMountPoint = false) {
 		// Note: this seems convoluted but is necessary because
 		// the format of the lock key depends on the storage implementation
 		// (in our case mostly md5)
 
-		if ($type === \OCP\Lock\ILockingProvider::LOCK_SHARED) {
+		if ($type === ILockingProvider::LOCK_SHARED) {
 			// to check if the file has a shared lock, try acquiring an exclusive lock
-			$checkType = \OCP\Lock\ILockingProvider::LOCK_EXCLUSIVE;
+			$checkType = ILockingProvider::LOCK_EXCLUSIVE;
 		} else {
 			// a shared lock cannot be set if exclusive lock is in place
-			$checkType = \OCP\Lock\ILockingProvider::LOCK_SHARED;
+			$checkType = ILockingProvider::LOCK_SHARED;
 		}
 		try {
 			$view->lockFile($path, $checkType, $onMountPoint);
@@ -475,7 +530,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 			// clean up
 			$view->unlockFile($path, $checkType, $onMountPoint);
 			return false;
-		} catch (\OCP\Lock\LockedException $e) {
+		} catch (LockedException $e) {
 			// we could not acquire the counter-lock, which means
 			// the lock of $type was in place
 			return true;
@@ -495,11 +550,6 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	}
 
 	protected function IsDatabaseAccessAllowed() {
-		// on travis-ci.org we allow database access in any case - otherwise
-		// this will break all apps right away
-		if (true == getenv('TRAVIS')) {
-			return true;
-		}
 		$annotations = $this->getGroupAnnotations();
 		if (isset($annotations)) {
 			if (in_array('DB', $annotations) || in_array('SLOWDB', $annotations)) {
@@ -516,8 +566,6 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase {
 	 * @param array $vars
 	 */
 	protected function assertTemplate($expectedHtml, $template, $vars = []) {
-		require_once __DIR__.'/../../lib/private/legacy/template/functions.php';
-
 		$requestToken = 12345;
 		/** @var Defaults|\PHPUnit\Framework\MockObject\MockObject $l10n */
 		$theme = $this->getMockBuilder('\OCP\Defaults')

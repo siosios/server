@@ -1,27 +1,9 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Johannes Leuker <j.leuker@hosting.de>
- * @author Kim Brose <kim.brose@rwth-aachen.de>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OC\Core\Command\User;
 
@@ -36,13 +18,11 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class Setting extends Base {
-	protected IUserManager $userManager;
-	protected IConfig $config;
-
-	public function __construct(IUserManager $userManager, IConfig $config) {
+	public function __construct(
+		protected IUserManager $userManager,
+		protected IConfig $config,
+	) {
 		parent::__construct();
-		$this->userManager = $userManager;
-		$this->config = $config;
 	}
 
 	protected function configure() {
@@ -53,7 +33,7 @@ class Setting extends Base {
 			->addArgument(
 				'uid',
 				InputArgument::REQUIRED,
-				'User ID used to login'
+				'Account ID used to login'
 			)
 			->addArgument(
 				'app',
@@ -175,7 +155,8 @@ class Setting extends Base {
 					$user = $this->userManager->get($uid);
 					if ($user instanceof IUser) {
 						if ($key === 'email') {
-							$user->setEMailAddress($input->getArgument('value'));
+							$email = $input->getArgument('value');
+							$user->setSystemEMailAddress(mb_strtolower(trim($email)));
 						} elseif ($key === 'display_name') {
 							if (!$user->setDisplayName($input->getArgument('value'))) {
 								if ($user->getDisplayName() === $input->getArgument('value')) {
@@ -239,7 +220,7 @@ class Setting extends Base {
 		}
 	}
 
-	protected function getUserSettings($uid, $app) {
+	protected function getUserSettings(string $uid, string $app): array {
 		$settings = $this->config->getAllUserValues($uid);
 		if ($app !== '') {
 			if (isset($settings[$app])) {
@@ -250,7 +231,10 @@ class Setting extends Base {
 		}
 
 		$user = $this->userManager->get($uid);
-		$settings['settings']['display_name'] = $user->getDisplayName();
+		if ($user !== null) {
+			// Only add the display name if the user exists
+			$settings['settings']['display_name'] = $user->getDisplayName();
+		}
 
 		return $settings;
 	}

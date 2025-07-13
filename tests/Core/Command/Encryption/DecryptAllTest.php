@@ -1,22 +1,9 @@
 <?php
+
 /**
- * @author Björn Schießle <schiessle@owncloud.com>
- *
- * @copyright Copyright (c) 2015, ownCloud, Inc.
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 namespace Tests\Core\Command\Encryption;
@@ -31,16 +18,16 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Test\TestCase;
 
 class DecryptAllTest extends TestCase {
-	/** @var \PHPUnit\Framework\MockObject\MockObject | \OCP\IConfig */
+	/** @var \PHPUnit\Framework\MockObject\MockObject|IConfig */
 	protected $config;
 
-	/** @var \PHPUnit\Framework\MockObject\MockObject | \OCP\Encryption\IManager  */
+	/** @var \PHPUnit\Framework\MockObject\MockObject | \OCP\Encryption\IManager */
 	protected $encryptionManager;
 
-	/** @var \PHPUnit\Framework\MockObject\MockObject | \OCP\App\IAppManager  */
+	/** @var \PHPUnit\Framework\MockObject\MockObject|IAppManager */
 	protected $appManager;
 
-	/** @var \PHPUnit\Framework\MockObject\MockObject  | \Symfony\Component\Console\Input\InputInterface */
+	/** @var \PHPUnit\Framework\MockObject\MockObject | \Symfony\Component\Console\Input\InputInterface */
 	protected $consoleInput;
 
 	/** @var \PHPUnit\Framework\MockObject\MockObject | \Symfony\Component\Console\Output\OutputInterface */
@@ -84,19 +71,22 @@ class DecryptAllTest extends TestCase {
 			->with('files_trashbin')->willReturn(true);
 	}
 
-	public function testMaintenanceAndTrashbin() {
+	public function testMaintenanceAndTrashbin(): void {
 		// on construct we enable single-user-mode and disable the trash bin
-		$this->config->expects($this->at(1))
+		// on destruct we disable single-user-mode again and enable the trash bin
+		$calls = [
+			['maintenance', true],
+			['maintenance', false],
+		];
+		$this->config->expects($this->exactly(2))
 			->method('setSystemValue')
-			->with('maintenance', true);
+			->willReturnCallback(function () use (&$calls): void {
+				$expected = array_shift($calls);
+				$this->assertEquals($expected, func_get_args());
+			});
 		$this->appManager->expects($this->once())
 			->method('disableApp')
 			->with('files_trashbin');
-
-		// on destruct wi disable single-user-mode again and enable the trash bin
-		$this->config->expects($this->at(2))
-			->method('setSystemValue')
-			->with('maintenance', false);
 		$this->appManager->expects($this->once())
 			->method('enableApp')
 			->with('files_trashbin');
@@ -120,10 +110,8 @@ class DecryptAllTest extends TestCase {
 		$this->invokePrivate($instance, 'resetMaintenanceAndTrashbin');
 	}
 
-	/**
-	 * @dataProvider dataTestExecute
-	 */
-	public function testExecute($encryptionEnabled, $continue) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestExecute')]
+	public function testExecute($encryptionEnabled, $continue): void {
 		$instance = new DecryptAll(
 			$this->encryptionManager,
 			$this->appManager,
@@ -142,9 +130,16 @@ class DecryptAllTest extends TestCase {
 			->willReturn('user1');
 
 		if ($encryptionEnabled) {
-			$this->config->expects($this->at(1))
+			$calls = [
+				['core', 'encryption_enabled', 'no'],
+				['core', 'encryption_enabled', 'yes'],
+			];
+			$this->config->expects($this->exactly(2))
 				->method('setAppValue')
-				->with('core', 'encryption_enabled', 'no');
+				->willReturnCallback(function () use (&$calls): void {
+					$expected = array_shift($calls);
+					$this->assertEquals($expected, func_get_args());
+				});
 			$this->questionHelper->expects($this->once())
 				->method('ask')
 				->willReturn($continue);
@@ -154,9 +149,6 @@ class DecryptAllTest extends TestCase {
 					->with($this->consoleInput, $this->consoleOutput, 'user1');
 			} else {
 				$this->decryptAll->expects($this->never())->method('decryptAll');
-				$this->config->expects($this->at(2))
-					->method('setAppValue')
-					->with('core', 'encryption_enabled', 'yes');
 			}
 		} else {
 			$this->config->expects($this->never())->method('setAppValue');
@@ -167,7 +159,7 @@ class DecryptAllTest extends TestCase {
 		$this->invokePrivate($instance, 'execute', [$this->consoleInput, $this->consoleOutput]);
 	}
 
-	public function dataTestExecute() {
+	public static function dataTestExecute(): array {
 		return [
 			[true, true],
 			[true, false],
@@ -177,7 +169,7 @@ class DecryptAllTest extends TestCase {
 	}
 
 
-	public function testExecuteFailure() {
+	public function testExecuteFailure(): void {
 		$this->expectException(\Exception::class);
 
 		$instance = new DecryptAll(
@@ -188,15 +180,17 @@ class DecryptAllTest extends TestCase {
 			$this->questionHelper
 		);
 
-		$this->config->expects($this->at(1))
-			->method('setAppValue')
-			->with('core', 'encryption_enabled', 'no');
-
 		// make sure that we enable encryption again after a exception was thrown
-		$this->config->expects($this->at(4))
+		$calls = [
+			['core', 'encryption_enabled', 'no'],
+			['core', 'encryption_enabled', 'yes'],
+		];
+		$this->config->expects($this->exactly(2))
 			->method('setAppValue')
-			->with('core', 'encryption_enabled', 'yes');
-
+			->willReturnCallback(function () use (&$calls): void {
+				$expected = array_shift($calls);
+				$this->assertEquals($expected, func_get_args());
+			});
 		$this->encryptionManager->expects($this->once())
 			->method('isEnabled')
 			->willReturn(true);
@@ -213,7 +207,7 @@ class DecryptAllTest extends TestCase {
 		$this->decryptAll->expects($this->once())
 			->method('decryptAll')
 			->with($this->consoleInput, $this->consoleOutput, 'user1')
-			->willReturnCallback(function () {
+			->willReturnCallback(function (): void {
 				throw new \Exception();
 			});
 

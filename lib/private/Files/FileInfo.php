@@ -1,41 +1,22 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Julius Härtl <jus@bitgrid.net>
- * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Piotr M <mrow4a@yahoo.com>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author tbartenstein <tbartenstein@users.noreply.github.com>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <vincent@nextcloud.com>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OC\Files;
 
+use OC\Files\Mount\HomeMountPoint;
+use OCA\Files_Sharing\External\Mount;
+use OCA\Files_Sharing\ISharedMountPoint;
 use OCP\Files\Cache\ICacheEntry;
 use OCP\Files\Mount\IMountPoint;
 use OCP\IUser;
 
+/**
+ * @template-implements \ArrayAccess<string,mixed>
+ */
 class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	private array|ICacheEntry $data;
 	/**
@@ -114,26 +95,15 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 		unset($this->data[$offset]);
 	}
 
-	/**
-	 * @return mixed
-	 */
-	#[\ReturnTypeWillChange]
-	public function offsetGet($offset) {
-		if ($offset === 'type') {
-			return $this->getType();
-		} elseif ($offset === 'etag') {
-			return $this->getEtag();
-		} elseif ($offset === 'size') {
-			return $this->getSize();
-		} elseif ($offset === 'mtime') {
-			return $this->getMTime();
-		} elseif ($offset === 'permissions') {
-			return $this->getPermissions();
-		} elseif (isset($this->data[$offset])) {
-			return $this->data[$offset];
-		} else {
-			return null;
-		}
+	public function offsetGet(mixed $offset): mixed {
+		return match ($offset) {
+			'type' => $this->getType(),
+			'etag' => $this->getEtag(),
+			'size' => $this->getSize(),
+			'mtime' => $this->getMTime(),
+			'permissions' => $this->getPermissions(),
+			default => $this->data[$offset] ?? null,
+		};
 	}
 
 	/**
@@ -143,9 +113,6 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 		return $this->path;
 	}
 
-	/**
-	 * @return \OCP\Files\Storage
-	 */
 	public function getStorage() {
 		return $this->storage;
 	}
@@ -163,7 +130,7 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 * @return int|null
 	 */
 	public function getId() {
-		return isset($this->data['fileid']) ? (int)  $this->data['fileid'] : null;
+		return isset($this->data['fileid']) ? (int)$this->data['fileid'] : null;
 	}
 
 	/**
@@ -184,14 +151,16 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 * @return string
 	 */
 	public function getName() {
-		return isset($this->data['name']) ? $this->data['name'] : basename($this->getPath());
+		return empty($this->data['name'])
+			? basename($this->getPath())
+			: $this->data['name'];
 	}
 
 	/**
 	 * @return string
 	 */
 	public function getEtag() {
-		$this->updateEntryfromSubMounts();
+		$this->updateEntryFromSubMounts();
 		if (count($this->childEtags) > 0) {
 			$combinedEtag = $this->data['etag'] . '::' . implode('::', $this->childEtags);
 			return md5($combinedEtag);
@@ -206,9 +175,9 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 */
 	public function getSize($includeMounts = true) {
 		if ($includeMounts) {
-			$this->updateEntryfromSubMounts();
+			$this->updateEntryFromSubMounts();
 
-			if (isset($this->data['unencrypted_size']) && $this->data['unencrypted_size'] > 0) {
+			if ($this->isEncrypted() && isset($this->data['unencrypted_size']) && $this->data['unencrypted_size'] > 0) {
 				return $this->data['unencrypted_size'];
 			} else {
 				return isset($this->data['size']) ? 0 + $this->data['size'] : 0;
@@ -222,33 +191,29 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 * @return int
 	 */
 	public function getMTime() {
-		$this->updateEntryfromSubMounts();
-		return (int) $this->data['mtime'];
+		$this->updateEntryFromSubMounts();
+		return (int)$this->data['mtime'];
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isEncrypted() {
-		return $this->data['encrypted'];
+		return $this->data['encrypted'] ?? false;
 	}
 
 	/**
-	 * Return the currently version used for the HMAC in the encryption app
+	 * Return the current version used for the HMAC in the encryption app
 	 */
 	public function getEncryptedVersion(): int {
-		return isset($this->data['encryptedVersion']) ? (int) $this->data['encryptedVersion'] : 1;
+		return isset($this->data['encryptedVersion']) ? (int)$this->data['encryptedVersion'] : 1;
 	}
 
 	/**
 	 * @return int
 	 */
 	public function getPermissions() {
-		$perms = (int) $this->data['permissions'];
-		if (\OCP\Util::isSharingDisabledForUser() || ($this->isShared() && !\OC\Share\Share::isResharingAllowed())) {
-			$perms = $perms & ~\OCP\Constants::PERMISSION_SHARE;
-		}
-		return $perms;
+		return (int)$this->data['permissions'];
 	}
 
 	/**
@@ -316,27 +281,12 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 * @return bool
 	 */
 	public function isShared() {
-		$sid = $this->getStorage()->getId();
-		if (!is_null($sid)) {
-			$sid = explode(':', $sid);
-			return ($sid[0] === 'shared');
-		}
-
-		return false;
+		return $this->mount instanceof ISharedMountPoint;
 	}
 
 	public function isMounted() {
-		$storage = $this->getStorage();
-		if ($storage->instanceOfStorage('\OCP\Files\IHomeStorage')) {
-			return false;
-		}
-		$sid = $storage->getId();
-		if (!is_null($sid)) {
-			$sid = explode(':', $sid);
-			return ($sid[0] !== 'home' and $sid[0] !== 'shared');
-		}
-
-		return false;
+		$isHome = $this->mount instanceof HomeMountPoint;
+		return !$isHome && !$this->isShared();
 	}
 
 	/**
@@ -364,7 +314,7 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 		$this->subMounts = $mounts;
 	}
 
-	private function updateEntryfromSubMounts(): void {
+	private function updateEntryFromSubMounts(): void {
 		if ($this->subMountsUsed) {
 			return;
 		}
@@ -425,10 +375,22 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	}
 
 	public function getCreationTime(): int {
-		return (int) $this->data['creation_time'];
+		return (int)$this->data['creation_time'];
 	}
 
 	public function getUploadTime(): int {
-		return (int) $this->data['upload_time'];
+		return (int)$this->data['upload_time'];
+	}
+
+	public function getParentId(): int {
+		return $this->data['parent'] ?? -1;
+	}
+
+	/**
+	 * @inheritDoc
+	 * @return array<string, int|string|bool|float|string[]|int[]>
+	 */
+	public function getMetadata(): array {
+		return $this->data['metadata'] ?? [];
 	}
 }

@@ -1,23 +1,6 @@
 <!--
-  - @copyright 2023 Christopher Ng <chrng8@gmail.com>
-  -
-  - @author Christopher Ng <chrng8@gmail.com>
-  -
-  - @license AGPL-3.0-or-later
-  -
-  - This program is free software: you can redistribute it and/or modify
-  - it under the terms of the GNU Affero General Public License as
-  - published by the Free Software Foundation, either version 3 of the
-  - License, or (at your option) any later version.
-  -
-  - This program is distributed in the hope that it will be useful,
-  - but WITHOUT ANY WARRANTY; without even the implied warranty of
-  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  - GNU Affero General Public License for more details.
-  -
-  - You should have received a copy of the GNU Affero General Public License
-  - along with this program. If not, see <http://www.gnu.org/licenses/>.
-  -
+  - SPDX-FileCopyrightText: 2023 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
 <template>
@@ -25,56 +8,56 @@
 		<NcLoadingIcon v-if="loadingTags"
 			:name="t('systemtags', 'Loading collaborative tags …')"
 			:size="32" />
-		<template v-else>
-			<label for="system-tags-input">{{ t('systemtags', 'Search or create collaborative tags') }}</label>
-			<NcSelectTags class="system-tags__select"
-				input-id="system-tags-input"
-				:placeholder="t('systemtags', 'Collaborative tags …')"
-				:options="sortedTags"
-				:value="selectedTags"
-				:create-option="createOption"
-				:taggable="true"
-				:passthru="true"
-				:fetch-tags="false"
-				:loading="loading"
-				@input="handleInput"
-				@option:selected="handleSelect"
-				@option:created="handleCreate"
-				@option:deselected="handleDeselect">
-				<template #no-options>
-					{{ t('systemtags', 'No tags to select, type to create a new tag') }}
-				</template>
-			</NcSelectTags>
-		</template>
+
+		<NcSelectTags v-show="!loadingTags"
+			class="system-tags__select"
+			:input-label="t('systemtags', 'Search or create collaborative tags')"
+			:placeholder="t('systemtags', 'Collaborative tags …')"
+			:options="sortedTags"
+			:value="selectedTags"
+			:create-option="createOption"
+			:disabled="disabled"
+			:taggable="true"
+			:passthru="true"
+			:fetch-tags="false"
+			:loading="loading"
+			@input="handleInput"
+			@option:selected="handleSelect"
+			@option:created="handleCreate"
+			@option:deselected="handleDeselect">
+			<template #no-options>
+				{{ t('systemtags', 'No tags to select, type to create a new tag') }}
+			</template>
+		</NcSelectTags>
 	</div>
 </template>
 
 <script lang="ts">
 // FIXME Vue TypeScript ESLint errors
 /* eslint-disable */
+import type { Node } from '@nextcloud/files'
+import type { Tag, TagWithId } from '../types.js'
+
 import Vue from 'vue'
-import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import NcSelectTags from '@nextcloud/vue/dist/Components/NcSelectTags.js'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcSelectTags from '@nextcloud/vue/components/NcSelectTags'
 
-import { translate as t } from '@nextcloud/l10n'
+import { emit, subscribe } from '@nextcloud/event-bus'
+import { loadState } from '@nextcloud/initial-state'
 import { showError } from '@nextcloud/dialogs'
+import { t } from '@nextcloud/l10n'
 
+import { defaultBaseTag } from '../utils.js'
+import { fetchLastUsedTagIds, fetchTags } from '../services/api.js'
+import { fetchNode } from '../../../files/src/services/WebdavClient.js'
 import {
-	createTag,
-	deleteTag,
-	fetchLastUsedTagIds,
-	fetchSelectedTags,
-	fetchTags,
-	selectTag,
-} from '../services/api.js'
+	createTagForFile,
+	deleteTagForFile,
+	fetchTagsForFile,
+	setTagForFile,
+} from '../services/files.js'
+import logger from '../logger.js'
 
-import type { BaseTag, Tag, TagWithId } from '../types.js'
-
-const defaultBaseTag: BaseTag = {
-	userVisible: true,
-	userAssignable: true,
-	canAssign: true,
-}
 
 export default Vue.extend({
 	name: 'SystemTags',
@@ -88,6 +71,10 @@ export default Vue.extend({
 		fileId: {
 			type: Number,
 			required: true,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
 		},
 	},
 
@@ -133,14 +120,17 @@ export default Vue.extend({
 			async handler() {
 				this.loadingTags = true
 				try {
-					this.selectedTags = await fetchSelectedTags(this.fileId)
-					this.$emit('has-tags', this.selectedTags.length > 0)
+					this.selectedTags = await fetchTagsForFile(this.fileId)
 				} catch (error) {
 					showError(t('systemtags', 'Failed to load selected tags'))
 				}
 				this.loadingTags = false
 			},
 		},
+	},
+
+	mounted() {
+		subscribe('systemtags:node:updated', this.onTagUpdated)
 	},
 
 	methods: {
@@ -175,14 +165,15 @@ export default Vue.extend({
 		},
 
 		async handleSelect(tags: Tag[]) {
-			const selectedTag = tags[tags.length - 1]
-			if (!selectedTag.id) {
+			const lastTag = tags[tags.length - 1]
+			if (!lastTag.id) {
 				// Ignore created tags handled by `handleCreate()`
 				return
 			}
+			const selectedTag = lastTag as TagWithId
 			this.loading = true
 			try {
-				await selectTag(this.fileId, selectedTag)
+				await setTagForFile(selectedTag, this.fileId)
 				const sortToFront = (a: TagWithId, b: TagWithId) => {
 					if (a.id === selectedTag.id) {
 						return -1
@@ -196,29 +187,67 @@ export default Vue.extend({
 				showError(t('systemtags', 'Failed to select tag'))
 			}
 			this.loading = false
+
+			this.updateAndDispatchNodeTagsEvent(this.fileId)
 		},
 
 		async handleCreate(tag: Tag) {
 			this.loading = true
 			try {
-				const id = await createTag(this.fileId, tag)
+				const id = await createTagForFile(tag, this.fileId)
 				const createdTag = { ...tag, id }
 				this.sortedTags.unshift(createdTag)
 				this.selectedTags.push(createdTag)
 			} catch (error) {
+				const systemTagsCreationRestrictedToAdmin = loadState<true|false>('settings', 'restrictSystemTagsCreationToAdmin', false) === true
+				if (systemTagsCreationRestrictedToAdmin) {
+					showError(t('systemtags', 'System admin disabled tag creation. You can only use existing ones.'))
+					return
+				}
 				showError(t('systemtags', 'Failed to create tag'))
 			}
 			this.loading = false
+
+			this.updateAndDispatchNodeTagsEvent(this.fileId)
 		},
 
-		async handleDeselect(tag: Tag) {
+		async handleDeselect(tag: TagWithId) {
 			this.loading = true
 			try {
-				await deleteTag(this.fileId, tag)
+				await deleteTagForFile(tag, this.fileId)
 			} catch (error) {
 				showError(t('systemtags', 'Failed to delete tag'))
 			}
 			this.loading = false
+
+			this.updateAndDispatchNodeTagsEvent(this.fileId)
+		},
+
+		async onTagUpdated(node: Node) {
+			if (node.fileid !== this.fileId) {
+				return
+			}
+
+			this.loadingTags = true
+			try {
+				this.selectedTags = await fetchTagsForFile(this.fileId)
+			} catch (error) {
+				showError(t('systemtags', 'Failed to load selected tags'))
+			}
+
+			this.loadingTags = false
+		},
+
+		async updateAndDispatchNodeTagsEvent(fileId: number) {
+			const path = window.OCA?.Files?.Sidebar?.file || ''
+			try {
+				const node = await fetchNode(path)
+				if (node) {
+					emit('systemtags:node:updated', node)
+				}
+			} catch (error) {
+				logger.error('Failed to fetch node for system tags update', { error, fileId })
+			}
 		},
 	},
 })
@@ -229,10 +258,7 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 
-	label[for="system-tags-input"] {
-		margin-bottom: 2px;
-	}
-
+	// Fix issue with AppSidebar styles overwriting NcSelect styles
 	&__select {
 		width: 100%;
 		:deep {

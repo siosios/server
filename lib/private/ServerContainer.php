@@ -1,28 +1,10 @@
 <?php
 
 declare(strict_types=1);
-
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OC;
 
@@ -146,18 +128,17 @@ class ServerContainer extends SimpleContainer {
 			} catch (QueryException $e) {
 				// Continue with general autoloading then
 			}
-		}
-
-		// In case the service starts with OCA\ we try to find the service in
-		// the apps container first.
-		if (($appContainer = $this->getAppContainerForService($name)) !== null) {
-			try {
-				return $appContainer->queryNoFallback($name);
-			} catch (QueryException $e) {
-				// Didn't find the service or the respective app container
-				// In this case the service won't be part of the core container,
-				// so we can throw directly
-				throw $e;
+			// In case the service starts with OCA\ we try to find the service in
+			// the apps container first.
+			if (($appContainer = $this->getAppContainerForService($name)) !== null) {
+				try {
+					return $appContainer->queryNoFallback($name);
+				} catch (QueryException $e) {
+					// Didn't find the service or the respective app container
+					// In this case the service won't be part of the core container,
+					// so we can throw directly
+					throw $e;
+				}
 			}
 		} elseif (str_starts_with($name, 'OC\\Settings\\') && substr_count($name, '\\') >= 3) {
 			$segments = explode('\\', $name);

@@ -1,46 +1,67 @@
 /**
- * @copyright Copyright (c) 2023 John Molakvoæ <skjnldsv@protonmail.com>
- *
- * @author John Molakvoæ <skjnldsv@protonmail.com>
- *
- * @license AGPL-3.0-or-later
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2023 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { translate as t } from '@nextcloud/l10n'
-import InformationSvg from '@mdi/svg/svg/information-variant.svg?raw'
-import type { Node } from '@nextcloud/files'
+import type { Node, View } from '@nextcloud/files'
 
-import { registerFileAction, FileAction } from '../services/FileAction.ts'
-import logger from '../logger.js'
+import { Permission, FileAction } from '@nextcloud/files'
+import { translate as t } from '@nextcloud/l10n'
+import { isPublicShare } from '@nextcloud/sharing/public'
+
+import InformationSvg from '@mdi/svg/svg/information-variant.svg?raw'
+
+import logger from '../logger.ts'
 
 export const ACTION_DETAILS = 'details'
 
-registerFileAction(new FileAction({
+export const action = new FileAction({
 	id: ACTION_DETAILS,
-	displayName: () => t('files', 'Details'),
+	displayName: () => t('files', 'Open details'),
 	iconSvgInline: () => InformationSvg,
 
 	// Sidebar currently supports user folder only, /files/USER
-	enabled: (files: Node[]) => !!window?.OCA?.Files?.Sidebar
-		&& files.some(node => node.root?.startsWith('/files/')),
+	enabled: (nodes: Node[]) => {
+		if (isPublicShare()) {
+			return false
+		}
 
-	async exec(node: Node) {
+		// Only works on single node
+		if (nodes.length !== 1) {
+			return false
+		}
+
+		if (!nodes[0]) {
+			return false
+		}
+
+		// Only work if the sidebar is available
+		if (!window?.OCA?.Files?.Sidebar) {
+			return false
+		}
+
+		return (nodes[0].root?.startsWith('/files/') && nodes[0].permissions !== Permission.NONE) ?? false
+	},
+
+	async exec(node: Node, view: View, dir: string) {
 		try {
+			// If the sidebar is already open for the current file, do nothing
+			if (window.OCA.Files.Sidebar.file === node.path) {
+				logger.debug('Sidebar already open for this file', { node })
+				return null
+			}
+			// Open sidebar and set active tab to sharing by default
+			window.OCA.Files.Sidebar.setActiveTab('sharing')
+
 			// TODO: migrate Sidebar to use a Node instead
-			window?.OCA?.Files?.Sidebar?.open?.(node.path)
+			await window.OCA.Files.Sidebar.open(node.path)
+
+			// Silently update current fileid
+			window.OCP?.Files?.Router?.goToRoute(
+				null,
+				{ view: view.id, fileid: String(node.fileid) },
+				{ ...window.OCP.Files.Router.query, dir, opendetails: 'true' },
+				true,
+			)
 
 			return null
 		} catch (error) {
@@ -49,6 +70,5 @@ registerFileAction(new FileAction({
 		}
 	},
 
-	default: true,
 	order: -50,
-}))
+})

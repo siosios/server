@@ -1,24 +1,8 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2017 Arthur Schiwon <blizzz@arthur-schiwon.de>
- *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace Test\Collaboration\Collaborators;
@@ -43,19 +27,19 @@ class RemotePluginTest extends TestCase {
 	/** @var IUserManager|\PHPUnit\Framework\MockObject\MockObject */
 	protected $userManager;
 
-	/** @var  IConfig|\PHPUnit\Framework\MockObject\MockObject */
+	/** @var IConfig|\PHPUnit\Framework\MockObject\MockObject */
 	protected $config;
 
-	/** @var  IManager|\PHPUnit\Framework\MockObject\MockObject */
+	/** @var IManager|\PHPUnit\Framework\MockObject\MockObject */
 	protected $contactsManager;
 
-	/** @var  ICloudIdManager|\PHPUnit\Framework\MockObject\MockObject */
+	/** @var ICloudIdManager|\PHPUnit\Framework\MockObject\MockObject */
 	protected $cloudIdManager;
 
-	/** @var  RemotePlugin */
+	/** @var RemotePlugin */
 	protected $plugin;
 
-	/** @var  SearchResult */
+	/** @var SearchResult */
 	protected $searchResult;
 
 	protected function setUp(): void {
@@ -87,7 +71,6 @@ class RemotePluginTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider dataGetRemote
 	 *
 	 * @param string $searchTerm
 	 * @param array $contacts
@@ -96,7 +79,8 @@ class RemotePluginTest extends TestCase {
 	 * @param bool $exactIdMatch
 	 * @param bool $reachedEnd
 	 */
-	public function testSearch($searchTerm, array $contacts, $shareeEnumeration, array $expected, $exactIdMatch, $reachedEnd) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataGetRemote')]
+	public function testSearch($searchTerm, array $contacts, $shareeEnumeration, array $expected, $exactIdMatch, $reachedEnd): void {
 		$this->config->expects($this->any())
 			->method('getAppValue')
 			->willReturnCallback(
@@ -128,13 +112,13 @@ class RemotePluginTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider dataTestSplitUserRemote
 	 *
 	 * @param string $remote
 	 * @param string $expectedUser
 	 * @param string $expectedUrl
 	 */
-	public function testSplitUserRemote($remote, $expectedUser, $expectedUrl) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestSplitUserRemote')]
+	public function testSplitUserRemote($remote, $expectedUser, $expectedUrl): void {
 		$this->instantiatePlugin();
 
 		$this->contactsManager->expects($this->any())
@@ -147,18 +131,17 @@ class RemotePluginTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider dataTestSplitUserRemoteError
-	 *
 	 * @param string $id
 	 */
-	public function testSplitUserRemoteError($id) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestSplitUserRemoteError')]
+	public function testSplitUserRemoteError($id): void {
 		$this->expectException(\Exception::class);
 
 		$this->instantiatePlugin();
 		$this->plugin->splitUserRemote($id);
 	}
 
-	public function dataGetRemote() {
+	public static function dataGetRemote() {
 		return [
 			['test', [], true, ['remotes' => [], 'exact' => ['remotes' => []]], false, true],
 			['test', [], false, ['remotes' => [], 'exact' => ['remotes' => []]], false, true],
@@ -391,7 +374,7 @@ class RemotePluginTest extends TestCase {
 		];
 	}
 
-	public function dataTestSplitUserRemote() {
+	public static function dataTestSplitUserRemote(): array {
 		$userPrefix = ['user@name', 'username'];
 		$protocols = ['', 'http://', 'https://'];
 		$remotes = [
@@ -412,6 +395,11 @@ class RemotePluginTest extends TestCase {
 				foreach ($protocols as $protocol) {
 					$baseUrl = $user . '@' . $protocol . $remote;
 
+					if ($protocol === 'https://') {
+						// https:// protocol is not expected in the final result
+						$protocol = '';
+					}
+
 					$testCases[] = [$baseUrl, $user, $protocol . $remote];
 					$testCases[] = [$baseUrl . '/', $user, $protocol . $remote];
 					$testCases[] = [$baseUrl . '/index.php', $user, $protocol . $remote];
@@ -422,7 +410,7 @@ class RemotePluginTest extends TestCase {
 		return $testCases;
 	}
 
-	public function dataTestSplitUserRemoteError() {
+	public static function dataTestSplitUserRemoteError(): array {
 		return [
 			// Invalid path
 			['user@'],

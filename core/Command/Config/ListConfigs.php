@@ -1,27 +1,13 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Joas Schilling <coding@schilljs.com>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OC\Core\Command\Config;
 
+use OC\Config\ConfigManager;
 use OC\Core\Command\Base;
 use OC\SystemConfig;
 use OCP\IAppConfig;
@@ -33,13 +19,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ListConfigs extends Base {
 	protected string $defaultOutputFormat = self::OUTPUT_FORMAT_JSON_PRETTY;
-	protected SystemConfig $systemConfig;
-	protected IAppConfig $appConfig;
 
-	public function __construct(SystemConfig $systemConfig, IAppConfig $appConfig) {
+	public function __construct(
+		protected SystemConfig $systemConfig,
+		protected IAppConfig $appConfig,
+		protected ConfigManager $configManager,
+	) {
 		parent::__construct();
-		$this->systemConfig = $systemConfig;
-		$this->appConfig = $appConfig;
 	}
 
 	protected function configure() {
@@ -60,12 +46,17 @@ class ListConfigs extends Base {
 				InputOption::VALUE_NONE,
 				'Use this option when you want to include sensitive configs like passwords, salts, ...'
 			)
+			->addOption('migrate', null, InputOption::VALUE_NONE, 'Rename config keys of all enabled apps, based on ConfigLexicon')
 		;
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$app = $input->getArgument('app');
 		$noSensitiveValues = !$input->getOption('private');
+
+		if ($input->getOption('migrate')) {
+			$this->configManager->migrateConfigLexiconKeys(($app === 'all') ? null : $app);
+		}
 
 		if (!is_string($app)) {
 			$output->writeln('<error>Invalid app value given</error>');
@@ -92,9 +83,7 @@ class ListConfigs extends Base {
 
 			default:
 				$configs = [
-					'apps' => [
-						$app => $this->getAppConfigs($app, $noSensitiveValues),
-					],
+					'apps' => [$app => $this->getAppConfigs($app, $noSensitiveValues)],
 				];
 		}
 
@@ -108,7 +97,7 @@ class ListConfigs extends Base {
 	 * @param bool $noSensitiveValues
 	 * @return array
 	 */
-	protected function getSystemConfigs($noSensitiveValues) {
+	protected function getSystemConfigs(bool $noSensitiveValues): array {
 		$keys = $this->systemConfig->getKeys();
 
 		$configs = [];
@@ -134,7 +123,7 @@ class ListConfigs extends Base {
 	 * @param bool $noSensitiveValues
 	 * @return array
 	 */
-	protected function getAppConfigs($app, $noSensitiveValues) {
+	protected function getAppConfigs(string $app, bool $noSensitiveValues) {
 		if ($noSensitiveValues) {
 			return $this->appConfig->getFilteredValues($app, false);
 		} else {

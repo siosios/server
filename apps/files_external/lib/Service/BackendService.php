@@ -1,39 +1,23 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2018-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OCA\Files_External\Service;
 
 use OCA\Files_External\Config\IConfigHandler;
+use OCA\Files_External\ConfigLexicon;
 use OCA\Files_External\Lib\Auth\AuthMechanism;
-
 use OCA\Files_External\Lib\Backend\Backend;
 use OCA\Files_External\Lib\Config\IAuthMechanismProvider;
 use OCA\Files_External\Lib\Config\IBackendProvider;
+use OCA\Files_External\Lib\MissingDependency;
 use OCP\EventDispatcher\GenericEvent;
-use OCP\IConfig;
+use OCP\EventDispatcher\IEventDispatcher;
+use OCP\IAppConfig;
+use OCP\Server;
 
 /**
  * Service class to manage backend definitions
@@ -50,9 +34,6 @@ class BackendService {
 
 	/** Priority constants for PriorityTrait */
 	public const PRIORITY_DEFAULT = 100;
-
-	/** @var IConfig */
-	protected $config;
 
 	/** @var bool */
 	private $userMountingAllowed = true;
@@ -77,21 +58,12 @@ class BackendService {
 
 	private $configHandlers = [];
 
-	/**
-	 * @param IConfig $config
-	 */
 	public function __construct(
-		IConfig $config
+		protected IAppConfig $appConfig,
 	) {
-		$this->config = $config;
-
 		// Load config values
-		if ($this->config->getAppValue('files_external', 'allow_user_mounting', 'yes') !== 'yes') {
-			$this->userMountingAllowed = false;
-		}
-		$this->userMountingBackends = explode(',',
-			$this->config->getAppValue('files_external', 'user_mounting_backends', '')
-		);
+		$this->userMountingAllowed = $appConfig->getValueBool('files_external', ConfigLexicon::ALLOW_USER_MOUNTING);
+		$this->userMountingBackends = explode(',', $appConfig->getValueString('files_external', ConfigLexicon::USER_MOUNTING_BACKENDS));
 
 		// if no backend is in the list an empty string is in the array and user mounting is disabled
 		if ($this->userMountingBackends === ['']) {
@@ -112,7 +84,7 @@ class BackendService {
 	private function callForRegistrations() {
 		static $eventSent = false;
 		if (!$eventSent) {
-			\OC::$server->getEventDispatcher()->dispatch(
+			Server::get(IEventDispatcher::class)->dispatch(
 				'OCA\\Files_External::loadAdditionalBackends',
 				new GenericEvent()
 			);
@@ -217,7 +189,8 @@ class BackendService {
 	 */
 	public function getAvailableBackends() {
 		return array_filter($this->getBackends(), function ($backend) {
-			return !$backend->checkDependencies();
+			$missing = array_filter($backend->checkDependencies(), fn (MissingDependency $dependency) => !$dependency->isOptional());
+			return count($missing) === 0;
 		});
 	}
 
@@ -286,8 +259,8 @@ class BackendService {
 	 * @return bool
 	 */
 	protected function isAllowedUserBackend(Backend $backend) {
-		if ($this->userMountingAllowed &&
-			array_intersect($backend->getIdentifierAliases(), $this->userMountingBackends)
+		if ($this->userMountingAllowed
+			&& array_intersect($backend->getIdentifierAliases(), $this->userMountingBackends)
 		) {
 			return true;
 		}

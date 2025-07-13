@@ -1,23 +1,24 @@
+/**
+ * SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 module.exports = {
 	globals: {
 		__webpack_nonce__: true,
 		_: true,
 		$: true,
-		moment: true,
-		escapeHTML: true,
-		oc_userconfig: true,
 		dayNames: true,
+		escapeHTML: true,
 		firstDay: true,
-		'cypress/globals': true,
-	},
-	parserOptions: {
-		parser: '@typescript-eslint/parser',
+		moment: true,
+		oc_userconfig: true,
+		sinon: true,
 	},
 	plugins: [
 		'cypress',
 	],
 	extends: [
-		'@nextcloud',
+		'@nextcloud/eslint-config/typescript',
 		'plugin:cypress/recommended',
 	],
 	rules: {
@@ -34,5 +35,17 @@ module.exports = {
 		jsdoc: {
 			mode: 'typescript',
 		},
+		'import/resolver': {
+			typescript: {}, // this loads <rootdir>/tsconfig.json to eslint
+		},
 	},
+	overrides: [
+		// Allow any in tests
+		{
+			files: ['**/*.spec.ts'],
+			rules: {
+				'@typescript-eslint/no-explicit-any': 'warn',
+			},
+		},
+	],
 }

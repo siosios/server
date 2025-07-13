@@ -3,23 +3,9 @@
 declare(strict_types=1);
 
 /**
- * @author Lukas Reschke <lukas@owncloud.com>
- *
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 namespace Tests\Core\Controller;
@@ -29,13 +15,13 @@ use OC\Authentication\Login\LoginData;
 use OC\Authentication\Login\LoginResult;
 use OC\Authentication\TwoFactorAuth\Manager;
 use OC\Core\Controller\LoginController;
-use OC\Security\Bruteforce\Throttler;
 use OC\User\Session;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\AppFramework\Services\IInitialState;
 use OCP\Defaults;
 use OCP\IConfig;
-use OCP\IInitialStateService;
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\ISession;
@@ -43,6 +29,8 @@ use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\Notification\IManager;
+use OCP\Security\Bruteforce\IThrottler;
+use OCP\Security\ITrustedDomainHelper;
 use PHPUnit\Framework\MockObject\MockObject;
 use Test\TestCase;
 
@@ -74,11 +62,11 @@ class LoginControllerTest extends TestCase {
 	/** @var Defaults|MockObject */
 	private $defaults;
 
-	/** @var Throttler|MockObject */
+	/** @var IThrottler|MockObject */
 	private $throttler;
 
-	/** @var IInitialStateService|MockObject */
-	private $initialStateService;
+	/** @var IInitialState|MockObject */
+	private $initialState;
 
 	/** @var \OC\Authentication\WebAuthn\Manager|MockObject */
 	private $webAuthnManager;
@@ -88,6 +76,9 @@ class LoginControllerTest extends TestCase {
 
 	/** @var IL10N|MockObject */
 	private $l;
+
+	/** @var IAppManager|MockObject */
+	private $appManager;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -99,11 +90,13 @@ class LoginControllerTest extends TestCase {
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 		$this->twoFactorManager = $this->createMock(Manager::class);
 		$this->defaults = $this->createMock(Defaults::class);
-		$this->throttler = $this->createMock(Throttler::class);
-		$this->initialStateService = $this->createMock(IInitialStateService::class);
+		$this->throttler = $this->createMock(IThrottler::class);
+		$this->initialState = $this->createMock(IInitialState::class);
 		$this->webAuthnManager = $this->createMock(\OC\Authentication\WebAuthn\Manager::class);
 		$this->notificationManager = $this->createMock(IManager::class);
 		$this->l = $this->createMock(IL10N::class);
+		$this->appManager = $this->createMock(IAppManager::class);
+
 		$this->l->expects($this->any())
 			->method('t')
 			->willReturnCallback(function ($text, $parameters = []) {
@@ -113,6 +106,9 @@ class LoginControllerTest extends TestCase {
 
 		$this->request->method('getRemoteAddress')
 			->willReturn('1.2.3.4');
+		$this->request->method('getHeader')
+			->with('Origin')
+			->willReturn('domain.example.com');
 		$this->throttler->method('getDelay')
 			->with(
 				$this->equalTo('1.2.3.4'),
@@ -129,14 +125,15 @@ class LoginControllerTest extends TestCase {
 			$this->urlGenerator,
 			$this->defaults,
 			$this->throttler,
-			$this->initialStateService,
+			$this->initialState,
 			$this->webAuthnManager,
 			$this->notificationManager,
-			$this->l
+			$this->l,
+			$this->appManager,
 		);
 	}
 
-	public function testLogoutWithoutToken() {
+	public function testLogoutWithoutToken(): void {
 		$this->request
 			->expects($this->once())
 			->method('getCookie')
@@ -145,6 +142,10 @@ class LoginControllerTest extends TestCase {
 		$this->request
 			->method('getServerProtocol')
 			->willReturn('https');
+		$this->request
+			->expects($this->once())
+			->method('isUserAgent')
+			->willReturn(false);
 		$this->config
 			->expects($this->never())
 			->method('deleteUserValue');
@@ -159,16 +160,42 @@ class LoginControllerTest extends TestCase {
 		$this->assertEquals($expected, $this->loginController->logout());
 	}
 
-	public function testLogoutWithToken() {
+	public function testLogoutNoClearSiteData(): void {
+		$this->request
+			->expects($this->once())
+			->method('getCookie')
+			->with('nc_token')
+			->willReturn(null);
+		$this->request
+			->method('getServerProtocol')
+			->willReturn('https');
+		$this->request
+			->expects($this->once())
+			->method('isUserAgent')
+			->willReturn(true);
+		$this->urlGenerator
+			->expects($this->once())
+			->method('linkToRouteAbsolute')
+			->with('core.login.showLoginForm')
+			->willReturn('/login');
+
+		$expected = new RedirectResponse('/login');
+		$this->assertEquals($expected, $this->loginController->logout());
+	}
+
+	public function testLogoutWithToken(): void {
 		$this->request
 			->expects($this->once())
 			->method('getCookie')
 			->with('nc_token')
 			->willReturn('MyLoginToken');
 		$this->request
-			->expects($this->once())
 			->method('getServerProtocol')
 			->willReturn('https');
+		$this->request
+			->expects($this->once())
+			->method('isUserAgent')
+			->willReturn(false);
 		$user = $this->createMock(IUser::class);
 		$user
 			->expects($this->once())
@@ -193,7 +220,7 @@ class LoginControllerTest extends TestCase {
 		$this->assertEquals($expected, $this->loginController->logout());
 	}
 
-	public function testShowLoginFormForLoggedInUsers() {
+	public function testShowLoginFormForLoggedInUsers(): void {
 		$this->userSession
 			->expects($this->once())
 			->method('isLoggedIn')
@@ -207,7 +234,7 @@ class LoginControllerTest extends TestCase {
 		$this->assertEquals($expectedResponse, $this->loginController->showLoginForm('', ''));
 	}
 
-	public function testShowLoginFormWithErrorsInSession() {
+	public function testShowLoginFormWithErrorsInSession(): void {
 		$this->userSession
 			->expects($this->once())
 			->method('isLoggedIn')
@@ -228,10 +255,9 @@ class LoginControllerTest extends TestCase {
 					],
 				]
 			);
-		$this->initialStateService->expects($this->exactly(11))
-			->method('provideInitialState')
-			->withConsecutive([
-				'core',
+
+		$calls = [
+			[
 				'loginMessages',
 				[
 					'MessageArray1',
@@ -239,19 +265,26 @@ class LoginControllerTest extends TestCase {
 					'This community release of Nextcloud is unsupported and push notifications are limited.',
 				],
 			],
+			[
+				'loginErrors',
 				[
-					'core',
-					'loginErrors',
-					[
-						'ErrorArray1',
-						'ErrorArray2',
-					],
+					'ErrorArray1',
+					'ErrorArray2',
 				],
-				[
-					'core',
-					'loginUsername',
-					'',
-				]);
+			],
+			[
+				'loginUsername',
+				'',
+			]
+		];
+		$this->initialState->expects($this->exactly(13))
+			->method('provideInitialState')
+			->willReturnCallback(function () use (&$calls): void {
+				$expected = array_shift($calls);
+				if (!empty($expected)) {
+					$this->assertEquals($expected, func_get_args());
+				}
+			});
 
 		$expectedResponse = new TemplateResponse(
 			'core',
@@ -265,22 +298,30 @@ class LoginControllerTest extends TestCase {
 		$this->assertEquals($expectedResponse, $this->loginController->showLoginForm('', ''));
 	}
 
-	public function testShowLoginFormForFlowAuth() {
+	public function testShowLoginFormForFlowAuth(): void {
 		$this->userSession
 			->expects($this->once())
 			->method('isLoggedIn')
 			->willReturn(false);
-		$this->initialStateService->expects($this->exactly(12))
-			->method('provideInitialState')
-			->withConsecutive([], [], [], [
-				'core',
+		$calls = [
+			[], [], [],
+			[
 				'loginAutocomplete',
 				false
-			], [
-				'core',
+			],
+			[
 				'loginRedirectUrl',
 				'login/flow'
-			]);
+			],
+		];
+		$this->initialState->expects($this->exactly(14))
+			->method('provideInitialState')
+			->willReturnCallback(function () use (&$calls): void {
+				$expected = array_shift($calls);
+				if (!empty($expected)) {
+					$this->assertEquals($expected, func_get_args());
+				}
+			});
 
 		$expectedResponse = new TemplateResponse(
 			'core',
@@ -297,7 +338,7 @@ class LoginControllerTest extends TestCase {
 	/**
 	 * @return array
 	 */
-	public function passwordResetDataProvider(): array {
+	public static function passwordResetDataProvider(): array {
 		return [
 			[
 				true,
@@ -310,11 +351,9 @@ class LoginControllerTest extends TestCase {
 		];
 	}
 
-	/**
-	 * @dataProvider passwordResetDataProvider
-	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('passwordResetDataProvider')]
 	public function testShowLoginFormWithPasswordResetOption($canChangePassword,
-															 $expectedResult) {
+		$expectedResult): void {
 		$this->userSession
 			->expects($this->once())
 			->method('isLoggedIn')
@@ -341,17 +380,26 @@ class LoginControllerTest extends TestCase {
 			->method('get')
 			->with('LdapUser')
 			->willReturn($user);
-		$this->initialStateService->expects($this->exactly(11))
-			->method('provideInitialState')
-			->withConsecutive([], [], [
-				'core',
+		$calls = [
+			[], [],
+			[
 				'loginUsername',
 				'LdapUser'
-			], [], [], [], [
-				'core',
+			],
+			[], [], [],
+			[
 				'loginCanResetPassword',
 				$expectedResult
-			]);
+			],
+		];
+		$this->initialState->expects($this->exactly(13))
+			->method('provideInitialState')
+			->willReturnCallback(function () use (&$calls): void {
+				$expected = array_shift($calls);
+				if (!empty($expected)) {
+					$this->assertEquals($expected, func_get_args());
+				}
+			});
 
 		$expectedResponse = new TemplateResponse(
 			'core',
@@ -365,7 +413,7 @@ class LoginControllerTest extends TestCase {
 		$this->assertEquals($expectedResponse, $this->loginController->showLoginForm('LdapUser', ''));
 	}
 
-	public function testShowLoginFormForUserNamed0() {
+	public function testShowLoginFormForUserNamed0(): void {
 		$this->userSession
 			->expects($this->once())
 			->method('isLoggedIn')
@@ -391,21 +439,30 @@ class LoginControllerTest extends TestCase {
 			->method('get')
 			->with('0')
 			->willReturn($user);
-		$this->initialStateService->expects($this->exactly(11))
-			->method('provideInitialState')
-			->withConsecutive([], [], [], [
-				'core',
+		$calls = [
+			[], [], [],
+			[
 				'loginAutocomplete',
 				true
-			], [], [
-				'core',
+			],
+			[],
+			[
 				'loginResetPasswordLink',
 				false
-			], [
-				'core',
+			],
+			[
 				'loginCanResetPassword',
 				false
-			]);
+			],
+		];
+		$this->initialState->expects($this->exactly(13))
+			->method('provideInitialState')
+			->willReturnCallback(function () use (&$calls): void {
+				$expected = array_shift($calls);
+				if (!empty($expected)) {
+					$this->assertEquals($expected, func_get_args());
+				}
+			});
 
 		$expectedResponse = new TemplateResponse(
 			'core',
@@ -424,6 +481,8 @@ class LoginControllerTest extends TestCase {
 		$password = 'secret';
 		$loginPageUrl = '/login?redirect_url=/apps/files';
 		$loginChain = $this->createMock(LoginChain::class);
+		$trustedDomainHelper = $this->createMock(ITrustedDomainHelper::class);
+		$trustedDomainHelper->method('isTrustedUrl')->willReturn(true);
 		$this->request
 			->expects($this->once())
 			->method('passesCSRFCheck')
@@ -450,15 +509,17 @@ class LoginControllerTest extends TestCase {
 		$expected = new RedirectResponse($loginPageUrl);
 		$expected->throttle(['user' => 'MyUserName']);
 
-		$response = $this->loginController->tryLogin($loginChain, $user, $password, '/apps/files');
+		$response = $this->loginController->tryLogin($loginChain, $trustedDomainHelper, $user, $password, '/apps/files');
 
 		$this->assertEquals($expected, $response);
 	}
 
-	public function testLoginWithValidCredentials() {
+	public function testLoginWithValidCredentials(): void {
 		$user = 'MyUserName';
 		$password = 'secret';
 		$loginChain = $this->createMock(LoginChain::class);
+		$trustedDomainHelper = $this->createMock(ITrustedDomainHelper::class);
+		$trustedDomainHelper->method('isTrustedUrl')->willReturn(true);
 		$this->request
 			->expects($this->once())
 			->method('passesCSRFCheck')
@@ -479,7 +540,7 @@ class LoginControllerTest extends TestCase {
 			->willReturn('/default/foo');
 
 		$expected = new RedirectResponse('/default/foo');
-		$this->assertEquals($expected, $this->loginController->tryLogin($loginChain, $user, $password));
+		$this->assertEquals($expected, $this->loginController->tryLogin($loginChain, $trustedDomainHelper, $user, $password));
 	}
 
 	public function testLoginWithoutPassedCsrfCheckAndNotLoggedIn(): void {
@@ -491,6 +552,8 @@ class LoginControllerTest extends TestCase {
 		$password = 'secret';
 		$originalUrl = 'another%20url';
 		$loginChain = $this->createMock(LoginChain::class);
+		$trustedDomainHelper = $this->createMock(ITrustedDomainHelper::class);
+		$trustedDomainHelper->method('isTrustedUrl')->willReturn(true);
 		$this->request
 			->expects($this->once())
 			->method('passesCSRFCheck')
@@ -504,14 +567,14 @@ class LoginControllerTest extends TestCase {
 		$this->userSession->expects($this->never())
 			->method('createRememberMeToken');
 
-		$response = $this->loginController->tryLogin($loginChain, 'Jane', $password, $originalUrl);
+		$response = $this->loginController->tryLogin($loginChain, $trustedDomainHelper, 'Jane', $password, $originalUrl);
 
 		$expected = new RedirectResponse('');
 		$expected->throttle(['user' => 'Jane']);
 		$this->assertEquals($expected, $response);
 	}
 
-	public function testLoginWithoutPassedCsrfCheckAndLoggedIn() {
+	public function testLoginWithoutPassedCsrfCheckAndLoggedIn(): void {
 		/** @var IUser|MockObject $user */
 		$user = $this->createMock(IUser::class);
 		$user->expects($this->any())
@@ -521,6 +584,8 @@ class LoginControllerTest extends TestCase {
 		$originalUrl = 'another url';
 		$redirectUrl = 'http://localhost/another url';
 		$loginChain = $this->createMock(LoginChain::class);
+		$trustedDomainHelper = $this->createMock(ITrustedDomainHelper::class);
+		$trustedDomainHelper->method('isTrustedUrl')->willReturn(true);
 		$this->request
 			->expects($this->once())
 			->method('passesCSRFCheck')
@@ -542,17 +607,19 @@ class LoginControllerTest extends TestCase {
 			->with('remember_login_cookie_lifetime')
 			->willReturn(1234);
 
-		$response = $this->loginController->tryLogin($loginChain, 'Jane', $password, $originalUrl);
+		$response = $this->loginController->tryLogin($loginChain, $trustedDomainHelper, 'Jane', $password, $originalUrl);
 
 		$expected = new RedirectResponse($redirectUrl);
 		$this->assertEquals($expected, $response);
 	}
 
-	public function testLoginWithValidCredentialsAndRedirectUrl() {
+	public function testLoginWithValidCredentialsAndRedirectUrl(): void {
 		$user = 'MyUserName';
 		$password = 'secret';
 		$redirectUrl = 'https://next.cloud/apps/mail';
 		$loginChain = $this->createMock(LoginChain::class);
+		$trustedDomainHelper = $this->createMock(ITrustedDomainHelper::class);
+		$trustedDomainHelper->method('isTrustedUrl')->willReturn(true);
 		$this->request
 			->expects($this->once())
 			->method('passesCSRFCheck')
@@ -577,13 +644,15 @@ class LoginControllerTest extends TestCase {
 			->willReturn($redirectUrl);
 		$expected = new RedirectResponse($redirectUrl);
 
-		$response = $this->loginController->tryLogin($loginChain, $user, $password, '/apps/mail');
+		$response = $this->loginController->tryLogin($loginChain, $trustedDomainHelper, $user, $password, '/apps/mail');
 
 		$this->assertEquals($expected, $response);
 	}
 
-	public function testToNotLeakLoginName() {
+	public function testToNotLeakLoginName(): void {
 		$loginChain = $this->createMock(LoginChain::class);
+		$trustedDomainHelper = $this->createMock(ITrustedDomainHelper::class);
+		$trustedDomainHelper->method('isTrustedUrl')->willReturn(true);
 		$this->request
 			->expects($this->once())
 			->method('passesCSRFCheck')
@@ -616,6 +685,7 @@ class LoginControllerTest extends TestCase {
 
 		$response = $this->loginController->tryLogin(
 			$loginChain,
+			$trustedDomainHelper,
 			'john@doe.com',
 			'just wrong',
 			'/apps/files'

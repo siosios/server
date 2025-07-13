@@ -1,33 +1,12 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016 Morris Jobke <hey@morrisjobke.de>
- *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Julius Härtl <jus@bitgrid.net>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2016 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 namespace OCA\WorkflowEngine\AppInfo;
 
 use Closure;
-use OCA\WorkflowEngine\Controller\RequestTime;
 use OCA\WorkflowEngine\Helper\LogContext;
 use OCA\WorkflowEngine\Listener\LoadAdditionalSettingsScriptsListener;
 use OCA\WorkflowEngine\Manager;
@@ -53,7 +32,6 @@ class Application extends App implements IBootstrap {
 	}
 
 	public function register(IRegistrationContext $context): void {
-		$context->registerServiceAlias('RequestTimeController', RequestTime::class);
 		$context->registerEventListener(
 			LoadSettingsScriptsEvent::class,
 			LoadAdditionalSettingsScriptsListener::class,
@@ -66,18 +44,18 @@ class Application extends App implements IBootstrap {
 	}
 
 	private function registerRuleListeners(IEventDispatcher $dispatcher,
-										   ContainerInterface $container,
-										   LoggerInterface $logger): void {
+		ContainerInterface $container,
+		LoggerInterface $logger): void {
 		/** @var Manager $manager */
 		$manager = $container->get(Manager::class);
 		$configuredEvents = $manager->getAllConfiguredEvents();
 
 		foreach ($configuredEvents as $operationClass => $events) {
 			foreach ($events as $entityClass => $eventNames) {
-				array_map(function (string $eventName) use ($manager, $container, $dispatcher, $logger, $operationClass, $entityClass) {
+				array_map(function (string $eventName) use ($manager, $container, $dispatcher, $logger, $operationClass, $entityClass): void {
 					$dispatcher->addListener(
 						$eventName,
-						function ($event) use ($manager, $container, $eventName, $logger, $operationClass, $entityClass) {
+						function ($event) use ($manager, $container, $eventName, $logger, $operationClass, $entityClass): void {
 							$ruleMatcher = $manager->getRuleMatcher();
 							try {
 								/** @var IEntity $entity */

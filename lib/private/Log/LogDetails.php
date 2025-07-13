@@ -1,38 +1,17 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2019 Julius Härtl <jus@bitgrid.net>
- *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Julius Härtl <jus@bitgrid.net>
- * @author Thomas Citharel <nextcloud@tcit.fr>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 namespace OC\Log;
 
 use OC\SystemConfig;
 
 abstract class LogDetails {
-	/** @var SystemConfig */
-	private $config;
-
-	public function __construct(SystemConfig $config) {
-		$this->config = $config;
+	public function __construct(
+		private SystemConfig $config,
+	) {
 	}
 
 	public function logDetails(string $app, $message, int $level): array {
@@ -44,7 +23,7 @@ abstract class LogDetails {
 		} catch (\Exception $e) {
 			$timezone = new \DateTimeZone('UTC');
 		}
-		$time = \DateTime::createFromFormat("U.u", number_format(microtime(true), 4, ".", ""));
+		$time = \DateTime::createFromFormat('U.u', number_format(microtime(true), 4, '.', ''));
 		if ($time === false) {
 			$time = new \DateTime('now', $timezone);
 		} else {
@@ -59,7 +38,7 @@ abstract class LogDetails {
 		$url = ($request->getRequestUri() !== '') ? $request->getRequestUri() : '--';
 		$method = is_string($request->getMethod()) ? $request->getMethod() : '--';
 		if ($this->config->getValue('installed', false)) {
-			$user = \OC_User::getUser() ? \OC_User::getUser() : '--';
+			$user = \OC_User::getUser() ?: '--';
 		} else {
 			$user = '--';
 		}
@@ -81,6 +60,10 @@ abstract class LogDetails {
 			'userAgent',
 			'version'
 		);
+		$clientReqId = $request->getHeader('X-Request-Id');
+		if ($clientReqId !== '') {
+			$entry['clientReqId'] = $clientReqId;
+		}
 
 		if (is_array($message)) {
 			// Exception messages are extracted and the exception is put into a separate field
@@ -108,7 +91,7 @@ abstract class LogDetails {
 			if (is_string($value)) {
 				$testEncode = json_encode($value, JSON_UNESCAPED_SLASHES);
 				if ($testEncode === false) {
-					$entry[$key] = utf8_encode($value);
+					$entry[$key] = mb_convert_encoding($value, 'UTF-8', mb_detect_encoding($value));
 				}
 			}
 		}

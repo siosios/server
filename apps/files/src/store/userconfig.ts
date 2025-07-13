@@ -1,75 +1,60 @@
 /**
- * @copyright Copyright (c) 2023 John Molakvoæ <skjnldsv@protonmail.com>
- *
- * @author John Molakvoæ <skjnldsv@protonmail.com>
- *
- * @license AGPL-3.0-or-later
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2023 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-/* eslint-disable */
+import type { UserConfig } from '../types'
+import { getCurrentUser } from '@nextcloud/auth'
+import { emit, subscribe } from '@nextcloud/event-bus'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 import { defineStore } from 'pinia'
-import Vue from 'vue'
+import { ref, set } from 'vue'
 import axios from '@nextcloud/axios'
-import type { UserConfig, UserConfigStore } from '../types.ts'
-import { emit, subscribe } from '@nextcloud/event-bus'
 
-const userConfig = loadState('files', 'config', {
-	show_hidden: false,
+const initialUserConfig = loadState<UserConfig>('files', 'config', {
 	crop_image_previews: true,
-}) as UserConfig
+	default_view: 'files',
+	grid_view: false,
+	show_hidden: false,
+	show_mime_column: true,
+	sort_favorites_first: true,
+	sort_folders_first: true,
 
-export const useUserConfigStore = function() {
-	const store = defineStore('userconfig', {
-		state: () => ({
-			userConfig,
-		} as UserConfigStore),
+	show_dialog_file_extension: true,
+})
 
-		actions: {
-			/**
-			 * Update the user config local store
-			 */
-			onUpdate(key: string, value: boolean) {
-				Vue.set(this.userConfig, key, value)
-			},
+export const useUserConfigStore = defineStore('userconfig', () => {
+	const userConfig = ref<UserConfig>({ ...initialUserConfig })
 
-			/**
-			 * Update the user config local store AND on server side
-			 */
-			async update(key: string, value: boolean) {
-				await axios.put(generateUrl('/apps/files/api/v1/config/' + key), {
-					value,
-				})
-
-				emit('files:config:updated', { key, value })
-			}
-		}
-	})
-
-	const userConfigStore = store(...arguments)
-
-	// Make sure we only register the listeners once
-	if (!userConfigStore._initialized) {
-		subscribe('files:config:updated', function({ key, value }: { key: string, value: boolean }) {
-			userConfigStore.onUpdate(key, value)
-		})
-		userConfigStore._initialized = true
+	/**
+	 * Update the user config local store
+	 * @param key The config key
+	 * @param value The new value
+	 */
+	function onUpdate(key: string, value: boolean): void {
+		set(userConfig.value, key, value)
 	}
 
-	return userConfigStore
-}
+	/**
+	 * Update the user config local store AND on server side
+	 * @param key The config key
+	 * @param value The new value
+	 */
+	async function update(key: string, value: boolean): Promise<void> {
+		// only update if a user is logged in (not the case for public shares)
+		if (getCurrentUser() !== null) {
+			await axios.put(generateUrl('/apps/files/api/v1/config/{key}', { key }), {
+				value,
+			})
+		}
+		emit('files:config:updated', { key, value })
+	}
 
+	// Register the event listener
+	subscribe('files:config:updated', ({ key, value }) => onUpdate(key, value))
+
+	return {
+		userConfig,
+		update,
+	}
+})

@@ -1,38 +1,13 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Daniel Kesselberg <mail@danielkesselberg.de>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Temtaime <temtaime@gmail.com>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
- * @author Vincent Petry <vincent@nextcloud.com>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OC\Core\Command\Maintenance;
 
 use Exception;
-use OCP\App\IAppManager;
-use OCP\EventDispatcher\Event;
-use OCP\EventDispatcher\IEventDispatcher;
-use OCP\IConfig;
 use OC\Repair\Events\RepairAdvanceEvent;
 use OC\Repair\Events\RepairErrorEvent;
 use OC\Repair\Events\RepairFinishEvent;
@@ -40,6 +15,10 @@ use OC\Repair\Events\RepairInfoEvent;
 use OC\Repair\Events\RepairStartEvent;
 use OC\Repair\Events\RepairStepEvent;
 use OC\Repair\Events\RepairWarningEvent;
+use OCP\App\IAppManager;
+use OCP\EventDispatcher\Event;
+use OCP\EventDispatcher\IEventDispatcher;
+use OCP\IConfig;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
@@ -47,19 +26,16 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class Repair extends Command {
-	protected \OC\Repair $repair;
-	protected IConfig $config;
-	private IEventDispatcher $dispatcher;
 	private ProgressBar $progress;
 	private OutputInterface $output;
-	private IAppManager $appManager;
 	protected bool $errored = false;
 
-	public function __construct(\OC\Repair $repair, IConfig $config, IEventDispatcher $dispatcher, IAppManager $appManager) {
-		$this->repair = $repair;
-		$this->config = $config;
-		$this->dispatcher = $dispatcher;
-		$this->appManager = $appManager;
+	public function __construct(
+		protected \OC\Repair $repair,
+		protected IConfig $config,
+		private IEventDispatcher $dispatcher,
+		private IAppManager $appManager,
+	) {
 		parent::__construct();
 	}
 
@@ -85,7 +61,7 @@ class Repair extends Command {
 			$this->repair->addStep($step);
 		}
 
-		$apps = $this->appManager->getInstalledApps();
+		$apps = $this->appManager->getEnabledApps();
 		foreach ($apps as $app) {
 			if (!$this->appManager->isEnabledForUser($app)) {
 				continue;
@@ -94,7 +70,7 @@ class Repair extends Command {
 			if (!is_array($info)) {
 				continue;
 			}
-			\OC_App::loadApp($app);
+			$this->appManager->loadApp($app);
 			$steps = $info['repair-steps']['post-migration'];
 			foreach ($steps as $step) {
 				try {

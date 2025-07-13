@@ -1,27 +1,29 @@
-import './templates.js'
-import './legacy/filelistSearch.js'
-import './actions/deleteAction'
-import './actions/openFolderAction'
-import './actions/sidebarAction'
-
+/**
+ * SPDX-FileCopyrightText: 2023 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+import type { Pinia } from 'pinia'
+import { getCSPNonce } from '@nextcloud/auth'
+import { PiniaVuePlugin } from 'pinia'
 import Vue from 'vue'
-import { createPinia, PiniaVuePlugin } from 'pinia'
 
-import FilesListView from './views/FilesList.vue'
-import NavigationService from './services/Navigation'
-import NavigationView from './views/Navigation.vue'
-import processLegacyFilesViews from './legacy/navigationMapper.js'
-import registerPreviewServiceWorker from './services/ServiceWorker.js'
-import router from './router/router.js'
+import { getPinia } from './store/index.ts'
+import { registerHotkeys } from './services/HotKeysService.ts'
+import FilesApp from './FilesApp.vue'
+import router from './router/router'
 import RouterService from './services/RouterService'
 import SettingsModel from './models/Setting.js'
 import SettingsService from './services/Settings.js'
 
+__webpack_nonce__ = getCSPNonce()
+
 declare global {
 	interface Window {
-		OC: any;
-		OCA: any;
-		OCP: any;
+		OC: Nextcloud.v29.OC
+		OCP: Nextcloud.v29.OCP
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		OCA: Record<string, any>
+		_nc_files_pinia: Pinia
 	}
 }
 
@@ -30,46 +32,24 @@ window.OCA.Files = window.OCA.Files ?? {}
 window.OCP.Files = window.OCP.Files ?? {}
 
 // Expose router
-const Router = new RouterService(router)
-Object.assign(window.OCP.Files, { Router })
+if (!window.OCP.Files.Router) {
+	const Router = new RouterService(router)
+	Object.assign(window.OCP.Files, { Router })
+}
 
 // Init Pinia store
 Vue.use(PiniaVuePlugin)
-const pinia = createPinia()
 
-// Init Navigation Service
-const Navigation = new NavigationService()
-Object.assign(window.OCP.Files, { Navigation })
-Vue.prototype.$navigation = Navigation
+// Init HotKeys AFTER pinia is set up
+registerHotkeys()
 
 // Init Files App Settings Service
 const Settings = new SettingsService()
 Object.assign(window.OCA.Files, { Settings })
 Object.assign(window.OCA.Files.Settings, { Setting: SettingsModel })
 
-// Init Navigation View
-const View = Vue.extend(NavigationView)
-const FilesNavigationRoot = new View({
-	name: 'FilesNavigationRoot',
-	propsData: {
-		Navigation,
-	},
-	router,
-	pinia,
-})
-FilesNavigationRoot.$mount('#app-navigation-files')
-
-// Init content list view
-const ListView = Vue.extend(FilesListView)
-const FilesList = new ListView({
-	name: 'FilesListRoot',
-	router,
-	pinia,
-})
-FilesList.$mount('#app-content-vue')
-
-// Init legacy and new files views
-processLegacyFilesViews()
-
-// Register preview service worker
-registerPreviewServiceWorker()
+const FilesAppVue = Vue.extend(FilesApp)
+new FilesAppVue({
+	router: (window.OCP.Files.Router as RouterService)._router,
+	pinia: getPinia(),
+}).$mount('#content')
