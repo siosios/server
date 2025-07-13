@@ -1,24 +1,8 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2021, Philip Gatzka (philip.gatzka@mailbox.org)
- *
- * @author Philip Gatzka <philip.gatzka@mailbox.org>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2021 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 declare(strict_types=1);
@@ -100,9 +84,7 @@ class AddTest extends TestCase {
 		);
 	}
 
-	/**
-	 * @dataProvider addEmailDataProvider
-	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('addEmailDataProvider')]
 	public function testAddEmail(
 		?string $email,
 		bool $isEmailValid,
@@ -128,11 +110,11 @@ class AddTest extends TestCase {
 			->method('sendMail');
 
 		$this->consoleInput->method('getOption')
-			->will(static::returnValueMap([
+			->willReturnMap([
 				['generate-password', 'true'],
 				['email', $email],
 				['group', []],
-			]));
+			]);
 
 		$this->invokePrivate($this->addCommand, 'execute', [
 			$this->consoleInput,
@@ -143,7 +125,7 @@ class AddTest extends TestCase {
 	/**
 	 * @return array
 	 */
-	public function addEmailDataProvider(): array {
+	public static function addEmailDataProvider(): array {
 		return [
 			'Valid E-Mail' => [
 				'info@example.com',

@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 namespace Test\Comments;
 
 use OC\Comments\Comment;
@@ -22,7 +27,7 @@ class FakeManager implements ICommentsManager {
 		$objectId,
 		$limit = 0,
 		$offset = 0,
-		?\DateTime $notOlderThan = null
+		?\DateTime $notOlderThan = null,
 	) {
 	}
 
@@ -32,7 +37,8 @@ class FakeManager implements ICommentsManager {
 		int $lastKnownCommentId,
 		string $sortDirection = 'asc',
 		int $limit = 30,
-		bool $includeLastKnown = false
+		bool $includeLastKnown = false,
+		string $topmostParentId = '',
 	): array {
 		return [];
 	}
@@ -44,7 +50,8 @@ class FakeManager implements ICommentsManager {
 		int $lastKnownCommentId,
 		string $sortDirection = 'asc',
 		int $limit = 30,
-		bool $includeLastKnown = false
+		bool $includeLastKnown = false,
+		string $topmostParentId = '',
 	): array {
 		return [];
 	}

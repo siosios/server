@@ -2,30 +2,9 @@
 
 declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Bart Visscher <bartv@thisnet.nl>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Maxence Lange <maxence@artificial-owl.com>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OCP;
 
@@ -66,12 +45,15 @@ interface IAppConfig {
 	/** @since 29.0.0 */
 	public const VALUE_ARRAY = 64;
 
+	/** @since 31.0.0 */
+	public const FLAG_SENSITIVE = 1;   // value is sensitive
+
 	/**
 	 * Get list of all apps that have at least one config value stored in database
 	 *
 	 * **WARNING:** ignore lazy filtering, all config values are loaded from database
 	 *
-	 * @return string[] list of app ids
+	 * @return list<string> list of app ids
 	 * @since 7.0.0
 	 */
 	public function getApps(): array;
@@ -84,7 +66,7 @@ interface IAppConfig {
 	 *
 	 * @param string $app id of the app
 	 *
-	 * @return string[] list of stored config keys
+	 * @return list<string> list of stored config keys
 	 * @since 29.0.0
 	 */
 	public function getKeys(string $app): array;
@@ -140,7 +122,7 @@ interface IAppConfig {
 	 * @param string $prefix config keys prefix to search, can be empty.
 	 * @param bool $filtered filter sensitive config values
 	 *
-	 * @return array<string, string> [configKey => configValue]
+	 * @return array<string, string|int|float|bool|array> [configKey => configValue]
 	 * @since 29.0.0
 	 */
 	public function getAllValues(string $app, string $prefix = '', bool $filtered = false): array;
@@ -151,11 +133,12 @@ interface IAppConfig {
 	 *
 	 * @param string $key config key
 	 * @param bool $lazy search within lazy loaded config
+	 * @param int|null $typedAs enforce type for the returned values {@see self::VALUE_STRING} and others
 	 *
 	 * @return array<string, string|int|float|bool|array> [appId => configValue]
 	 * @since 29.0.0
 	 */
-	public function searchValues(string $key, bool $lazy = false): array;
+	public function searchValues(string $key, bool $lazy = false, ?int $typedAs = null): array;
 
 	/**
 	 * Get config value assigned to a config key.
@@ -261,9 +244,11 @@ interface IAppConfig {
 	 * returns the type of config value
 	 *
 	 * **WARNING:** ignore lazy filtering, all config values are loaded from database
+	 *              unless lazy is set to false
 	 *
 	 * @param string $app id of the app
 	 * @param string $key config key
+	 * @param bool|null $lazy
 	 *
 	 * @return int
 	 * @throws AppConfigUnknownKeyException
@@ -274,7 +259,7 @@ interface IAppConfig {
 	 * @see VALUE_BOOL
 	 * @see VALUE_ARRAY
 	 */
-	public function getValueType(string $app, string $key): int;
+	public function getValueType(string $app, string $key, ?bool $lazy = null): int;
 
 	/**
 	 * Store a config key and its value in database
@@ -522,4 +507,12 @@ interface IAppConfig {
 	 * @deprecated 29.0.0 Use {@see getAllValues()} or {@see searchValues()}
 	 */
 	public function getFilteredValues($app);
+
+	/**
+	 * Returns the installed version of all apps
+	 *
+	 * @return array<string, string>
+	 * @since 32.0.0
+	 */
+	public function getAppInstalledVersions(bool $onlyEnabled = false): array;
 }

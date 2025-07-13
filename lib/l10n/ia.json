@@ -5,10 +5,9 @@
     "Files" : "Files",
     "seconds ago" : "secundas passate",
     "__language_name__" : "Interlingua de IALA",
-    "Help" : "Adjuta",
     "Settings" : "Configurationes",
     "Log out" : "Clauder session",
-    "Users" : "Usatores",
+    "Accounts" : "Accounts",
     "Email" : "E-posta",
     "Phone" : "Phono",
     "Twitter" : "Twitter",
@@ -64,7 +63,6 @@
     "A valid password must be provided" : "Un contrasigno valide debe esser providite",
     "Authentication error" : "Error in authentication",
     "Storage is temporarily not available" : "Immagazinage es provisorimente non disponibile",
-    "Unknown user" : "Usator incognite",
-    "A valid username must be provided" : "Un nomine de usator valide debe esser providite"
+    "Summary" : "Summario"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

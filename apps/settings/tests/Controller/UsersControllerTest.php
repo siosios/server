@@ -1,32 +1,10 @@
 <?php
+
+declare(strict_types=1);
 /**
- * @copyright 2014-2015 Lukas Reschke lukas@owncloud.com
- *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Bjoern Schiessle <bjoern@schiessle.org>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Daniel Calviño Sánchez <danxuliu@gmail.com>
- * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ <skjnldsv@protonmail.com>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Vincent Petry <vincent@nextcloud.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2019-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2014-2015 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 namespace OCA\Settings\Tests\Controller;
 
@@ -64,38 +42,22 @@ use PHPUnit\Framework\MockObject\MockObject;
  * @package Tests\Settings\Controller
  */
 class UsersControllerTest extends \Test\TestCase {
-	/** @var IGroupManager|\PHPUnit\Framework\MockObject\MockObject */
-	private $groupManager;
-	/** @var UserManager|\PHPUnit\Framework\MockObject\MockObject */
-	private $userManager;
-	/** @var IUserSession|\PHPUnit\Framework\MockObject\MockObject */
-	private $userSession;
-	/** @var IConfig|\PHPUnit\Framework\MockObject\MockObject */
-	private $config;
-	/** @var IMailer|\PHPUnit\Framework\MockObject\MockObject */
-	private $mailer;
-	/** @var IFactory|\PHPUnit\Framework\MockObject\MockObject */
-	private $l10nFactory;
-	/** @var IAppManager|\PHPUnit\Framework\MockObject\MockObject */
-	private $appManager;
-	/** @var IL10N|\PHPUnit\Framework\MockObject\MockObject */
-	private $l;
-	/** @var AccountManager|\PHPUnit\Framework\MockObject\MockObject */
-	private $accountManager;
-	/** @var  IJobList | \PHPUnit\Framework\MockObject\MockObject */
-	private $jobList;
-	/** @var \OC\Security\IdentityProof\Manager|\PHPUnit\Framework\MockObject\MockObject  */
-	private $securityManager;
-	/** @var  IManager|\PHPUnit\Framework\MockObject\MockObject */
-	private $encryptionManager;
-	/** @var KnownUserService|\PHPUnit\Framework\MockObject\MockObject */
-	private $knownUserService;
-	/** @var  IEncryptionModule|\PHPUnit\Framework\MockObject\MockObject */
-	private $encryptionModule;
-	/** @var IEventDispatcher|\PHPUnit\Framework\MockObject\MockObject */
-	private $dispatcher;
-	/** @var IInitialState|\PHPUnit\Framework\MockObject\MockObject*/
-	private $initialState;
+	private IGroupManager&MockObject $groupManager;
+	private UserManager&MockObject $userManager;
+	private IUserSession&MockObject $userSession;
+	private IConfig&MockObject $config;
+	private IMailer&MockObject $mailer;
+	private IFactory&MockObject $l10nFactory;
+	private IAppManager&MockObject $appManager;
+	private IL10N&MockObject $l;
+	private AccountManager&MockObject $accountManager;
+	private IJobList&MockObject $jobList;
+	private \OC\Security\IdentityProof\Manager&MockObject $securityManager;
+	private IManager&MockObject $encryptionManager;
+	private KnownUserService&MockObject $knownUserService;
+	private IEncryptionModule&MockObject $encryptionModule;
+	private IEventDispatcher&MockObject $dispatcher;
+	private IInitialState&MockObject $initialState;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -109,7 +71,7 @@ class UsersControllerTest extends \Test\TestCase {
 		$this->l10nFactory = $this->createMock(IFactory::class);
 		$this->appManager = $this->createMock(IAppManager::class);
 		$this->accountManager = $this->createMock(AccountManager::class);
-		$this->securityManager = $this->getMockBuilder(\OC\Security\IdentityProof\Manager::class)->disableOriginalConstructor()->getMock();
+		$this->securityManager = $this->createMock(\OC\Security\IdentityProof\Manager::class);
 		$this->jobList = $this->createMock(IJobList::class);
 		$this->encryptionManager = $this->createMock(IManager::class);
 		$this->knownUserService = $this->createMock(KnownUserService::class);
@@ -130,9 +92,9 @@ class UsersControllerTest extends \Test\TestCase {
 
 	/**
 	 * @param bool $isAdmin
-	 * @return UsersController | \PHPUnit\Framework\MockObject\MockObject
+	 * @return UsersController|MockObject
 	 */
-	protected function getController($isAdmin = false, $mockedMethods = []) {
+	protected function getController(bool $isAdmin = false, array $mockedMethods = []) {
 		$this->groupManager->expects($this->any())
 			->method('isAdmin')
 			->willReturn($isAdmin);
@@ -179,7 +141,9 @@ class UsersControllerTest extends \Test\TestCase {
 						$this->dispatcher,
 						$this->initialState,
 					]
-				)->onlyMethods($mockedMethods)->getMock();
+				)
+				->onlyMethods($mockedMethods)
+				->getMock();
 		}
 	}
 
@@ -201,7 +165,7 @@ class UsersControllerTest extends \Test\TestCase {
 		return $property;
 	}
 
-	protected function getDefaultAccountMock(bool $useDefaultValues = true): MockObject {
+	protected function getDefaultAccountMock(): MockObject {
 		$propertyMocks = [
 			IAccountManager::PROPERTY_DISPLAYNAME => $this->buildPropertyMock(
 				IAccountManager::PROPERTY_DISPLAYNAME,
@@ -240,7 +204,17 @@ class UsersControllerTest extends \Test\TestCase {
 			),
 			IAccountManager::PROPERTY_FEDIVERSE => $this->buildPropertyMock(
 				IAccountManager::PROPERTY_FEDIVERSE,
-				'Default twitter',
+				'Default fediverse',
+				IAccountManager::SCOPE_LOCAL,
+			),
+			IAccountManager::PROPERTY_BIRTHDATE => $this->buildPropertyMock(
+				IAccountManager::PROPERTY_BIRTHDATE,
+				'Default birthdate',
+				IAccountManager::SCOPE_LOCAL,
+			),
+			IAccountManager::PROPERTY_PRONOUNS => $this->buildPropertyMock(
+				IAccountManager::PROPERTY_PRONOUNS,
+				'Default pronouns',
 				IAccountManager::SCOPE_LOCAL,
 			),
 		];
@@ -261,14 +235,8 @@ class UsersControllerTest extends \Test\TestCase {
 		return $account;
 	}
 
-	/**
-	 * @dataProvider dataTestSetUserSettings
-	 *
-	 * @param string $email
-	 * @param bool $validEmail
-	 * @param $expectedStatus
-	 */
-	public function testSetUserSettings($email, $validEmail, $expectedStatus) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestSetUserSettings')]
+	public function testSetUserSettings(string $email, bool $validEmail, int $expectedStatus): void {
 		$controller = $this->getController(false, ['saveUserSettings']);
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('johndoe');
@@ -294,7 +262,7 @@ class UsersControllerTest extends \Test\TestCase {
 			$controller->expects($this->never())->method('saveUserSettings');
 		}
 
-		$result = $controller->setUserSettings(//
+		$result = $controller->setUserSettings(
 			AccountManager::SCOPE_FEDERATED,
 			'displayName',
 			AccountManager::SCOPE_FEDERATED,
@@ -307,13 +275,19 @@ class UsersControllerTest extends \Test\TestCase {
 			'street and city',
 			AccountManager::SCOPE_FEDERATED,
 			'@nextclouders',
-			AccountManager::SCOPE_FEDERATED
+			AccountManager::SCOPE_FEDERATED,
+			'@nextclouders',
+			AccountManager::SCOPE_FEDERATED,
+			'2020-01-01',
+			AccountManager::SCOPE_FEDERATED,
+			'they/them',
+			AccountManager::SCOPE_FEDERATED,
 		);
 
 		$this->assertSame($expectedStatus, $result->getStatus());
 	}
 
-	public function dataTestSetUserSettings() {
+	public static function dataTestSetUserSettings(): array {
 		return [
 			['', true, Http::STATUS_OK],
 			['', false, Http::STATUS_OK],
@@ -322,7 +296,7 @@ class UsersControllerTest extends \Test\TestCase {
 		];
 	}
 
-	public function testSetUserSettingsWhenUserDisplayNameChangeNotAllowed() {
+	public function testSetUserSettingsWhenUserDisplayNameChangeNotAllowed(): void {
 		$controller = $this->getController(false, ['saveUserSettings']);
 
 		$avatarScope = IAccountManager::SCOPE_PUBLISHED;
@@ -340,6 +314,10 @@ class UsersControllerTest extends \Test\TestCase {
 		$twitterScope = IAccountManager::SCOPE_PUBLISHED;
 		$fediverse = '@nextclouders@floss.social';
 		$fediverseScope = IAccountManager::SCOPE_PUBLISHED;
+		$birtdate = '2020-01-01';
+		$birthdateScope = IAccountManager::SCOPE_PUBLISHED;
+		$pronouns = 'she/her';
+		$pronounsScope = IAccountManager::SCOPE_PUBLISHED;
 
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('johndoe');
@@ -416,11 +394,15 @@ class UsersControllerTest extends \Test\TestCase {
 			$twitter,
 			$twitterScope,
 			$fediverse,
-			$fediverseScope
+			$fediverseScope,
+			$birtdate,
+			$birthdateScope,
+			$pronouns,
+			$pronounsScope,
 		);
 	}
 
-	public function testSetUserSettingsWhenFederatedFilesharingNotEnabled() {
+	public function testSetUserSettingsWhenFederatedFilesharingNotEnabled(): void {
 		$controller = $this->getController(false, ['saveUserSettings']);
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('johndoe');
@@ -455,6 +437,10 @@ class UsersControllerTest extends \Test\TestCase {
 		$twitterScope = IAccountManager::SCOPE_PUBLISHED;
 		$fediverse = '@nextclouders@floss.social';
 		$fediverseScope = IAccountManager::SCOPE_PUBLISHED;
+		$birthdate = '2020-01-01';
+		$birthdateScope = IAccountManager::SCOPE_PUBLISHED;
+		$pronouns = 'she/her';
+		$pronounsScope = IAccountManager::SCOPE_PUBLISHED;
 
 		// All settings are changed (in the past phone, website, address and
 		// twitter were not changed).
@@ -474,6 +460,10 @@ class UsersControllerTest extends \Test\TestCase {
 		$expectedProperties[IAccountManager::PROPERTY_TWITTER]['scope'] = $twitterScope;
 		$expectedProperties[IAccountManager::PROPERTY_FEDIVERSE]['value'] = $fediverse;
 		$expectedProperties[IAccountManager::PROPERTY_FEDIVERSE]['scope'] = $fediverseScope;
+		$expectedProperties[IAccountManager::PROPERTY_BIRTHDATE]['value'] = $birthdate;
+		$expectedProperties[IAccountManager::PROPERTY_BIRTHDATE]['scope'] = $birthdateScope;
+		$expectedProperties[IAccountManager::PROPERTY_PRONOUNS]['value'] = $pronouns;
+		$expectedProperties[IAccountManager::PROPERTY_PRONOUNS]['scope'] = $pronounsScope;
 
 		$this->mailer->expects($this->once())->method('validateMailAddress')
 			->willReturn(true);
@@ -497,24 +487,23 @@ class UsersControllerTest extends \Test\TestCase {
 			$twitter,
 			$twitterScope,
 			$fediverse,
-			$fediverseScope
+			$fediverseScope,
+			$birthdate,
+			$birthdateScope,
+			$pronouns,
+			$pronounsScope,
 		);
 	}
 
-	/**
-	 * @dataProvider dataTestSetUserSettingsSubset
-	 *
-	 * @param string $property
-	 * @param string $propertyValue
-	 */
-	public function testSetUserSettingsSubset($property, $propertyValue) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestSetUserSettingsSubset')]
+	public function testSetUserSettingsSubset(string $property, string $propertyValue): void {
 		$controller = $this->getController(false, ['saveUserSettings']);
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('johndoe');
 
 		$this->userSession->method('getUser')->willReturn($user);
 
-		/** @var IAccount|MockObject $userAccount */
+		/** @var IAccount&MockObject $userAccount */
 		$userAccount = $this->getDefaultAccountMock();
 
 		$this->accountManager->expects($this->once())
@@ -537,10 +526,14 @@ class UsersControllerTest extends \Test\TestCase {
 		$twitterScope = ($property === 'twitterScope') ? $propertyValue : null;
 		$fediverse = ($property === 'fediverse') ? $propertyValue : null;
 		$fediverseScope = ($property === 'fediverseScope') ? $propertyValue : null;
+		$birthdate = ($property === 'birthdate') ? $propertyValue : null;
+		$birthdateScope = ($property === 'birthdateScope') ? $propertyValue : null;
+		$pronouns = ($property === 'pronouns') ? $propertyValue : null;
+		$pronounsScope = ($property === 'pronounsScope') ? $propertyValue : null;
 
-		/** @var IAccountProperty[]|MockObject[] $expectedProperties */
+		/** @var IAccountProperty[]&MockObject[] $expectedProperties */
 		$expectedProperties = $userAccount->getProperties();
-		$isScope = strrpos($property, 'Scope') === strlen($property) - strlen(5);
+		$isScope = strrpos($property, 'Scope') === strlen($property) - strlen('5');
 		switch ($property) {
 			case 'avatarScope':
 				$propertyId = IAccountManager::PROPERTY_AVATAR;
@@ -573,6 +566,14 @@ class UsersControllerTest extends \Test\TestCase {
 			case 'fediverseScope':
 				$propertyId = IAccountManager::PROPERTY_FEDIVERSE;
 				break;
+			case 'birthdate':
+			case 'birthdateScope':
+				$propertyId = IAccountManager::PROPERTY_BIRTHDATE;
+				break;
+			case 'pronouns':
+			case 'pronounsScope':
+				$propertyId = IAccountManager::PROPERTY_PRONOUNS;
+				break;
 			default:
 				$propertyId = '404';
 		}
@@ -582,7 +583,7 @@ class UsersControllerTest extends \Test\TestCase {
 
 		if (!empty($email)) {
 			$this->mailer->expects($this->once())->method('validateMailAddress')
-			->willReturn(true);
+				->willReturn(true);
 		}
 
 		$controller->expects($this->once())
@@ -604,11 +605,15 @@ class UsersControllerTest extends \Test\TestCase {
 			$twitter,
 			$twitterScope,
 			$fediverse,
-			$fediverseScope
+			$fediverseScope,
+			$birthdate,
+			$birthdateScope,
+			$pronouns,
+			$pronounsScope,
 		);
 	}
 
-	public function dataTestSetUserSettingsSubset() {
+	public static function dataTestSetUserSettingsSubset(): array {
 		return [
 			['avatarScope', IAccountManager::SCOPE_PUBLISHED],
 			['displayName', 'Display name'],
@@ -625,20 +630,15 @@ class UsersControllerTest extends \Test\TestCase {
 			['twitterScope', IAccountManager::SCOPE_PUBLISHED],
 			['fediverse', '@nextclouders@floss.social'],
 			['fediverseScope', IAccountManager::SCOPE_PUBLISHED],
+			['birthdate', '2020-01-01'],
+			['birthdateScope', IAccountManager::SCOPE_PUBLISHED],
+			['pronouns', 'he/him'],
+			['pronounsScope', IAccountManager::SCOPE_PUBLISHED],
 		];
 	}
 
-	/**
-	 * @dataProvider dataTestSaveUserSettings
-	 *
-	 * @param array $data
-	 * @param ?string $oldEmailAddress
-	 * @param ?string $oldDisplayName
-	 */
-	public function testSaveUserSettings($data,
-		$oldEmailAddress,
-		$oldDisplayName
-	) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestSaveUserSettings')]
+	public function testSaveUserSettings(array $data, ?string $oldEmailAddress, ?string $oldDisplayName): void {
 		$controller = $this->getController();
 		$user = $this->createMock(IUser::class);
 
@@ -690,7 +690,7 @@ class UsersControllerTest extends \Test\TestCase {
 		$this->invokePrivate($controller, 'saveUserSettings', [$account]);
 	}
 
-	public function dataTestSaveUserSettings() {
+	public static function dataTestSaveUserSettings(): array {
 		return [
 			[
 				[
@@ -752,16 +752,14 @@ class UsersControllerTest extends \Test\TestCase {
 		];
 	}
 
-	/**
-	 * @dataProvider dataTestSaveUserSettingsException
-	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestSaveUserSettingsException')]
 	public function testSaveUserSettingsException(
 		array $data,
 		string $oldEmailAddress,
 		string $oldDisplayName,
-		bool  $setDisplayNameResult,
-		bool $canChangeEmail
-	) {
+		bool $setDisplayNameResult,
+		bool $canChangeEmail,
+	): void {
 		$this->expectException(ForbiddenException::class);
 
 		$controller = $this->getController();
@@ -801,7 +799,7 @@ class UsersControllerTest extends \Test\TestCase {
 	}
 
 
-	public function dataTestSaveUserSettingsException() {
+	public static function dataTestSaveUserSettingsException(): array {
 		return [
 			[
 				[
@@ -837,15 +835,8 @@ class UsersControllerTest extends \Test\TestCase {
 		];
 	}
 
-	/**
-	 * @param string $account
-	 * @param string $type
-	 * @param array $dataBefore
-	 * @param array $expectedData
-	 *
-	 * @dataProvider dataTestGetVerificationCode
-	 */
-	public function testGetVerificationCode($account, $type, $dataBefore, $expectedData, $onlyVerificationCode) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestGetVerificationCode')]
+	public function testGetVerificationCode(string $account, string $type, array $dataBefore, array $expectedData, bool $onlyVerificationCode): void {
 		$message = 'Use my Federated Cloud ID to share with me: user@nextcloud.com';
 		$signature = 'theSignature';
 
@@ -904,7 +895,7 @@ class UsersControllerTest extends \Test\TestCase {
 		$this->assertSame($code, $data['code']);
 	}
 
-	public function dataTestGetVerificationCode() {
+	public static function dataTestGetVerificationCode(): array {
 		$accountDataBefore = [
 			IAccountManager::PROPERTY_WEBSITE => ['value' => 'https://nextcloud.com', 'verified' => IAccountManager::NOT_VERIFIED],
 			IAccountManager::PROPERTY_TWITTER => ['value' => '@nextclouders', 'verified' => IAccountManager::NOT_VERIFIED, 'signature' => 'theSignature'],
@@ -931,7 +922,7 @@ class UsersControllerTest extends \Test\TestCase {
 	/**
 	 * test get verification code in case no valid user was given
 	 */
-	public function testGetVerificationCodeInvalidUser() {
+	public function testGetVerificationCodeInvalidUser(): void {
 		$controller = $this->getController();
 		$this->userSession->expects($this->once())->method('getUser')->willReturn(null);
 		$result = $controller->getVerificationCode('account', false);
@@ -939,18 +930,13 @@ class UsersControllerTest extends \Test\TestCase {
 		$this->assertSame(Http::STATUS_BAD_REQUEST, $result->getStatus());
 	}
 
-	/**
-	 * @dataProvider dataTestCanAdminChangeUserPasswords
-	 *
-	 * @param bool $encryptionEnabled
-	 * @param bool $encryptionModuleLoaded
-	 * @param bool $masterKeyEnabled
-	 * @param bool $expected
-	 */
-	public function testCanAdminChangeUserPasswords($encryptionEnabled,
-		$encryptionModuleLoaded,
-		$masterKeyEnabled,
-		$expected) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestCanAdminChangeUserPasswords')]
+	public function testCanAdminChangeUserPasswords(
+		bool $encryptionEnabled,
+		bool $encryptionModuleLoaded,
+		bool $masterKeyEnabled,
+		bool $expected,
+	): void {
 		$controller = $this->getController();
 
 		$this->encryptionManager->expects($this->any())
@@ -973,7 +959,7 @@ class UsersControllerTest extends \Test\TestCase {
 		$this->assertSame($expected, $result);
 	}
 
-	public function dataTestCanAdminChangeUserPasswords() {
+	public static function dataTestCanAdminChangeUserPasswords(): array {
 		return [
 			// encryptionEnabled, encryptionModuleLoaded, masterKeyEnabled, expectedResult
 			[true, true, true, true],

@@ -1,23 +1,9 @@
 <?php
 
 declare(strict_types=1);
-/*
- * @copyright 2024 Anna Larch <anna.larch@gmx.net>
- *
- * @author Anna Larch <anna.larch@gmx.net>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU AFFERO GENERAL PUBLIC LICENSE for more details.
- *
- * You should have received a copy of the GNU Affero General Public
- * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 namespace OCA\DAV\Tests\unit\DAV\Sharing;
 
@@ -38,14 +24,14 @@ use Test\TestCase;
 
 class BackendTest extends TestCase {
 
-	private IDBConnection|MockObject $db;
-	private IUserManager|MockObject $userManager;
-	private IGroupManager|MockObject $groupManager;
-	private MockObject|Principal $principalBackend;
-	private MockObject|ICache $shareCache;
-	private LoggerInterface|MockObject $logger;
-	private MockObject|ICacheFactory $cacheFactory;
-	private Service|MockObject $calendarService;
+	private IDBConnection&MockObject $db;
+	private IUserManager&MockObject $userManager;
+	private IGroupManager&MockObject $groupManager;
+	private Principal&MockObject $principalBackend;
+	private ICache&MockObject $shareCache;
+	private LoggerInterface&MockObject $logger;
+	private ICacheFactory&MockObject $cacheFactory;
+	private Service&MockObject $calendarService;
 	private CalendarSharingBackend $backend;
 
 	protected function setUp(): void {
@@ -228,10 +214,7 @@ class BackendTest extends TestCase {
 			'getResourceId' => 42,
 		]);
 		$remove = [
-			[
-				'href' => 'principal:principals/users/bob',
-				'readOnly' => true,
-			]
+			'principal:principals/users/bob',
 		];
 		$principal = 'principals/users/bob';
 
@@ -243,9 +226,6 @@ class BackendTest extends TestCase {
 		$this->calendarService->expects(self::once())
 			->method('deleteShare')
 			->with($shareable->getResourceId(), $principal);
-		$this->calendarService->expects(self::once())
-			->method('hasGroupShare')
-			->willReturn(false);
 		$this->calendarService->expects(self::never())
 			->method('unshare');
 
@@ -258,10 +238,7 @@ class BackendTest extends TestCase {
 			'getResourceId' => 42,
 		]);
 		$remove = [
-			[
-				'href' => 'principal:principals/users/bob',
-				'readOnly' => true,
-			]
+			'principal:principals/users/bob',
 		];
 		$oldShares = [
 			[
@@ -283,13 +260,8 @@ class BackendTest extends TestCase {
 		$this->calendarService->expects(self::once())
 			->method('deleteShare')
 			->with($shareable->getResourceId(), 'principals/users/bob');
-		$this->calendarService->expects(self::once())
-			->method('hasGroupShare')
-			->with($oldShares)
-			->willReturn(true);
-		$this->calendarService->expects(self::once())
-			->method('unshare')
-			->with($shareable->getResourceId(), 'principals/users/bob');
+		$this->calendarService->expects(self::never())
+			->method('unshare');
 
 		$this->backend->updateShares($shareable, [], $remove, $oldShares);
 	}

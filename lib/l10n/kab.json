@@ -1,15 +1,17 @@
 { "translations": {
     "Files" : "Ifuyla",
-    "Help" : "Tallalt",
     "Apps" : "Isnasen",
     "Settings" : "Iɣewwaṛen",
     "Log out" : "Senser",
-    "Users" : "Iseqdacen",
+    "Accounts" : "Imiḍanen",
     "Email" : "Imayl",
     "Phone" : "Tiliɣri",
     "Twitter" : "Twitter",
     "Website" : "Asmel web",
     "Address" : "Adresse",
-    "About" : "Γef"
+    "About" : "Γef",
+    "Images" : "Tugniwin",
+    "Question" : "Asteqsi",
+    "Translate" : "Suqel"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

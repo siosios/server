@@ -3,27 +3,10 @@
 declare(strict_types=1);
 
 /**
- * @copyright Copyright (c) 2024 Ferdinand Thiessen <opensource@fthiessen.de>
- *
- * @author Ferdinand Thiessen <opensource@fthiessen.de>
- *
- * @license AGPL-3.0-or-later
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-namespace OCA\Settings\Tests;
+namespace OCA\Settings\Tests\SetupChecks;
 
 use OCA\Settings\SetupChecks\WellKnownUrls;
 use OCP\Http\Client\IClientService;
@@ -37,19 +20,18 @@ use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class WellKnownUrlsTest extends TestCase {
-	private IL10N|MockObject $l10n;
-	private IConfig|MockObject $config;
-	private IURLGenerator|MockObject $urlGenerator;
-	private IClientService|MockObject $clientService;
-	private LoggerInterface|MockObject $logger;
-	private WellKnownUrls|MockObject $setupcheck;
+	private IL10N&MockObject $l10n;
+	private IConfig&MockObject $config;
+	private IURLGenerator&MockObject $urlGenerator;
+	private IClientService&MockObject $clientService;
+	private LoggerInterface&MockObject $logger;
+	private WellKnownUrls&MockObject $setupcheck;
 
 	protected function setUp(): void {
 		parent::setUp();
 
-		/** @var IL10N|MockObject */
-		$this->l10n = $this->getMockBuilder(IL10N::class)
-			->disableOriginalConstructor()->getMock();
+		/** @var IL10N&MockObject */
+		$this->l10n = $this->createMock(IL10N::class);
 		$this->l10n->expects($this->any())
 			->method('t')
 			->willReturnCallback(function ($message, array $replace) {
@@ -114,8 +96,8 @@ class WellKnownUrlsTest extends TestCase {
 
 	/**
 	 * Test responses
-	 * @dataProvider dataTestResponses
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataTestResponses')]
 	public function testResponses($responses, string $expectedSeverity): void {
 		$this->config
 			->expects($this->once())
@@ -133,7 +115,7 @@ class WellKnownUrlsTest extends TestCase {
 	}
 
 	public function dataTestResponses(): array {
-		$createResponse = function (int $statuscode, array $header = []): IResponse|MockObject {
+		$createResponse = function (int $statuscode, array $header = []): IResponse&MockObject {
 			$response = $this->createMock(IResponse::class);
 			$response->expects($this->any())
 				->method('getStatusCode')

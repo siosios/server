@@ -2,25 +2,8 @@
 
 declare(strict_types=1);
 /**
- * @copyright 2023 Maxence Lange <maxence@artificial-owl.com>
- *
- * @author Maxence Lange <maxence@artificial-owl.com>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2023 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OC\FilesMetadata;
@@ -51,8 +34,7 @@ use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\IMetadataQuery;
 use OCP\FilesMetadata\Model\IFilesMetadata;
 use OCP\FilesMetadata\Model\IMetadataValueWrapper;
-use OCP\IConfig;
-use OCP\IDBConnection;
+use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -69,7 +51,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	public function __construct(
 		private IEventDispatcher $eventDispatcher,
 		private IJobList $jobList,
-		private IConfig $config,
+		private IAppConfig $appConfig,
 		private LoggerInterface $logger,
 		private MetadataRequestService $metadataRequestService,
 		private IndexRequestService $indexRequestService,
@@ -93,13 +75,16 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	public function refreshMetadata(
 		Node $node,
 		int $process = self::PROCESS_LIVE,
-		string $namedEvent = ''
+		string $namedEvent = '',
 	): IFilesMetadata {
+		$storageId = $node->getStorage()->getCache()->getNumericStorageId();
 		try {
+			/** @var FilesMetadata $metadata */
 			$metadata = $this->metadataRequestService->getMetadataFromFileId($node->getId());
 		} catch (FilesMetadataNotFoundException) {
 			$metadata = new FilesMetadata($node->getId());
 		}
+		$metadata->setStorageId($storageId);
 
 		// if $process is LIVE, we enforce LIVE
 		// if $process is NAMED, we go NAMED
@@ -122,7 +107,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 				return $this->refreshMetadata($node, self::PROCESS_BACKGROUND);
 			}
 
-			$this->jobList->add(UpdateSingleMetadata::class, [$node->getOwner()->getUID(), $node->getId()]);
+			$this->jobList->add(UpdateSingleMetadata::class, [$node->getOwner()?->getUID(), $node->getId()]);
 		}
 
 		return $metadata;
@@ -206,7 +191,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		// update metadata types list
 		$current = $this->getKnownMetadata();
 		$current->import($filesMetadata->jsonSerialize(true));
-		$this->config->setAppValue('core', self::CONFIG_KEY, json_encode($current));
+		$this->appConfig->setValueArray('core', self::CONFIG_KEY, $current->jsonSerialize(), lazy: true);
 	}
 
 	/**
@@ -235,20 +220,16 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	 * @param string $fileIdField alias of the field that contains file ids
 	 *
 	 * @inheritDoc
-	 * @return IMetadataQuery|null
+	 * @return IMetadataQuery
 	 * @see IMetadataQuery
 	 * @since 28.0.0
 	 */
 	public function getMetadataQuery(
 		IQueryBuilder $qb,
 		string $fileTableAlias,
-		string $fileIdField
-	): ?IMetadataQuery {
-		if (!$this->metadataInitiated()) {
-			return null;
-		}
-
-		return new MetadataQuery($qb, $this->getKnownMetadata(), $fileTableAlias, $fileIdField);
+		string $fileIdField,
+	): IMetadataQuery {
+		return new MetadataQuery($qb, $this, $fileTableAlias, $fileIdField);
 	}
 
 	/**
@@ -263,8 +244,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		$this->all = new FilesMetadata();
 
 		try {
-			$data = json_decode($this->config->getAppValue('core', self::CONFIG_KEY, '[]'), true, 127, JSON_THROW_ON_ERROR);
-			$this->all->import($data);
+			$this->all->import($this->appConfig->getValueArray('core', self::CONFIG_KEY, lazy: true));
 		} catch (JsonException) {
 			$this->logger->warning('issue while reading stored list of metadata. Advised to run ./occ files:scan --all --generate-metadata');
 		}
@@ -296,7 +276,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		string $key,
 		string $type,
 		bool $indexed = false,
-		int $editPermission = IMetadataValueWrapper::EDIT_FORBIDDEN
+		int $editPermission = IMetadataValueWrapper::EDIT_FORBIDDEN,
 	): void {
 		$current = $this->getKnownMetadata();
 		try {
@@ -310,7 +290,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		}
 
 		$current->import([$key => ['type' => $type, 'indexed' => $indexed, 'editPermission' => $editPermission]]);
-		$this->config->setAppValue('core', self::CONFIG_KEY, json_encode($current));
+		$this->appConfig->setValueArray('core', self::CONFIG_KEY, $current->jsonSerialize(), lazy: true);
 		$this->all = $current;
 	}
 
@@ -322,27 +302,5 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	public static function loadListeners(IEventDispatcher $eventDispatcher): void {
 		$eventDispatcher->addServiceListener(NodeWrittenEvent::class, MetadataUpdate::class);
 		$eventDispatcher->addServiceListener(CacheEntryRemovedEvent::class, MetadataDelete::class);
-	}
-
-	/**
-	 * Will confirm that tables were created and store an app value to cache the result.
-	 * Can be removed in 29 as this is to avoid strange situation when Nextcloud files were
-	 * replaced but the upgrade was not triggered yet.
-	 *
-	 * @return bool
-	 */
-	private function metadataInitiated(): bool {
-		if ($this->config->getAppValue('core', self::MIGRATION_DONE, '0') === '1') {
-			return true;
-		}
-
-		$dbConnection = \OCP\Server::get(IDBConnection::class);
-		if ($dbConnection->tableExists(MetadataRequestService::TABLE_METADATA)) {
-			$this->config->setAppValue('core', self::MIGRATION_DONE, '1');
-
-			return true;
-		}
-
-		return false;
 	}
 }

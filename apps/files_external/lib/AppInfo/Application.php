@@ -1,37 +1,16 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Ross Nicoll <jrn@jrn.me.uk>
- * @author Vincent Petry <vincent@nextcloud.com>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OCA\Files_External\AppInfo;
 
 use OCA\Files\Event\LoadAdditionalScriptsEvent;
 use OCA\Files_External\Config\ConfigAdapter;
 use OCA\Files_External\Config\UserPlaceholderHandler;
+use OCA\Files_External\ConfigLexicon;
 use OCA\Files_External\Lib\Auth\AmazonS3\AccessKey;
 use OCA\Files_External\Lib\Auth\Builtin;
 use OCA\Files_External\Lib\Auth\NullMechanism;
@@ -70,6 +49,7 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\AppFramework\QueryException;
 use OCP\Files\Config\IMountProviderCollection;
 use OCP\Group\Events\GroupDeletedEvent;
 use OCP\User\Events\UserDeletedEvent;
@@ -85,7 +65,7 @@ class Application extends App implements IBackendProvider, IAuthMechanismProvide
 	/**
 	 * Application constructor.
 	 *
-	 * @throws \OCP\AppFramework\QueryException
+	 * @throws QueryException
 	 */
 	public function __construct(array $urlParams = []) {
 		parent::__construct(self::APP_ID, $urlParams);
@@ -95,13 +75,14 @@ class Application extends App implements IBackendProvider, IAuthMechanismProvide
 		$context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
 		$context->registerEventListener(GroupDeletedEvent::class, GroupDeletedListener::class);
 		$context->registerEventListener(LoadAdditionalScriptsEvent::class, LoadAdditionalListener::class);
+		$context->registerConfigLexicon(ConfigLexicon::class);
 	}
 
 	public function boot(IBootContext $context): void {
-		$context->injectFn(function (IMountProviderCollection $mountProviderCollection, ConfigAdapter $configAdapter) {
+		$context->injectFn(function (IMountProviderCollection $mountProviderCollection, ConfigAdapter $configAdapter): void {
 			$mountProviderCollection->registerProvider($configAdapter);
 		});
-		$context->injectFn(function (BackendService $backendService, UserPlaceholderHandler $userConfigHandler) {
+		$context->injectFn(function (BackendService $backendService, UserPlaceholderHandler $userConfigHandler): void {
 			$backendService->registerBackendProvider($this);
 			$backendService->registerAuthMechanismProvider($this);
 			$backendService->registerConfigHandler('user', function () use ($userConfigHandler) {

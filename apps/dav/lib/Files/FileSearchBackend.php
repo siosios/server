@@ -1,28 +1,8 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
- *
- * @author Christian <16852529+cviereck@users.noreply.github.com>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Maxence Lange <maxence@artificial-owl.com>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 namespace OCA\DAV\Files;
 
@@ -30,15 +10,20 @@ use OC\Files\Search\SearchBinaryOperator;
 use OC\Files\Search\SearchComparison;
 use OC\Files\Search\SearchOrder;
 use OC\Files\Search\SearchQuery;
+use OC\Files\Storage\Wrapper\Jail;
 use OC\Files\View;
 use OCA\DAV\Connector\Sabre\CachingTree;
 use OCA\DAV\Connector\Sabre\Directory;
+use OCA\DAV\Connector\Sabre\File;
 use OCA\DAV\Connector\Sabre\FilesPlugin;
+use OCA\DAV\Connector\Sabre\Server;
 use OCA\DAV\Connector\Sabre\TagsPlugin;
 use OCP\Files\Cache\ICacheEntry;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
+use OCP\Files\Search\ISearchBinaryOperator;
+use OCP\Files\Search\ISearchComparison;
 use OCP\Files\Search\ISearchOperator;
 use OCP\Files\Search\ISearchOrder;
 use OCP\Files\Search\ISearchQuery;
@@ -61,6 +46,7 @@ class FileSearchBackend implements ISearchBackend {
 	public const OPERATOR_LIMIT = 100;
 
 	public function __construct(
+		private Server $server,
 		private CachingTree $tree,
 		private IUser $user,
 		private IRootFolder $rootFolder,
@@ -150,6 +136,24 @@ class FileSearchBackend implements ISearchBackend {
 	 * @param string[] $requestProperties
 	 */
 	public function preloadPropertyFor(array $nodes, array $requestProperties): void {
+		$this->server->emit('preloadProperties', [$nodes, $requestProperties]);
+	}
+
+	private function getFolderForPath(?string $path = null): Folder {
+		if ($path === null) {
+			throw new \InvalidArgumentException('Using uri\'s as scope is not supported, please use a path relative to the search arbiter instead');
+		}
+
+		$node = $this->tree->getNodeForPath($path);
+
+		if (!$node instanceof Directory) {
+			throw new \InvalidArgumentException('Search is only supported on directories');
+		}
+
+		$fileInfo = $node->getFileInfo();
+
+		/** @var Folder */
+		return $this->rootFolder->get($fileInfo->getPath());
 	}
 
 	/**
@@ -157,30 +161,59 @@ class FileSearchBackend implements ISearchBackend {
 	 * @return SearchResult[]
 	 */
 	public function search(Query $search): array {
-		if (count($search->from) !== 1) {
-			throw new \InvalidArgumentException('Searching more than one folder is not supported');
-		}
-		$query = $this->transformQuery($search);
-		$scope = $search->from[0];
-		if ($scope->path === null) {
-			throw new \InvalidArgumentException('Using uri\'s as scope is not supported, please use a path relative to the search arbiter instead');
-		}
-		$node = $this->tree->getNodeForPath($scope->path);
-		if (!$node instanceof Directory) {
-			throw new \InvalidArgumentException('Search is only supported on directories');
-		}
+		switch (count($search->from)) {
+			case 0:
+				throw new \InvalidArgumentException('You need to specify a scope for the search.');
+				break;
+			case 1:
+				$scope = $search->from[0];
+				$folder = $this->getFolderForPath($scope->path);
+				$query = $this->transformQuery($search);
+				$results = $folder->search($query);
+				break;
+			default:
+				$scopes = [];
+				foreach ($search->from as $scope) {
+					$folder = $this->getFolderForPath($scope->path);
+					$folderStorage = $folder->getStorage();
+					if ($folderStorage->instanceOfStorage(Jail::class)) {
+						/** @var Jail $folderStorage */
+						$internalPath = $folderStorage->getUnjailedPath($folder->getInternalPath());
+					} else {
+						$internalPath = $folder->getInternalPath();
+					}
 
-		$fileInfo = $node->getFileInfo();
-		$folder = $this->rootFolder->get($fileInfo->getPath());
-		/** @var Folder $folder $results */
-		$results = $folder->search($query);
+					$scopes[] = new SearchBinaryOperator(
+						ISearchBinaryOperator::OPERATOR_AND,
+						[
+							new SearchComparison(
+								ISearchComparison::COMPARE_EQUAL,
+								'storage',
+								$folderStorage->getCache()->getNumericStorageId(),
+								''
+							),
+							new SearchComparison(
+								ISearchComparison::COMPARE_LIKE,
+								'path',
+								$internalPath . '/%',
+								''
+							),
+						]
+					);
+				}
+
+				$scopeOperators = new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_OR, $scopes);
+				$query = $this->transformQuery($search, $scopeOperators);
+				$userFolder = $this->rootFolder->getUserFolder($this->user->getUID());
+				$results = $userFolder->search($query);
+		}
 
 		/** @var SearchResult[] $nodes */
 		$nodes = array_map(function (Node $node) {
 			if ($node instanceof Folder) {
-				$davNode = new \OCA\DAV\Connector\Sabre\Directory($this->view, $node, $this->tree, $this->shareManager);
+				$davNode = new Directory($this->view, $node, $this->tree, $this->shareManager);
 			} else {
-				$davNode = new \OCA\DAV\Connector\Sabre\File($this->view, $node, $this->shareManager);
+				$davNode = new File($this->view, $node, $this->shareManager);
 			}
 			$path = $this->getHrefForNode($node);
 			$this->tree->cacheNode($davNode, $path);
@@ -288,7 +321,7 @@ class FileSearchBackend implements ISearchBackend {
 	 *
 	 * @return ISearchQuery
 	 */
-	private function transformQuery(Query $query): ISearchQuery {
+	private function transformQuery(Query $query, ?SearchBinaryOperator $scopeOperators = null): ISearchQuery {
 		$orders = array_map(function (Order $order): ISearchOrder {
 			$direction = $order->order === Order::ASC ? ISearchOrder::DIRECTION_ASCENDING : ISearchOrder::DIRECTION_DESCENDING;
 			if (str_starts_with($order->property->name, FilesPlugin::FILE_METADATA_PREFIX)) {
@@ -316,8 +349,16 @@ class FileSearchBackend implements ISearchBackend {
 			throw new \InvalidArgumentException('Invalid search query, maximum operator limit of ' . self::OPERATOR_LIMIT . ' exceeded, got ' . $operatorCount . ' operators');
 		}
 
+		/** @var SearchBinaryOperator|SearchComparison */
+		$queryOperators = $this->transformSearchOperation($query->where);
+		if ($scopeOperators === null) {
+			$operators = $queryOperators;
+		} else {
+			$operators = new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_AND, [$queryOperators, $scopeOperators]);
+		}
+
 		return new SearchQuery(
-			$this->transformSearchOperation($query->where),
+			$operators,
 			(int)$limit->maxResults,
 			$offset,
 			$orders,
@@ -385,10 +426,16 @@ class FileSearchBackend implements ISearchBackend {
 					$field = $this->mapPropertyNameToColumn($property);
 				}
 
+				try {
+					$castedValue = $this->castValue($property, $value ?? '');
+				} catch (\Error $e) {
+					throw new \InvalidArgumentException('Invalid property value for ' . $property->name, previous: $e);
+				}
+
 				return new SearchComparison(
 					$trimmedType,
 					$field,
-					$this->castValue($property, $value ?? ''),
+					$castedValue,
 					$extra ?? ''
 				);
 

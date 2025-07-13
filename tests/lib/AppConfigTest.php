@@ -2,24 +2,8 @@
 
 declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2024, Maxence Lange <maxence@artificial-owl.com>
- *
- * @author Maxence Lange <maxence@artificial-owl.com>
- *
- * @license AGPL-3.0 or later
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace Test;
 
@@ -30,6 +14,7 @@ use OCP\Exceptions\AppConfigUnknownKeyException;
 use OCP\IAppConfig;
 use OCP\IDBConnection;
 use OCP\Security\ICrypto;
+use OCP\Server;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -44,16 +29,17 @@ class AppConfigTest extends TestCase {
 	protected IDBConnection $connection;
 	private LoggerInterface $logger;
 	private ICrypto $crypto;
+
 	private array $originalConfig;
 
 	/**
-	 * @var array<string, array<array<string, string, int, bool, bool>>>
-	 *     [appId => [configKey, configValue, valueType, lazy, sensitive]]
+	 * @var array<string, array<string, array<string, string, int, bool, bool>>>
+	 *                                                                           [appId => [configKey, configValue, valueType, lazy, sensitive]]
 	 */
-	private array $baseStruct =
-		[
+	private static array $baseStruct
+		= [
 			'testapp' => [
-				'enabled' => ['enabled', 'true'],
+				'enabled' => ['enabled', 'yes'],
 				'installed_version' => ['installed_version', '1.2.3'],
 				'depends_on' => ['depends_on', 'someapp'],
 				'deletethis' => ['deletethis', 'deletethis'],
@@ -64,11 +50,12 @@ class AppConfigTest extends TestCase {
 				'otherkey' => ['otherkey', 'othervalue']
 			],
 			'123456' => [
-				'enabled' => ['enabled', 'true'],
+				'enabled' => ['enabled', 'yes'],
 				'key' => ['key', 'value']
 			],
 			'anotherapp' => [
-				'enabled' => ['enabled', 'false'],
+				'enabled' => ['enabled', 'no'],
+				'installed_version' => ['installed_version', '3.2.1'],
 				'key' => ['key', 'value']
 			],
 			'non-sensitive-app' => [
@@ -101,9 +88,9 @@ class AppConfigTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->connection = \OCP\Server::get(IDBConnection::class);
-		$this->logger = \OCP\Server::get(LoggerInterface::class);
-		$this->crypto = \OCP\Server::get(ICrypto::class);
+		$this->connection = Server::get(IDBConnection::class);
+		$this->logger = Server::get(LoggerInterface::class);
+		$this->crypto = Server::get(ICrypto::class);
 
 		// storing current config and emptying the data table
 		$sql = $this->connection->getQueryBuilder();
@@ -129,14 +116,14 @@ class AppConfigTest extends TestCase {
 				]
 			);
 
-		foreach ($this->baseStruct as $appId => $appData) {
+		foreach (self::$baseStruct as $appId => $appData) {
 			foreach ($appData as $key => $row) {
 				$value = $row[1];
 				$type = $row[2] ?? IAppConfig::VALUE_MIXED;
 				if (($row[4] ?? false) === true) {
 					$type |= IAppConfig::VALUE_SENSITIVE;
 					$value = self::invokePrivate(AppConfig::class, 'ENCRYPTION_PREFIX') . $this->crypto->encrypt($value);
-					$this->baseStruct[$appId][$key]['encrypted'] = $value;
+					self::$baseStruct[$appId][$key]['encrypted'] = $value;
 				}
 
 				$sql->setParameters(
@@ -184,13 +171,13 @@ class AppConfigTest extends TestCase {
 
 	/**
 	 * @param bool $preLoading TRUE will preload the 'fast' cache, which is the normal behavior of usual
-	 *     IAppConfig
+	 *                         IAppConfig
 	 *
 	 * @return IAppConfig
 	 */
 	private function generateAppConfig(bool $preLoading = true): IAppConfig {
 		/** @var AppConfig $config */
-		$config = new \OC\AppConfig(
+		$config = new AppConfig(
 			$this->connection,
 			$this->logger,
 			$this->crypto,
@@ -212,7 +199,7 @@ class AppConfigTest extends TestCase {
 			$this->assertSame(true, $status['fastLoaded'], $msg);
 			$this->assertSame(false, $status['lazyLoaded'], $msg);
 
-			$apps = array_values(array_diff(array_keys($this->baseStruct), ['only-lazy']));
+			$apps = array_values(array_diff(array_keys(self::$baseStruct), ['only-lazy']));
 			$this->assertEqualsCanonicalizing($apps, array_keys($status['fastCache']), $msg);
 			$this->assertSame([], array_keys($status['lazyCache']), $msg);
 		}
@@ -223,7 +210,20 @@ class AppConfigTest extends TestCase {
 	public function testGetApps(): void {
 		$config = $this->generateAppConfig(false);
 
-		$this->assertEqualsCanonicalizing(array_keys($this->baseStruct), $config->getApps());
+		$this->assertEqualsCanonicalizing(array_keys(self::$baseStruct), $config->getApps());
+	}
+
+	public function testGetAppInstalledVersions(): void {
+		$config = $this->generateAppConfig(false);
+
+		$this->assertEquals(
+			['testapp' => '1.2.3', 'anotherapp' => '3.2.1'],
+			$config->getAppInstalledVersions(false)
+		);
+		$this->assertEquals(
+			['testapp' => '1.2.3'],
+			$config->getAppInstalledVersions(true)
+		);
 	}
 
 	/**
@@ -232,9 +232,9 @@ class AppConfigTest extends TestCase {
 	 * @return array<string, string[]> ['appId' => ['key1', 'key2', ]]
 	 * @see testGetKeys
 	 */
-	public function providerGetAppKeys(): array {
+	public static function providerGetAppKeys(): array {
 		$appKeys = [];
-		foreach ($this->baseStruct as $appId => $appData) {
+		foreach (self::$baseStruct as $appId => $appData) {
 			$keys = [];
 			foreach ($appData as $row) {
 				$keys[] = $row[0];
@@ -253,9 +253,9 @@ class AppConfigTest extends TestCase {
 	 * @see testIsLazy
 	 * @see testGetKeys
 	 */
-	public function providerGetKeys(): array {
+	public static function providerGetKeys(): array {
 		$appKeys = [];
-		foreach ($this->baseStruct as $appId => $appData) {
+		foreach (self::$baseStruct as $appId => $appData) {
 			foreach ($appData as $row) {
 				$appKeys[] = [
 					(string)$appId, $row[0], $row[1], $row[2] ?? IAppConfig::VALUE_MIXED, $row[3] ?? false,
@@ -268,11 +268,11 @@ class AppConfigTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider providerGetAppKeys
 	 *
 	 * @param string $appId
 	 * @param array $expectedKeys
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('providerGetAppKeys')]
 	public function testGetKeys(string $appId, array $expectedKeys): void {
 		$config = $this->generateAppConfig();
 		$this->assertEqualsCanonicalizing($expectedKeys, $config->getKeys($appId));
@@ -284,13 +284,13 @@ class AppConfigTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider providerGetKeys
 	 *
 	 * @param string $appId
 	 * @param string $configKey
 	 * @param string $value
 	 * @param bool $lazy
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('providerGetKeys')]
 	public function testHasKey(string $appId, string $configKey, string $value, int $type, bool $lazy): void {
 		$config = $this->generateAppConfig();
 		$this->assertEquals(true, $config->hasKey($appId, $configKey, $lazy));
@@ -298,7 +298,7 @@ class AppConfigTest extends TestCase {
 
 	public function testHasKeyOnNonExistentKeyReturnsFalse(): void {
 		$config = $this->generateAppConfig();
-		$this->assertEquals(false, $config->hasKey(array_keys($this->baseStruct)[0], 'inexistant-key'));
+		$this->assertEquals(false, $config->hasKey(array_keys(self::$baseStruct)[0], 'inexistant-key'));
 	}
 
 	public function testHasKeyOnUnknownAppReturnsFalse(): void {
@@ -321,11 +321,9 @@ class AppConfigTest extends TestCase {
 		$this->assertSame(true, $config->hasKey('non-sensitive-app', 'lazy-key', null));
 	}
 
-	/**
-	 * @dataProvider providerGetKeys
-	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('providerGetKeys')]
 	public function testIsSensitive(
-		string $appId, string $configKey, string $configValue, int $type, bool $lazy, bool $sensitive
+		string $appId, string $configKey, string $configValue, int $type, bool $lazy, bool $sensitive,
 	): void {
 		$config = $this->generateAppConfig();
 		$this->assertEquals($sensitive, $config->isSensitive($appId, $configKey, $lazy));
@@ -334,7 +332,7 @@ class AppConfigTest extends TestCase {
 	public function testIsSensitiveOnNonExistentKeyThrowsException(): void {
 		$config = $this->generateAppConfig();
 		$this->expectException(AppConfigUnknownKeyException::class);
-		$config->isSensitive(array_keys($this->baseStruct)[0], 'inexistant-key');
+		$config->isSensitive(array_keys(self::$baseStruct)[0], 'inexistant-key');
 	}
 
 	public function testIsSensitiveOnUnknownAppThrowsException(): void {
@@ -365,10 +363,8 @@ class AppConfigTest extends TestCase {
 		$config->isSensitive('non-sensitive-app', 'lazy-key', false);
 	}
 
-	/**
-	 * @dataProvider providerGetKeys
-	 */
-	public function testIsLazy(string $appId, string $configKey, string $configValue, int $type, bool $lazy
+	#[\PHPUnit\Framework\Attributes\DataProvider('providerGetKeys')]
+	public function testIsLazy(string $appId, string $configKey, string $configValue, int $type, bool $lazy,
 	): void {
 		$config = $this->generateAppConfig();
 		$this->assertEquals($lazy, $config->isLazy($appId, $configKey));
@@ -377,13 +373,28 @@ class AppConfigTest extends TestCase {
 	public function testIsLazyOnNonExistentKeyThrowsException(): void {
 		$config = $this->generateAppConfig();
 		$this->expectException(AppConfigUnknownKeyException::class);
-		$config->isLazy(array_keys($this->baseStruct)[0], 'inexistant-key');
+		$config->isLazy(array_keys(self::$baseStruct)[0], 'inexistant-key');
 	}
 
 	public function testIsLazyOnUnknownAppThrowsException(): void {
 		$config = $this->generateAppConfig();
 		$this->expectException(AppConfigUnknownKeyException::class);
 		$config->isLazy('unknown-app', 'inexistant-key');
+	}
+
+	public function testGetAllValues(): void {
+		$config = $this->generateAppConfig();
+		$this->assertEquals(
+			[
+				'array' => ['test' => 1],
+				'bool' => true,
+				'float' => 3.14,
+				'int' => 42,
+				'mixed' => 'mix',
+				'string' => 'value',
+			],
+			$config->getAllValues('typed')
+		);
 	}
 
 	public function testGetAllValuesWithEmptyApp(): void {
@@ -393,11 +404,11 @@ class AppConfigTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider providerGetAppKeys
 	 *
 	 * @param string $appId
 	 * @param array $keys
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('providerGetAppKeys')]
 	public function testGetAllValuesWithEmptyKey(string $appId, array $keys): void {
 		$config = $this->generateAppConfig();
 		$this->assertEqualsCanonicalizing($keys, array_keys($config->getAllValues($appId, '')));
@@ -410,7 +421,7 @@ class AppConfigTest extends TestCase {
 
 	public function testSearchValues(): void {
 		$config = $this->generateAppConfig();
-		$this->assertEqualsCanonicalizing(['testapp' => 'true', '123456' => 'true', 'anotherapp' => 'false'], $config->searchValues('enabled'));
+		$this->assertEqualsCanonicalizing(['testapp' => 'yes', '123456' => 'yes', 'anotherapp' => 'no'], $config->searchValues('enabled'));
 	}
 
 	public function testGetValueString(): void {
@@ -439,7 +450,7 @@ class AppConfigTest extends TestCase {
 		$this->assertSame('value', $config->getValueString('non-sensitive-app', 'non-lazy-key', 'default', lazy: true));
 	}
 
-	public function testGetValueInt() {
+	public function testGetValueInt(): void {
 		$config = $this->generateAppConfig();
 		$this->assertSame(42, $config->getValueInt('typed', 'int', 0));
 	}
@@ -449,7 +460,7 @@ class AppConfigTest extends TestCase {
 		$this->assertSame(1, $config->getValueInt('typed-1', 'int', 1));
 	}
 
-	public function testGetValueIntOnNonExistentKeyReturnsDefault() {
+	public function testGetValueIntOnNonExistentKeyReturnsDefault(): void {
 		$config = $this->generateAppConfig();
 		$this->assertSame(2, $config->getValueInt('typed', 'int-2', 2));
 	}
@@ -460,7 +471,7 @@ class AppConfigTest extends TestCase {
 		$config->getValueInt('typed', 'float');
 	}
 
-	public function testGetValueFloat() {
+	public function testGetValueFloat(): void {
 		$config = $this->generateAppConfig();
 		$this->assertSame(3.14, $config->getValueFloat('typed', 'float', 0));
 	}
@@ -470,7 +481,7 @@ class AppConfigTest extends TestCase {
 		$this->assertSame(1.11, $config->getValueFloat('typed-1', 'float', 1.11));
 	}
 
-	public function testGetValueFloatOnNonExistentKeyReturnsDefault() {
+	public function testGetValueFloatOnNonExistentKeyReturnsDefault(): void {
 		$config = $this->generateAppConfig();
 		$this->assertSame(2.22, $config->getValueFloat('typed', 'float-2', 2.22));
 	}
@@ -530,7 +541,7 @@ class AppConfigTest extends TestCase {
 	 *
 	 * @see testGetValueMixed
 	 */
-	public function providerGetValueMixed(): array {
+	public static function providerGetValueMixed(): array {
 		return [
 			// key, value, type
 			['mixed', 'mix', IAppConfig::VALUE_MIXED],
@@ -543,23 +554,23 @@ class AppConfigTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider providerGetValueMixed
 	 *
 	 * @param string $key
 	 * @param string $value
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('providerGetValueMixed')]
 	public function testGetValueMixed(string $key, string $value): void {
 		$config = $this->generateAppConfig();
 		$this->assertSame($value, $config->getValueMixed('typed', $key));
 	}
 
 	/**
-	 * @dataProvider providerGetValueMixed
 	 *
 	 * @param string $key
 	 * @param string $value
 	 * @param int $type
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('providerGetValueMixed')]
 	public function testGetValueType(string $key, string $value, int $type): void {
 		$config = $this->generateAppConfig();
 		$this->assertSame($type, $config->getValueType('typed', $key));
@@ -1238,7 +1249,7 @@ class AppConfigTest extends TestCase {
 			[
 				'app' => 'sensitive-app',
 				'key' => 'lazy-key',
-				'value' => $this->baseStruct['sensitive-app']['lazy-key']['encrypted'],
+				'value' => 'value',
 				'type' => 4,
 				'lazy' => true,
 				'typeString' => 'string',
@@ -1322,7 +1333,7 @@ class AppConfigTest extends TestCase {
 		$config = $this->generateAppConfig();
 		$config->deleteKey('anotherapp', 'key');
 		$status = $config->statusCache();
-		$this->assertEqualsCanonicalizing(['enabled' => 'false'], $status['fastCache']['anotherapp']);
+		$this->assertEqualsCanonicalizing(['enabled' => 'no', 'installed_version' => '3.2.1'], $status['fastCache']['anotherapp']);
 	}
 
 	public function testDeleteKeyDatabase(): void {
@@ -1368,7 +1379,7 @@ class AppConfigTest extends TestCase {
 		$key = self::getUniqueID('secret');
 
 		$appConfig = $this->generateAppConfig();
-		$secret = md5((string) time());
+		$secret = md5((string)time());
 		$appConfig->setValueString('testapp', $key, $secret, sensitive: true);
 
 		$this->assertConfigValueNotEquals('testapp', $key, $secret);
@@ -1386,7 +1397,7 @@ class AppConfigTest extends TestCase {
 	public function testMigratingNonSensitiveValueToSensitiveWithSetValue(): void {
 		$key = self::getUniqueID('secret');
 		$appConfig = $this->generateAppConfig();
-		$secret = sha1((string) time());
+		$secret = sha1((string)time());
 
 		// Unencrypted
 		$appConfig->setValueString('testapp', $key, $secret);
@@ -1414,7 +1425,7 @@ class AppConfigTest extends TestCase {
 	public function testUpdateSensitiveValueToNonSensitiveWithUpdateSensitive(): void {
 		$key = self::getUniqueID('secret');
 		$appConfig = $this->generateAppConfig();
-		$secret = sha1((string) time());
+		$secret = sha1((string)time());
 
 		// Encrypted
 		$appConfig->setValueString('testapp', $key, $secret, sensitive: true);
@@ -1428,7 +1439,7 @@ class AppConfigTest extends TestCase {
 	public function testUpdateNonSensitiveValueToSensitiveWithUpdateSensitive(): void {
 		$key = self::getUniqueID('secret');
 		$appConfig = $this->generateAppConfig();
-		$secret = sha1((string) time());
+		$secret = sha1((string)time());
 
 		// Unencrypted
 		$appConfig->setValueString('testapp', $key, $secret);

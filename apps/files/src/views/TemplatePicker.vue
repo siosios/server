@@ -1,24 +1,7 @@
 <!--
-  - @copyright Copyright (c) 2020 John Molakvoæ <skjnldsv@protonmail.com>
-  -
-  - @author John Molakvoæ <skjnldsv@protonmail.com>
-  -
-  - @license GNU AGPL version 3 or any later version
-  -
-  - This program is free software: you can redistribute it and/or modify
-  - it under the terms of the GNU Affero General Public License as
-  - published by the Free Software Foundation, either version 3 of the
-  - License, or (at your option) any later version.
-  -
-  - This program is distributed in the hope that it will be useful,
-  - but WITHOUT ANY WARRANTY; without even the implied warranty of
-  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  - GNU Affero General Public License for more details.
-  -
-  - You should have received a copy of the GNU Affero General Public License
-  - along with this program. If not, see <http://www.gnu.org/licenses/>.
-  -
-  -->
+  - SPDX-FileCopyrightText: 2020 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 
 <template>
 	<NcModal v-if="opened"
@@ -34,7 +17,9 @@
 			<!-- Templates list -->
 			<ul class="templates-picker__list">
 				<TemplatePreview v-bind="emptyTemplate"
+					ref="emptyTemplatePreview"
 					:checked="checked === emptyTemplate.fileid"
+					@confirm-click="onConfirmClick"
 					@check="onCheck" />
 
 				<TemplatePreview v-for="template in provider.templates"
@@ -42,6 +27,7 @@
 					v-bind="template"
 					:checked="checked === template.fileid"
 					:ratio="provider.ratio"
+					@confirm-click="onConfirmClick"
 					@check="onCheck" />
 			</ul>
 
@@ -64,19 +50,20 @@
 import type { TemplateFile } from '../types.ts'
 
 import { getCurrentUser } from '@nextcloud/auth'
-import { showError } from '@nextcloud/dialogs'
+import { showError, spawnDialog } from '@nextcloud/dialogs'
 import { emit } from '@nextcloud/event-bus'
 import { File } from '@nextcloud/files'
 import { translate as t } from '@nextcloud/l10n'
 import { generateRemoteUrl } from '@nextcloud/router'
 import { normalize, extname, join } from 'path'
 import { defineComponent } from 'vue'
-import { createFromTemplate, getTemplates } from '../services/Templates.js'
+import { createFromTemplate, getTemplates, getTemplateFields } from '../services/Templates.js'
 
-import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
-import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcModal from '@nextcloud/vue/components/NcModal'
 import TemplatePreview from '../components/TemplatePreview.vue'
-import logger from '../logger.js'
+import TemplateFiller from '../components/TemplateFiller.vue'
+import logger from '../logger.ts'
 
 const border = 2
 const margin = 8
@@ -88,6 +75,16 @@ export default defineComponent({
 		NcEmptyContent,
 		NcModal,
 		TemplatePreview,
+	},
+
+	props: {
+		/**
+		 * The parent folder where to create the node
+		 */
+		parent: {
+			type: Object,
+			default: () => null,
+		},
 	},
 
 	data() {
@@ -109,7 +106,7 @@ export default defineComponent({
 		nameWithoutExt() {
 			// Strip extension from name if defined
 			return !this.extension
-				? this.name
+				? this.name!
 				: this.name!.slice(0, 0 - this.extension.length)
 		},
 
@@ -185,6 +182,11 @@ export default defineComponent({
 
 			// Else, open the picker
 			this.opened = true
+
+			// Set initial focus to the empty template preview
+			this.$nextTick(() => {
+				this.$refs.emptyTemplatePreview?.focus()
+			})
 		},
 
 		/**
@@ -207,8 +209,13 @@ export default defineComponent({
 			this.checked = fileid
 		},
 
-		async onSubmit() {
-			this.loading = true
+		onConfirmClick(fileid: number) {
+			if (fileid === this.checked) {
+				this.onSubmit()
+			}
+		},
+
+		async createFile(templateFields = []) {
 			const currentDirectory = new URL(window.location.href).searchParams.get('dir') || '/'
 
 			// If the file doesn't have an extension, add the default one
@@ -222,6 +229,7 @@ export default defineComponent({
 					normalize(`${currentDirectory}/${this.name}`),
 					this.selectedTemplate?.filename as string ?? '',
 					this.selectedTemplate?.templateType as string ?? '',
+					templateFields,
 				)
 				logger.debug('Created new file', fileInfo)
 
@@ -236,6 +244,10 @@ export default defineComponent({
 					size: fileInfo.size,
 					permissions: fileInfo.permissions,
 					attributes: {
+						// Inherit some attributes from parent folder like the mount type and real owner
+						'mount-type': this.parent?.attributes?.['mount-type'],
+						'owner-id': this.parent?.attributes?.['owner-id'],
+						'owner-display-name': this.parent?.attributes?.['owner-display-name'],
 						...fileInfo,
 						'has-preview': fileInfo.hasPreview,
 					},
@@ -258,6 +270,27 @@ export default defineComponent({
 				showError(t('files', 'Unable to create new file from template'))
 			} finally {
 				this.loading = false
+			}
+		},
+
+		async onSubmit() {
+			const fileId = this.selectedTemplate?.fileid
+
+			// Only request field extraction if there is a valid template
+			// selected and it's not the blank template
+			let fields = []
+			if (fileId && fileId !== this.emptyTemplate.fileid) {
+				fields = await getTemplateFields(fileId)
+			}
+
+			if (fields.length > 0) {
+				spawnDialog(TemplateFiller, {
+					fields,
+					onSubmit: this.createFile,
+				})
+			} else {
+				this.loading = true
+				await this.createFile()
 			}
 		},
 	},
@@ -297,7 +330,7 @@ export default defineComponent({
 		padding: calc(var(--margin) * 2) var(--margin);
 		position: sticky;
 		bottom: 0;
-		background-image: linear-gradient(0, var(--gradient-main-background));
+		background-image: linear-gradient(0deg, var(--gradient-main-background));
 
 		button, input[type='submit'] {
 			height: 44px;
@@ -305,14 +338,14 @@ export default defineComponent({
 	}
 
 	// Make sure we're relative for the loading emptycontent on top
-	::v-deep .modal-container {
+	:deep(.modal-container) {
 		position: relative;
 	}
 
 	&__loading {
 		position: absolute;
 		top: 0;
-		left: 0;
+		inset-inline-start: 0;
 		justify-content: center;
 		width: 100%;
 		height: 100%;

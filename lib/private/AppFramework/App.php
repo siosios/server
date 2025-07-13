@@ -1,33 +1,10 @@
 <?php
 
 declare(strict_types=1);
-
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Bernhard Posselt <dev@bernhard-posselt.com>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OC\AppFramework;
 
@@ -60,7 +37,7 @@ class App {
 	 * namespace tag or uppercasing the appid's first letter
 	 * @param string $appId the app id
 	 * @param string $topNamespace the namespace which should be prepended to
-	 * the transformed app id, defaults to OCA\
+	 *                             the transformed app id, defaults to OCA\
 	 * @return string the starting namespace for the app
 	 */
 	public static function buildAppNamespace(string $appId, string $topNamespace = 'OCA\\'): string {
@@ -124,7 +101,7 @@ class App {
 		$profiler->setEnabled($profiler->isEnabled() && !is_null($urlParams) && isset($urlParams['_route']) && !str_starts_with($urlParams['_route'], 'profiler.'));
 		if ($profiler->isEnabled()) {
 			\OC::$server->get(IEventLogger::class)->activate();
-			$profiler->add(new RoutingDataCollector($container['AppName'], $controllerName, $methodName));
+			$profiler->add(new RoutingDataCollector($container['appName'], $controllerName, $methodName));
 		}
 
 		$eventLogger->start('app:controller:params', 'Gather controller parameters');
@@ -138,7 +115,7 @@ class App {
 			$request = $container->get(IRequest::class);
 			$request->setUrlParameters($container['urlParams']);
 		}
-		$appName = $container['AppName'];
+		$appName = $container['appName'];
 
 		$eventLogger->end('app:controller:params');
 

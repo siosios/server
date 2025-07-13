@@ -3,27 +3,8 @@
 declare(strict_types=1);
 
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Joas Schilling <coding@schilljs.com>
- * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OCA\UpdateNotification\Tests\Controller;
 
@@ -41,13 +22,13 @@ use PHPUnit\Framework\MockObject\MockObject;
 use Test\TestCase;
 
 class AdminControllerTest extends TestCase {
-	private IRequest|MockObject $request;
-	private IJobList|MockObject $jobList;
-	private ISecureRandom|MockObject $secureRandom;
-	private IConfig|MockObject $config;
-	private ITimeFactory|MockObject $timeFactory;
-	private IL10N|MockObject $l10n;
-	private IAppConfig|MockObject $appConfig;
+	private IRequest&MockObject $request;
+	private IJobList&MockObject $jobList;
+	private ISecureRandom&MockObject $secureRandom;
+	private IConfig&MockObject $config;
+	private ITimeFactory&MockObject $timeFactory;
+	private IL10N&MockObject $l10n;
+	private IAppConfig&MockObject $appConfig;
 
 	private AdminController $adminController;
 
@@ -74,7 +55,7 @@ class AdminControllerTest extends TestCase {
 		);
 	}
 
-	public function testCreateCredentials() {
+	public function testCreateCredentials(): void {
 		$this->jobList
 			->expects($this->once())
 			->method('add')

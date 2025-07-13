@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 /**
- * Copyright (c) 2015 Lukas Reschke <lukas@owncloud.com>
- * This file is licensed under the Affero General Public License version 3 or
- * later.
- * See the COPYING-README file.
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace Test\Http\Client;
@@ -67,16 +66,16 @@ class ClientTest extends \Test\TestCase {
 	public function testGetProxyUriProxyHostEmptyPassword(): void {
 		$this->config
 			->method('getSystemValue')
-			->will($this->returnValueMap([
+			->willReturnMap([
 				['proxyexclude', [], []],
-			]));
+			]);
 
 		$this->config
 			->method('getSystemValueString')
-			->will($this->returnValueMap([
+			->willReturnMap([
 				['proxy', '', 'foo'],
 				['proxyuserpwd', '', ''],
-			]));
+			]);
 
 		$this->assertEquals([
 			'http' => 'foo',
@@ -93,14 +92,10 @@ class ClientTest extends \Test\TestCase {
 		$this->config
 			->expects($this->exactly(2))
 			->method('getSystemValueString')
-			->withConsecutive(
-				['proxy', ''],
-				['proxyuserpwd', ''],
-			)
-			->willReturnOnConsecutiveCalls(
-				'foo',
-				'username:password',
-			);
+			->willReturnMap([
+				['proxy', '', 'foo'],
+				['proxyuserpwd', '', 'username:password'],
+			]);
 		$this->assertEquals([
 			'http' => 'username:password@foo',
 			'https' => 'username:password@foo'
@@ -116,14 +111,10 @@ class ClientTest extends \Test\TestCase {
 		$this->config
 			->expects($this->exactly(2))
 			->method('getSystemValueString')
-			->withConsecutive(
-				['proxy', ''],
-				['proxyuserpwd', ''],
-			)
-			->willReturnOnConsecutiveCalls(
-				'foo',
-				'username:password',
-			);
+			->willReturnMap([
+				['proxy', '', 'foo'],
+				['proxyuserpwd', '', 'username:password'],
+			]);
 		$this->assertEquals([
 			'http' => 'username:password@foo',
 			'https' => 'username:password@foo',
@@ -131,7 +122,14 @@ class ClientTest extends \Test\TestCase {
 		], self::invokePrivate($this->client, 'getProxyUri'));
 	}
 
-	public function dataPreventLocalAddress():array {
+	public function testPreventLocalAddressThrowOnInvalidUri(): void {
+		$this->expectException(LocalServerException::class);
+		$this->expectExceptionMessage('Could not detect any host');
+
+		self::invokePrivate($this->client, 'preventLocalAddress', ['!@#$', []]);
+	}
+
+	public static function dataPreventLocalAddress(): array {
 		return [
 			['https://localhost/foo.bar'],
 			['https://localHost/foo.bar'],
@@ -147,16 +145,15 @@ class ClientTest extends \Test\TestCase {
 			['https://10.0.0.1'],
 			['https://another-host.local'],
 			['https://service.localhost'],
-			['!@#$', true], // test invalid url
 			['https://normal.host.com'],
 			['https://com.one-.nextcloud-one.com'],
 		];
 	}
 
 	/**
-	 * @dataProvider dataPreventLocalAddress
 	 * @param string $uri
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataPreventLocalAddress')]
 	public function testPreventLocalAddressDisabledByGlobalConfig(string $uri): void {
 		$this->config->expects($this->once())
 			->method('getSystemValueBool')
@@ -167,9 +164,9 @@ class ClientTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider dataPreventLocalAddress
 	 * @param string $uri
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataPreventLocalAddress')]
 	public function testPreventLocalAddressDisabledByOption(string $uri): void {
 		$this->config->expects($this->never())
 			->method('getSystemValueBool');
@@ -180,9 +177,9 @@ class ClientTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider dataPreventLocalAddress
 	 * @param string $uri
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataPreventLocalAddress')]
 	public function testPreventLocalAddressOnGet(string $uri): void {
 		$host = parse_url($uri, PHP_URL_HOST);
 		$this->expectException(LocalServerException::class);
@@ -195,9 +192,9 @@ class ClientTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider dataPreventLocalAddress
 	 * @param string $uri
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataPreventLocalAddress')]
 	public function testPreventLocalAddressOnHead(string $uri): void {
 		$host = parse_url($uri, PHP_URL_HOST);
 		$this->expectException(LocalServerException::class);
@@ -210,9 +207,9 @@ class ClientTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider dataPreventLocalAddress
 	 * @param string $uri
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataPreventLocalAddress')]
 	public function testPreventLocalAddressOnPost(string $uri): void {
 		$host = parse_url($uri, PHP_URL_HOST);
 		$this->expectException(LocalServerException::class);
@@ -225,9 +222,9 @@ class ClientTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider dataPreventLocalAddress
 	 * @param string $uri
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataPreventLocalAddress')]
 	public function testPreventLocalAddressOnPut(string $uri): void {
 		$host = parse_url($uri, PHP_URL_HOST);
 		$this->expectException(LocalServerException::class);
@@ -240,9 +237,9 @@ class ClientTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider dataPreventLocalAddress
 	 * @param string $uri
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataPreventLocalAddress')]
 	public function testPreventLocalAddressOnDelete(string $uri): void {
 		$host = parse_url($uri, PHP_URL_HOST);
 		$this->expectException(LocalServerException::class);
@@ -257,21 +254,21 @@ class ClientTest extends \Test\TestCase {
 	private function setUpDefaultRequestOptions(): void {
 		$this->config
 			->method('getSystemValue')
-			->will($this->returnValueMap([
+			->willReturnMap([
 				['proxyexclude', [], []],
-			]));
+			]);
 		$this->config
 			->method('getSystemValueString')
-			->will($this->returnValueMap([
+			->willReturnMap([
 				['proxy', '', 'foo'],
 				['proxyuserpwd', '', ''],
-			]));
+			]);
 		$this->config
 			->method('getSystemValueBool')
-			->will($this->returnValueMap([
+			->willReturnMap([
 				['installed', false, true],
 				['allow_local_remote_servers', false, true],
-			]));
+			]);
 
 		$this->certificateManager
 			->expects($this->once())
@@ -456,14 +453,10 @@ class ClientTest extends \Test\TestCase {
 		$this->config
 			->expects($this->exactly(2))
 			->method('getSystemValueBool')
-			->withConsecutive(
-				['installed', false],
-				['allow_local_remote_servers', false],
-			)
-			->willReturnOnConsecutiveCalls(
-				false,
-				false,
-			);
+			->willReturnMap([
+				['installed', false, false],
+				['allow_local_remote_servers', false, false],
+			]);
 		$this->config
 			->expects($this->once())
 			->method('getSystemValueString')
@@ -487,8 +480,8 @@ class ClientTest extends \Test\TestCase {
 				'on_redirect' => function (
 					\Psr\Http\Message\RequestInterface $request,
 					\Psr\Http\Message\ResponseInterface $response,
-					\Psr\Http\Message\UriInterface $uri
-				) {
+					\Psr\Http\Message\UriInterface $uri,
+				): void {
 				},
 			],
 		], self::invokePrivate($this->client, 'buildRequestOptions', [[]]));
@@ -498,14 +491,10 @@ class ClientTest extends \Test\TestCase {
 		$this->config
 			->expects($this->exactly(2))
 			->method('getSystemValueBool')
-			->withConsecutive(
-				['installed', false],
-				['allow_local_remote_servers', false],
-			)
-			->willReturnOnConsecutiveCalls(
-				true,
-				false,
-			);
+			->willReturnMap([
+				['installed', false, true],
+				['allow_local_remote_servers', false, false],
+			]);
 		$this->config
 			->expects($this->once())
 			->method('getSystemValue')
@@ -514,14 +503,10 @@ class ClientTest extends \Test\TestCase {
 		$this->config
 			->expects($this->exactly(2))
 			->method('getSystemValueString')
-			->withConsecutive(
-				['proxy', ''],
-				['proxyuserpwd', ''],
-			)
-			->willReturnOnConsecutiveCalls(
-				'foo',
-				'',
-			);
+			->willReturnMap([
+				['proxy', '', 'foo'],
+				['proxyuserpwd', '', ''],
+			]);
 		$this->certificateManager
 			->expects($this->once())
 			->method('getAbsoluteBundlePath')
@@ -546,8 +531,8 @@ class ClientTest extends \Test\TestCase {
 				'on_redirect' => function (
 					\Psr\Http\Message\RequestInterface $request,
 					\Psr\Http\Message\ResponseInterface $response,
-					\Psr\Http\Message\UriInterface $uri
-				) {
+					\Psr\Http\Message\UriInterface $uri,
+				): void {
 				},
 			],
 		], self::invokePrivate($this->client, 'buildRequestOptions', [[]]));
@@ -557,14 +542,10 @@ class ClientTest extends \Test\TestCase {
 		$this->config
 			->expects($this->exactly(2))
 			->method('getSystemValueBool')
-			->withConsecutive(
-				['installed', false],
-				['allow_local_remote_servers', false],
-			)
-			->willReturnOnConsecutiveCalls(
-				true,
-				false,
-			);
+			->willReturnMap([
+				['installed', false, true],
+				['allow_local_remote_servers', false, false],
+			]);
 		$this->config
 			->expects($this->once())
 			->method('getSystemValue')
@@ -573,14 +554,10 @@ class ClientTest extends \Test\TestCase {
 		$this->config
 			->expects($this->exactly(2))
 			->method('getSystemValueString')
-			->withConsecutive(
-				['proxy', ''],
-				['proxyuserpwd', ''],
-			)
-			->willReturnOnConsecutiveCalls(
-				'foo',
-				'',
-			);
+			->willReturnMap([
+				['proxy', '', 'foo'],
+				['proxyuserpwd', '', ''],
+			]);
 		$this->certificateManager
 			->expects($this->once())
 			->method('getAbsoluteBundlePath')
@@ -606,8 +583,8 @@ class ClientTest extends \Test\TestCase {
 				'on_redirect' => function (
 					\Psr\Http\Message\RequestInterface $request,
 					\Psr\Http\Message\ResponseInterface $response,
-					\Psr\Http\Message\UriInterface $uri
-				) {
+					\Psr\Http\Message\UriInterface $uri,
+				): void {
 				},
 			],
 		], self::invokePrivate($this->client, 'buildRequestOptions', [[]]));

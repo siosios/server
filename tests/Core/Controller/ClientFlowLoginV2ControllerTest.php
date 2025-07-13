@@ -2,25 +2,8 @@
 
 declare(strict_types=1);
 /**
- * @copyright Copyright (c) 2019, Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace Test\Core\Controller;
@@ -28,9 +11,12 @@ namespace Test\Core\Controller;
 use OC\Core\Controller\ClientFlowLoginV2Controller;
 use OC\Core\Data\LoginFlowV2Credentials;
 use OC\Core\Db\LoginFlowV2;
+use OC\Core\Exception\LoginFlowV2ClientForbiddenException;
 use OC\Core\Exception\LoginFlowV2NotFoundException;
 use OC\Core\Service\LoginFlowV2Service;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\RedirectResponse;
+use OCP\AppFramework\Http\StandaloneTemplateResponse;
 use OCP\Defaults;
 use OCP\IL10N;
 use OCP\IRequest;
@@ -73,6 +59,12 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->random = $this->createMock(ISecureRandom::class);
 		$this->defaults = $this->createMock(Defaults::class);
 		$this->l = $this->createMock(IL10N::class);
+		$this->l
+			->expects($this->any())
+			->method('t')
+			->willReturnCallback(function ($text, $parameters = []) {
+				return vsprintf($text, $parameters);
+			});
 		$this->controller = new ClientFlowLoginV2Controller(
 			'core',
 			$this->request,
@@ -87,7 +79,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		);
 	}
 
-	public function testPollInvalid() {
+	public function testPollInvalid(): void {
 		$this->loginFlowV2Service->method('poll')
 			->with('token')
 			->willThrowException(new LoginFlowV2NotFoundException());
@@ -98,7 +90,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_NOT_FOUND, $result->getStatus());
 	}
 
-	public function testPollValid() {
+	public function testPollValid(): void {
 		$creds = new LoginFlowV2Credentials('server', 'login', 'pass');
 		$this->loginFlowV2Service->method('poll')
 			->with('token')
@@ -110,7 +102,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_OK, $result->getStatus());
 	}
 
-	public function testLandingInvalid() {
+	public function testLandingInvalid(): void {
 		$this->session->expects($this->never())
 			->method($this->anything());
 
@@ -121,10 +113,10 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$result = $this->controller->landing('token');
 
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
-		$this->assertInstanceOf(Http\StandaloneTemplateResponse::class, $result);
+		$this->assertInstanceOf(StandaloneTemplateResponse::class, $result);
 	}
 
-	public function testLandingValid() {
+	public function testLandingValid(): void {
 		$this->session->expects($this->once())
 			->method('set')
 			->with('client.flow.v2.login.token', 'token');
@@ -139,12 +131,12 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 
 		$result = $this->controller->landing('token');
 
-		$this->assertInstanceOf(Http\RedirectResponse::class, $result);
+		$this->assertInstanceOf(RedirectResponse::class, $result);
 		$this->assertSame(Http::STATUS_SEE_OTHER, $result->getStatus());
 		$this->assertSame('https://server/path', $result->getRedirectURL());
 	}
 
-	public function testShowAuthPickerNoLoginToken() {
+	public function testShowAuthPickerNoLoginToken(): void {
 		$this->session->method('get')
 			->willReturn(null);
 
@@ -153,7 +145,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
 	}
 
-	public function testShowAuthPickerInvalidLoginToken() {
+	public function testShowAuthPickerInvalidLoginToken(): void {
 		$this->session->method('get')
 			->with('client.flow.v2.login.token')
 			->willReturn('loginToken');
@@ -167,7 +159,23 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
 	}
 
-	public function testShowAuthPickerValidLoginToken() {
+	public function testShowAuthPickerForbiddenUserClient() {
+		$this->session->method('get')
+			->with('client.flow.v2.login.token')
+			->willReturn('loginToken');
+
+		$this->loginFlowV2Service->method('getByLoginToken')
+			->with('loginToken')
+			->willThrowException(new LoginFlowV2ClientForbiddenException());
+
+		$result = $this->controller->showAuthPickerPage();
+
+		$this->assertInstanceOf(StandaloneTemplateResponse::class, $result);
+		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
+		$this->assertSame('Please use original client', $result->getParams()['message']);
+	}
+
+	public function testShowAuthPickerValidLoginToken(): void {
 		$this->session->method('get')
 			->with('client.flow.v2.login.token')
 			->willReturn('loginToken');
@@ -178,7 +186,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 			->willReturn($flow);
 
 		$this->random->method('generate')
-			->with(64, ISecureRandom::CHAR_LOWER.ISecureRandom::CHAR_UPPER.ISecureRandom::CHAR_DIGITS)
+			->with(64, ISecureRandom::CHAR_LOWER . ISecureRandom::CHAR_UPPER . ISecureRandom::CHAR_DIGITS)
 			->willReturn('random');
 		$this->session->expects($this->once())
 			->method('set')
@@ -193,7 +201,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
 	}
 
-	public function testGrantPageInvalidStateToken() {
+	public function testGrantPageInvalidStateToken(): void {
 		$this->session->method('get')
 			->willReturnCallback(function ($name) {
 				return null;
@@ -203,7 +211,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
 	}
 
-	public function testGrantPageInvalidLoginToken() {
+	public function testGrantPageInvalidLoginToken(): void {
 		$this->session->method('get')
 			->willReturnCallback(function ($name) {
 				if ($name === 'client.flow.v2.state.token') {
@@ -223,7 +231,30 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
 	}
 
-	public function testGrantPageValid() {
+	public function testGrantPageForbiddenUserClient() {
+		$this->session->method('get')
+			->willReturnCallback(function ($name) {
+				if ($name === 'client.flow.v2.state.token') {
+					return 'stateToken';
+				}
+				if ($name === 'client.flow.v2.login.token') {
+					return 'loginToken';
+				}
+				return null;
+			});
+
+		$this->loginFlowV2Service->method('getByLoginToken')
+			->with('loginToken')
+			->willThrowException(new LoginFlowV2ClientForbiddenException());
+
+		$result = $this->controller->grantPage('stateToken');
+
+		$this->assertInstanceOf(StandaloneTemplateResponse::class, $result);
+		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
+		$this->assertSame('Please use original client', $result->getParams()['message']);
+	}
+
+	public function testGrantPageValid(): void {
 		$this->session->method('get')
 			->willReturnCallback(function ($name) {
 				if ($name === 'client.flow.v2.state.token') {
@@ -253,7 +284,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 	}
 
 
-	public function testGenerateAppPasswordInvalidStateToken() {
+	public function testGenerateAppPasswordInvalidStateToken(): void {
 		$this->session->method('get')
 			->willReturnCallback(function ($name) {
 				return null;
@@ -263,7 +294,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
 	}
 
-	public function testGenerateAppPassworInvalidLoginToken() {
+	public function testGenerateAppPassworInvalidLoginToken(): void {
 		$this->session->method('get')
 			->willReturnCallback(function ($name) {
 				if ($name === 'client.flow.v2.state.token') {
@@ -283,7 +314,30 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
 	}
 
-	public function testGenerateAppPassworValid() {
+	public function testGenerateAppPasswordForbiddenUserClient() {
+		$this->session->method('get')
+			->willReturnCallback(function ($name) {
+				if ($name === 'client.flow.v2.state.token') {
+					return 'stateToken';
+				}
+				if ($name === 'client.flow.v2.login.token') {
+					return 'loginToken';
+				}
+				return null;
+			});
+
+		$this->loginFlowV2Service->method('getByLoginToken')
+			->with('loginToken')
+			->willThrowException(new LoginFlowV2ClientForbiddenException());
+
+		$result = $this->controller->generateAppPassword('stateToken');
+
+		$this->assertInstanceOf(StandaloneTemplateResponse::class, $result);
+		$this->assertSame(Http::STATUS_FORBIDDEN, $result->getStatus());
+		$this->assertSame('Please use original client', $result->getParams()['message']);
+	}
+
+	public function testGenerateAppPassworValid(): void {
 		$this->session->method('get')
 			->willReturnCallback(function ($name) {
 				if ($name === 'client.flow.v2.state.token') {
@@ -303,7 +357,7 @@ class ClientFlowLoginV2ControllerTest extends TestCase {
 		$clearedState = false;
 		$clearedLogin = false;
 		$this->session->method('remove')
-			->willReturnCallback(function ($name) use (&$clearedLogin, &$clearedState) {
+			->willReturnCallback(function ($name) use (&$clearedLogin, &$clearedState): void {
 				if ($name === 'client.flow.v2.state.token') {
 					$clearedState = true;
 				}
