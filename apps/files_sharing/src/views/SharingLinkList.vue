@@ -1,27 +1,12 @@
 <!--
-  - @copyright Copyright (c) 2019 John Molakvoæ <skjnldsv@protonmail.com>
-  -
-  - @author John Molakvoæ <skjnldsv@protonmail.com>
-  -
-  - @license GNU AGPL version 3 or any later version
-  -
-  - This program is free software: you can redistribute it and/or modify
-  - it under the terms of the GNU Affero General Public License as
-  - published by the Free Software Foundation, either version 3 of the
-  - License, or (at your option) any later version.
-  -
-  - This program is distributed in the hope that it will be useful,
-  - but WITHOUT ANY WARRANTY; without even the implied warranty of
-  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  - GNU Affero General Public License for more details.
-  -
-  - You should have received a copy of the GNU Affero General Public License
-  - along with this program. If not, see <http://www.gnu.org/licenses/>.
-  -
-  -->
+  - SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 
 <template>
-	<ul v-if="canLinkShare" class="sharing-link-list">
+	<ul v-if="canLinkShare"
+		:aria-label="t('files_sharing', 'Link shares')"
+		class="sharing-link-list">
 		<!-- If no link shares, show the add link default entry -->
 		<SharingEntryLink v-if="!hasLinkShares && canReshare"
 			:can-reshare="canReshare"
@@ -39,16 +24,21 @@
 				:file-info="fileInfo"
 				@add:share="addShare(...arguments)"
 				@update:share="awaitForShare(...arguments)"
-				@remove:share="removeShare" />
+				@remove:share="removeShare"
+				@open-sharing-details="openSharingDetails(share)" />
 		</template>
 	</ul>
 </template>
 
 <script>
-// eslint-disable-next-line no-unused-vars
+import { getCapabilities } from '@nextcloud/capabilities'
+
+import { t } from '@nextcloud/l10n'
+
 import Share from '../models/Share.js'
-import ShareTypes from '../mixins/ShareTypes.js'
 import SharingEntryLink from '../components/SharingEntryLink.vue'
+import ShareDetails from '../mixins/ShareDetails.js'
+import { ShareType } from '@nextcloud/sharing'
 
 export default {
 	name: 'SharingLinkList',
@@ -57,7 +47,7 @@ export default {
 		SharingEntryLink,
 	},
 
-	mixins: [ShareTypes],
+	mixins: [ShareDetails],
 
 	props: {
 		fileInfo: {
@@ -78,7 +68,7 @@ export default {
 
 	data() {
 		return {
-			canLinkShare: OC.getCapabilities().files_sharing.public.enabled,
+			canLinkShare: getCapabilities().files_sharing.public.enabled,
 		}
 	},
 
@@ -91,7 +81,7 @@ export default {
 		 * @return {Array}
 		 */
 		hasLinkShares() {
-			return this.shares.filter(share => share.type === this.SHARE_TYPES.SHARE_TYPE_LINK).length > 0
+			return this.shares.filter(share => share.type === ShareType.Link).length > 0
 		},
 
 		/**
@@ -105,6 +95,8 @@ export default {
 	},
 
 	methods: {
+		t,
+
 		/**
 		 * Add a new share into the link shares list
 		 * and return the newly created share component
@@ -114,7 +106,7 @@ export default {
 		 */
 		addShare(share, resolve) {
 			// eslint-disable-next-line vue/no-mutating-props
-			this.shares.unshift(share)
+			this.shares.push(share)
 			this.awaitForShare(share, resolve)
 		},
 

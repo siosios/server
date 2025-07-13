@@ -1,23 +1,7 @@
 <!--
-  - @copyright 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
-  -
-  - @author 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
-  -
-  - @license GNU AGPL version 3 or any later version
-  -
-  - This program is free software: you can redistribute it and/or modify
-  - it under the terms of the GNU Affero General Public License as
-  - published by the Free Software Foundation, either version 3 of the
-  - License, or (at your option) any later version.
-  -
-  - This program is distributed in the hope that it will be useful,
-  - but WITHOUT ANY WARRANTY; without even the implied warranty of
-  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  - GNU Affero General Public License for more details.
-  -
-  - You should have received a copy of the GNU Affero General Public License
-  - along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  -->
+  - SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 
 <template>
 	<div>
@@ -25,34 +9,33 @@
 		<form @submit.prevent="submit">
 			<p class="transfer-select-row">
 				<span>{{ readableDirectory }}</span>
-				<NcButton v-if="directory === undefined" @click.prevent="start">
+				<NcButton v-if="directory === undefined"
+					class="transfer-select-row__choose_button"
+					@click.prevent="start">
 					{{ t('files', 'Choose file or folder to transfer') }}
 				</NcButton>
 				<NcButton v-else @click.prevent="start">
 					{{ t('files', 'Change') }}
 				</NcButton>
-				<span class="error">{{ directoryPickerError }}</span>
 			</p>
-			<p class="new-owner-row">
+			<p class="new-owner">
 				<label for="targetUser">
 					<span>{{ t('files', 'New owner') }}</span>
 				</label>
-				<NcSelect input-id="targetUser"
-					v-model="selectedUser"
+				<NcSelect v-model="selectedUser"
+					input-id="targetUser"
 					:options="formatedUserSuggestions"
 					:multiple="false"
 					:loading="loadingUsers"
-					label="displayName"
 					:user-select="true"
-					class="middle-align"
 					@search="findUserDebounced" />
 			</p>
 			<p>
-				<input type="submit"
-					class="primary"
-					:value="submitButtonText"
+				<NcButton native-type="submit"
+					type="primary"
 					:disabled="!canSubmit">
-				<span class="error">{{ submitError }}</span>
+					{{ submitButtonText }}
+				</NcButton>
 			</p>
 		</form>
 	</div>
@@ -62,16 +45,15 @@
 import axios from '@nextcloud/axios'
 import debounce from 'debounce'
 import { generateOcsUrl } from '@nextcloud/router'
-import { getFilePickerBuilder, showSuccess } from '@nextcloud/dialogs'
-import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import { getFilePickerBuilder, showSuccess, showError } from '@nextcloud/dialogs'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import Vue from 'vue'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
 
-import logger from '../logger.js'
+import logger from '../logger.ts'
 
 const picker = getFilePickerBuilder(t('files', 'Choose a file or folder to transfer'))
 	.setMultiSelect(false)
-	.setModal(true)
 	.setType(1)
 	.allowDirectories()
 	.build()
@@ -106,6 +88,7 @@ export default {
 					user: user.uid,
 					displayName: user.displayName,
 					icon: 'icon-user',
+					subname: user.shareWithDisplayNameUnique,
 				}
 			})
 		},
@@ -145,6 +128,7 @@ export default {
 					logger.error(`Selecting object for transfer aborted: ${error.message || 'Unknown error'}`, { error })
 
 					this.directoryPickerError = error.message || t('files', 'Unknown error')
+					showError(this.directoryPickerError)
 				})
 		},
 		async findUser(query) {
@@ -171,6 +155,7 @@ export default {
 					Vue.set(this.userSuggestions, user.value.shareWith, {
 						uid: user.value.shareWith,
 						displayName: user.label,
+						shareWithDisplayNameUnique: user.shareWithDisplayNameUnique,
 					})
 				})
 			} catch (error) {
@@ -210,6 +195,7 @@ export default {
 					} else {
 						this.submitError = error.message || t('files', 'Unknown error')
 					}
+					showError(this.submitError)
 				})
 		},
 	},
@@ -217,33 +203,34 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.middle-align {
-	vertical-align: middle;
-}
 p {
 	margin-top: 12px;
 	margin-bottom: 12px;
 }
-.new-owner-row {
+
+.new-owner {
 	display: flex;
+	flex-direction: column;
+	max-width: 400px;
 
 	label {
 		display: flex;
 		align-items: center;
+		margin-bottom: calc(var(--default-grid-baseline) * 2);
 
 		span {
-			margin-right: 8px;
+			margin-inline-end: 8px;
 		}
 	}
-
-	.multiselect {
-		flex-grow: 1;
-		max-width: 280px;
-	}
 }
+
 .transfer-select-row {
 	span {
-		margin-right: 8px;
+		margin-inline-end: 8px;
+	}
+
+	&__choose_button {
+		width: min(100%, 400px) !important;
 	}
 }
 </style>

@@ -1,35 +1,15 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Bernhard Posselt <dev@bernhard-posselt.com>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author korelstar <korelstar@users.noreply.github.com>
- * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Stefan Weil <sw@weilnetz.de>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OC\AppFramework\Middleware\Security;
 
 use OC\AppFramework\Middleware\Security\Exceptions\SecurityException;
 use OC\AppFramework\Utility\ControllerMethodReflector;
 use OC\Authentication\Exceptions\PasswordLoginForbiddenException;
-use OC\Security\Bruteforce\Throttler;
 use OC\User\Session;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -39,6 +19,9 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\Middleware;
 use OCP\IRequest;
+use OCP\ISession;
+use OCP\Security\Bruteforce\IThrottler;
+use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 
 /**
@@ -48,25 +31,22 @@ use ReflectionMethod;
  * https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
  */
 class CORSMiddleware extends Middleware {
-	/** @var IRequest  */
+	/** @var IRequest */
 	private $request;
 	/** @var ControllerMethodReflector */
 	private $reflector;
 	/** @var Session */
 	private $session;
-	/** @var Throttler */
+	/** @var IThrottler */
 	private $throttler;
 
-	/**
-	 * @param IRequest $request
-	 * @param ControllerMethodReflector $reflector
-	 * @param Session $session
-	 * @param Throttler $throttler
-	 */
-	public function __construct(IRequest $request,
-								ControllerMethodReflector $reflector,
-								Session $session,
-								Throttler $throttler) {
+	public function __construct(
+		IRequest $request,
+		ControllerMethodReflector $reflector,
+		Session $session,
+		IThrottler $throttler,
+		private readonly LoggerInterface $logger,
+	) {
 		$this->request = $request;
 		$this->reflector = $reflector;
 		$this->session = $session;
@@ -88,13 +68,17 @@ class CORSMiddleware extends Middleware {
 
 		// ensure that @CORS annotated API routes are not used in conjunction
 		// with session authentication since this enables CSRF attack vectors
-		if ($this->hasAnnotationOrAttribute($reflectionMethod, 'CORS', CORS::class) &&
-			(!$this->hasAnnotationOrAttribute($reflectionMethod, 'PublicPage', PublicPage::class) || $this->session->isLoggedIn())) {
+		if ($this->hasAnnotationOrAttribute($reflectionMethod, 'CORS', CORS::class)
+			&& (!$this->hasAnnotationOrAttribute($reflectionMethod, 'PublicPage', PublicPage::class) || $this->session->isLoggedIn())) {
 			$user = array_key_exists('PHP_AUTH_USER', $this->request->server) ? $this->request->server['PHP_AUTH_USER'] : null;
 			$pass = array_key_exists('PHP_AUTH_PW', $this->request->server) ? $this->request->server['PHP_AUTH_PW'] : null;
 
 			// Allow to use the current session if a CSRF token is provided
 			if ($this->request->passesCSRFCheck()) {
+				return;
+			}
+			// Skip CORS check for requests with AppAPI auth.
+			if ($this->session->getSession() instanceof ISession && $this->session->getSession()->get('app_api') === true) {
 				return;
 			}
 			$this->session->logout();
@@ -118,6 +102,7 @@ class CORSMiddleware extends Middleware {
 	 */
 	protected function hasAnnotationOrAttribute(ReflectionMethod $reflectionMethod, string $annotationName, string $attributeClass): bool {
 		if ($this->reflector->hasAnnotation($annotationName)) {
+			$this->logger->debug($reflectionMethod->getDeclaringClass()->getName() . '::' . $reflectionMethod->getName() . ' uses the @' . $annotationName . ' annotation and should use the #[' . $attributeClass . '] attribute instead');
 			return true;
 		}
 
@@ -149,10 +134,10 @@ class CORSMiddleware extends Middleware {
 				// allow credentials headers must not be true or CSRF is possible
 				// otherwise
 				foreach ($response->getHeaders() as $header => $value) {
-					if (strtolower($header) === 'access-control-allow-credentials' &&
-					   strtolower(trim($value)) === 'true') {
-						$msg = 'Access-Control-Allow-Credentials must not be '.
-							   'set to true in order to prevent CSRF';
+					if (strtolower($header) === 'access-control-allow-credentials'
+					   && strtolower(trim($value)) === 'true') {
+						$msg = 'Access-Control-Allow-Credentials must not be '
+							   . 'set to true in order to prevent CSRF';
 						throw new SecurityException($msg);
 					}
 				}

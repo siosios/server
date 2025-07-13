@@ -1,22 +1,9 @@
 <?php
+
 /**
- * @author Roeland Jago Douma <rullzer@owncloud.com>
- *
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 namespace Test\Files\ObjectStore;
@@ -43,7 +30,7 @@ class MapperTest extends \Test\TestCase {
 		$this->mapper = new Mapper($this->user, $this->config);
 	}
 
-	public function dataGetBucket() {
+	public static function dataGetBucket(): array {
 		return [
 			['user', 64, 0, '17'],
 			['USER', 64, 0, '0'],
@@ -56,12 +43,12 @@ class MapperTest extends \Test\TestCase {
 	}
 
 	/**
-	 * @dataProvider dataGetBucket
 	 * @param string $username
 	 * @param int $numBuckets
 	 * @param string $expectedBucket
 	 */
-	public function testGetBucket($username, $numBuckets, $bucketShift, $expectedBucket) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataGetBucket')]
+	public function testGetBucket($username, $numBuckets, $bucketShift, $expectedBucket): void {
 		$this->user->expects($this->once())
 			->method('getUID')
 			->willReturn($username);

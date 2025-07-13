@@ -1,31 +1,12 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Thomas Müller <thomas.mueller@tmit.eu>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 // use OCP namespace for all classes that are considered public.
-// This means that they should be used by apps instead of the internal ownCloud classes
+// This means that they should be used by apps instead of the internal Nextcloud classes
 
 namespace OCP;
 
@@ -39,12 +20,13 @@ use OCP\Files\SimpleFS\ISimpleFile;
  */
 interface IPreview {
 	/**
-	 * @since 9.2.0
-	 * @deprecated 22.0.0
+	 * @since 11.0.0
 	 */
-	public const EVENT = self::class . ':' . 'PreviewRequested';
-
 	public const MODE_FILL = 'fill';
+
+	/**
+	 * @since 11.0.0
+	 */
 	public const MODE_COVER = 'cover';
 
 	/**
@@ -89,12 +71,14 @@ interface IPreview {
 	 * @param bool $crop
 	 * @param string $mode
 	 * @param string $mimeType To force a given mimetype for the file (files_versions needs this)
+	 * @param bool $cacheResult Whether or not to cache the preview on the filesystem. Default to true. Can be useful to set to false to limit the amount of stored previews.
 	 * @return ISimpleFile
 	 * @throws NotFoundException
 	 * @throws \InvalidArgumentException if the preview would be invalid (in case the original image is invalid)
 	 * @since 11.0.0 - \InvalidArgumentException was added in 12.0.0
+	 * @since 32.0.0 - getPreview($cacheResult) added the $cacheResult argument to the signature
 	 */
-	public function getPreview(File $file, $width = -1, $height = -1, $crop = false, $mode = IPreview::MODE_FILL, $mimeType = null);
+	public function getPreview(File $file, $width = -1, $height = -1, $crop = false, $mode = IPreview::MODE_FILL, $mimeType = null, bool $cacheResult = true);
 
 	/**
 	 * Returns true if the passed mime type is supported
@@ -108,10 +92,12 @@ interface IPreview {
 	 * Check if a preview can be generated for a file
 	 *
 	 * @param \OCP\Files\FileInfo $file
+	 * @param string|null $mimeType To force a given mimetype for the file
 	 * @return bool
 	 * @since 8.0.0
+	 * @since 32.0.0 - isAvailable($mimeType) added the $mimeType argument to the signature
 	 */
-	public function isAvailable(\OCP\Files\FileInfo $file);
+	public function isAvailable(\OCP\Files\FileInfo $file, ?string $mimeType = null);
 
 	/**
 	 * Generates previews of a file

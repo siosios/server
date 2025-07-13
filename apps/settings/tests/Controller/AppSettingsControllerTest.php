@@ -1,42 +1,25 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, Lukas Reschke <lukas@statuscode.ch>
- * @copyright Copyright (c) 2015, ownCloud, Inc.
- *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Joas Schilling <coding@schilljs.com>
- * @author John Molakvoæ <skjnldsv@protonmail.com>
- * @author Julius Härtl <jus@bitgrid.net>
- * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2015 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OCA\Settings\Tests\Controller;
 
+use OC\App\AppManager;
 use OC\App\AppStore\Bundles\BundleFetcher;
+use OC\App\AppStore\Fetcher\AppDiscoverFetcher;
 use OC\App\AppStore\Fetcher\AppFetcher;
 use OC\App\AppStore\Fetcher\CategoryFetcher;
 use OC\Installer;
 use OCA\Settings\Controller\AppSettingsController;
-use OCP\App\IAppManager;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\AppFramework\Services\IInitialState;
+use OCP\Files\AppData\IAppDataFactory;
+use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\INavigationManager;
@@ -55,44 +38,36 @@ use Test\TestCase;
  * @group DB
  */
 class AppSettingsControllerTest extends TestCase {
-	/** @var AppSettingsController */
-	private $appSettingsController;
-	/** @var IRequest|MockObject */
-	private $request;
-	/** @var IL10N|MockObject */
-	private $l10n;
-	/** @var IConfig|MockObject */
-	private $config;
-	/** @var INavigationManager|MockObject */
-	private $navigationManager;
-	/** @var IAppManager|MockObject */
-	private $appManager;
-	/** @var CategoryFetcher|MockObject */
-	private $categoryFetcher;
-	/** @var AppFetcher|MockObject */
-	private $appFetcher;
-	/** @var IFactory|MockObject */
-	private $l10nFactory;
-	/** @var BundleFetcher|MockObject */
-	private $bundleFetcher;
-	/** @var Installer|MockObject */
-	private $installer;
-	/** @var IURLGenerator|MockObject */
-	private $urlGenerator;
-	/** @var LoggerInterface|MockObject */
-	private $logger;
+	private IRequest&MockObject $request;
+	private IL10N&MockObject $l10n;
+	private IConfig&MockObject $config;
+	private INavigationManager&MockObject $navigationManager;
+	private AppManager&MockObject $appManager;
+	private CategoryFetcher&MockObject $categoryFetcher;
+	private AppFetcher&MockObject $appFetcher;
+	private IFactory&MockObject $l10nFactory;
+	private BundleFetcher&MockObject $bundleFetcher;
+	private Installer&MockObject $installer;
+	private IURLGenerator&MockObject $urlGenerator;
+	private LoggerInterface&MockObject $logger;
+	private IInitialState&MockObject $initialState;
+	private IAppDataFactory&MockObject $appDataFactory;
+	private AppDiscoverFetcher&MockObject $discoverFetcher;
+	private IClientService&MockObject $clientService;
+	private AppSettingsController $appSettingsController;
 
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->request = $this->createMock(IRequest::class);
+		$this->appDataFactory = $this->createMock(IAppDataFactory::class);
 		$this->l10n = $this->createMock(IL10N::class);
 		$this->l10n->expects($this->any())
 			->method('t')
 			->willReturnArgument(0);
 		$this->config = $this->createMock(IConfig::class);
 		$this->navigationManager = $this->createMock(INavigationManager::class);
-		$this->appManager = $this->createMock(IAppManager::class);
+		$this->appManager = $this->createMock(AppManager::class);
 		$this->categoryFetcher = $this->createMock(CategoryFetcher::class);
 		$this->appFetcher = $this->createMock(AppFetcher::class);
 		$this->l10nFactory = $this->createMock(IFactory::class);
@@ -100,10 +75,14 @@ class AppSettingsControllerTest extends TestCase {
 		$this->installer = $this->createMock(Installer::class);
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 		$this->logger = $this->createMock(LoggerInterface::class);
+		$this->initialState = $this->createMock(IInitialState::class);
+		$this->discoverFetcher = $this->createMock(AppDiscoverFetcher::class);
+		$this->clientService = $this->createMock(IClientService::class);
 
 		$this->appSettingsController = new AppSettingsController(
 			'settings',
 			$this->request,
+			$this->appDataFactory,
 			$this->l10n,
 			$this->config,
 			$this->navigationManager,
@@ -114,63 +93,56 @@ class AppSettingsControllerTest extends TestCase {
 			$this->bundleFetcher,
 			$this->installer,
 			$this->urlGenerator,
-			$this->logger
+			$this->logger,
+			$this->initialState,
+			$this->discoverFetcher,
+			$this->clientService,
 		);
 	}
 
-	public function testListCategories() {
+	public function testListCategories(): void {
 		$this->installer->expects($this->any())
 			->method('isUpdateAvailable')
 			->willReturn(false);
 		$expected = new JSONResponse([
 			[
 				'id' => 'auth',
-				'ident' => 'auth',
 				'displayName' => 'Authentication & authorization',
 			],
 			[
 				'id' => 'customization',
-				'ident' => 'customization',
 				'displayName' => 'Customization',
 			],
 			[
 				'id' => 'files',
-				'ident' => 'files',
 				'displayName' => 'Files',
 			],
 			[
 				'id' => 'integration',
-				'ident' => 'integration',
 				'displayName' => 'Integration',
 			],
 			[
 				'id' => 'monitoring',
-				'ident' => 'monitoring',
 				'displayName' => 'Monitoring',
 			],
 			[
 				'id' => 'multimedia',
-				'ident' => 'multimedia',
 				'displayName' => 'Multimedia',
 			],
 			[
 				'id' => 'office',
-				'ident' => 'office',
 				'displayName' => 'Office & text',
 			],
 			[
 				'id' => 'organization',
-				'ident' => 'organization',
 				'displayName' => 'Organization',
 			],
 			[
 				'id' => 'social',
-				'ident' => 'social',
 				'displayName' => 'Social & communication',
 			],
 			[
 				'id' => 'tools',
-				'ident' => 'tools',
 				'displayName' => 'Tools',
 			],
 		]);
@@ -183,7 +155,7 @@ class AppSettingsControllerTest extends TestCase {
 		$this->assertEquals($expected, $this->appSettingsController->listCategories());
 	}
 
-	public function testViewApps() {
+	public function testViewApps(): void {
 		$this->bundleFetcher->expects($this->once())->method('getBundles')->willReturn([]);
 		$this->installer->expects($this->any())
 			->method('isUpdateAvailable')
@@ -198,19 +170,17 @@ class AppSettingsControllerTest extends TestCase {
 			->method('setActiveEntry')
 			->with('core_apps');
 
+		$this->initialState
+			->expects($this->exactly(4))
+			->method('provideInitialState');
+
 		$policy = new ContentSecurityPolicy();
 		$policy->addAllowedImageDomain('https://usercontent.apps.nextcloud.com');
 
 		$expected = new TemplateResponse('settings',
-			'settings-vue',
+			'settings/empty',
 			[
-				'serverData' => [
-					'updateCount' => 0,
-					'appstoreEnabled' => true,
-					'bundles' => [],
-					'developerDocumentation' => ''
-				],
-				'pageTitle' => 'Apps'
+				'pageTitle' => 'Settings'
 			],
 			'user');
 		$expected->setContentSecurityPolicy($policy);
@@ -218,7 +188,7 @@ class AppSettingsControllerTest extends TestCase {
 		$this->assertEquals($expected, $this->appSettingsController->viewApps());
 	}
 
-	public function testViewAppsAppstoreNotEnabled() {
+	public function testViewAppsAppstoreNotEnabled(): void {
 		$this->installer->expects($this->any())
 			->method('isUpdateAvailable')
 			->willReturn(false);
@@ -233,19 +203,17 @@ class AppSettingsControllerTest extends TestCase {
 			->method('setActiveEntry')
 			->with('core_apps');
 
+		$this->initialState
+			->expects($this->exactly(4))
+			->method('provideInitialState');
+
 		$policy = new ContentSecurityPolicy();
 		$policy->addAllowedImageDomain('https://usercontent.apps.nextcloud.com');
 
 		$expected = new TemplateResponse('settings',
-			'settings-vue',
+			'settings/empty',
 			[
-				'serverData' => [
-					'updateCount' => 0,
-					'appstoreEnabled' => false,
-					'bundles' => [],
-					'developerDocumentation' => ''
-				],
-				'pageTitle' => 'Apps'
+				'pageTitle' => 'Settings'
 			],
 			'user');
 		$expected->setContentSecurityPolicy($policy);

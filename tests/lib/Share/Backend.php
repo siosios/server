@@ -1,27 +1,19 @@
 <?php
+
 /**
- * ownCloud
- *
- * @author Michael Gapczynski
- * @copyright 2012 Michael Gapczynski mtgap@owncloud.com
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU AFFERO GENERAL PUBLIC LICENSE for more details.
- *
- * You should have received a copy of the GNU Affero General Public
- * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-FileCopyrightText: 2017-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace Test\Share;
 
-class Backend implements \OCP\Share_Backend {
+use OC\Share20\Manager;
+use OCP\Server;
+use OCP\Share\IShare;
+use OCP\Share_Backend;
+
+class Backend implements Share_Backend {
 	public const FORMAT_SOURCE = 0;
 	public const FORMAT_TARGET = 1;
 	public const FORMAT_PERMISSIONS = 2;
@@ -40,13 +32,17 @@ class Backend implements \OCP\Share_Backend {
 		// Always make target be test.txt to cause conflicts
 
 		if (substr($itemSource, 0, strlen('test')) !== 'test') {
-			$target = "test.txt";
+			$target = 'test.txt';
 		} else {
 			$target = $itemSource;
 		}
 
 
-		$shares = \OC\Share\Share::getItemsSharedWithUser('test', $shareWith);
+		$shareManager = Server::get(Manager::class);
+		$shares = array_merge(
+			$shareManager->getSharedWith($shareWith, IShare::TYPE_USER),
+			$shareManager->getSharedWith($shareWith, IShare::TYPE_GROUP),
+		);
 
 		$knownTargets = [];
 		foreach ($shares as $share) {
@@ -60,11 +56,11 @@ class Backend implements \OCP\Share_Backend {
 			$ext = substr($target, $pos);
 			$append = '';
 			$i = 1;
-			while (in_array($name.$append.$ext, $knownTargets)) {
+			while (in_array($name . $append . $ext, $knownTargets)) {
 				$append = $i;
 				$i++;
 			}
-			$target = $name.$append.$ext;
+			$target = $name . $append . $ext;
 		}
 
 		return $target;

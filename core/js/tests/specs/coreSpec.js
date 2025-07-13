@@ -1,23 +1,8 @@
 /**
-* ownCloud
-*
-* @author Vincent Petry
-* @copyright 2014 Vincent Petry <pvince81@owncloud.com>
-*
-* This library is free software; you can redistribute it and/or
-* modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
-* License as published by the Free Software Foundation; either
-* version 3 of the License, or any later version.
-*
-* This library is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU AFFERO GENERAL PUBLIC LICENSE for more details.
-*
-* You should have received a copy of the GNU Affero General Public
-* License along with this library.  If not, see <http://www.gnu.org/licenses/>.
-*
-*/
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2014 ownCloud Inc.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 
 describe('Core base tests', function() {
 	var debounceStub
@@ -42,16 +27,16 @@ describe('Core base tests', function() {
 	describe('Base values', function() {
 		it('Sets webroots', function() {
 			expect(OC.getRootPath()).toBeDefined();
-			expect(OC.appswebroots).toBeDefined();
+			expect(window._oc_appswebroots).toBeDefined();
 		});
 	});
 	describe('filePath', function() {
 		beforeEach(function() {
-			OC.webroot = 'http://localhost';
-			OC.appswebroots.files = OC.getRootPath() + '/apps3/files';
+			window._oc_webroot = 'http://localhost';
+			window._oc_appswebroots.files = OC.getRootPath() + '/apps3/files';
 		});
 		afterEach(function() {
-			delete OC.appswebroots.files;
+			delete window._oc_appswebroots.files;
 		});
 
 		it('Uses a direct link for css and images,' , function() {
@@ -70,11 +55,11 @@ describe('Core base tests', function() {
 		var TESTAPP_ROOT = OC.getRootPath() + '/appsx/testapp';
 
 		beforeEach(function() {
-			OC.appswebroots[TESTAPP] = TESTAPP_ROOT;
+			window._oc_appswebroots[TESTAPP] = TESTAPP_ROOT;
 		});
 		afterEach(function() {
 			// restore original array
-			delete OC.appswebroots[TESTAPP];
+			delete window._oc_appswebroots[TESTAPP];
 		});
 		it('Generates correct links for core apps', function() {
 			expect(OC.linkTo('core', 'somefile.php')).toEqual(OC.getRootPath() + '/core/somefile.php');
@@ -132,93 +117,6 @@ describe('Core base tests', function() {
 			expect(OC.buildQueryString({
 				'number': 123
 			})).toEqual('number=123');
-		});
-	});
-	describe('Session heartbeat', function() {
-		var clock,
-			oldConfig,
-			counter;
-
-		beforeEach(function() {
-			clock = sinon.useFakeTimers();
-			oldConfig = OC.config;
-			counter = 0;
-
-			fakeServer.autoRespond = true;
-			fakeServer.autoRespondAfter = 0;
-			fakeServer.respondWith(/\/csrftoken/, function(xhr) {
-				counter++;
-				xhr.respond(200, {'Content-Type': 'application/json'}, '{"token": "pgBEsb3MzTb1ZPd2mfDZbQ6/0j3OrXHMEZrghHcOkg8=:3khw5PSa+wKQVo4f26exFD3nplud9ECjJ8/Y5zk5/k4="}');
-			});
-			$(document).off('ajaxComplete'); // ignore previously registered heartbeats
-		});
-		afterEach(function() {
-			clock.restore();
-			/* jshint camelcase: false */
-			OC.config = oldConfig;
-			$(document).off('ajaxError');
-			$(document).off('ajaxComplete');
-		});
-		it('sends heartbeat half the session lifetime when heartbeat enabled', function() {
-			/* jshint camelcase: false */
-			OC.config = {
-				session_keepalive: true,
-				session_lifetime: 300
-			};
-			window.initCore();
-
-			expect(counter).toEqual(0);
-
-			// less than half, still nothing
-			clock.tick(100 * 1000);
-			expect(counter).toEqual(0);
-
-			// reach past half (160), one call
-			clock.tick(55 * 1000);
-			expect(counter).toEqual(1);
-
-			// almost there to the next, still one
-			clock.tick(140 * 1000);
-			expect(counter).toEqual(1);
-
-			// past it, second call
-			clock.tick(20 * 1000);
-			expect(counter).toEqual(2);
-		});
-		it('does not send heartbeat when heartbeat disabled', function() {
-			/* jshint camelcase: false */
-			OC.config = {
-				session_keepalive: false,
-				session_lifetime: 300
-			};
-			window.initCore();
-
-			expect(counter).toEqual(0);
-
-			clock.tick(1000000);
-
-			// still nothing
-			expect(counter).toEqual(0);
-		});
-		it('limits the heartbeat between one minute and one day', function() {
-			/* jshint camelcase: false */
-			var setIntervalStub = sinon.stub(window, 'setInterval');
-			OC.config = {
-				session_keepalive: true,
-				session_lifetime: 5
-			};
-			window.initCore();
-			expect(setIntervalStub.getCall(0).args[1]).toEqual(60 * 1000);
-			setIntervalStub.reset();
-
-			OC.config = {
-				session_keepalive: true,
-				session_lifetime: 48 * 3600
-			};
-			window.initCore();
-			expect(setIntervalStub.getCall(0).args[1]).toEqual(24 * 3600 * 1000);
-
-			setIntervalStub.restore();
 		});
 	});
 	describe('Parse query string', function() {
@@ -374,7 +272,7 @@ describe('Core base tests', function() {
 		// to make sure they run.
 		var cit = window.isPhantom?xit:it;
 
-		// must provide the same results as \OC_Util::naturalSortCompare
+		// must provide the same results as \OCP\Util::naturalSortCompare
 		it('sorts alphabetically', function() {
 			var a = [
 				'def',
@@ -780,6 +678,7 @@ describe('Core base tests', function() {
 			OC.currentUser = 'dummy';
 			clock = sinon.useFakeTimers();
 			reloadStub = sinon.stub(OC, 'reload');
+			document.head.dataset.user = 'dummy'
 			notificationStub = sinon.stub(OC.Notification, 'show');
 			// unstub the error processing method
 			ajaxErrorStub = OC._processAjaxError;
@@ -793,47 +692,6 @@ describe('Core base tests', function() {
 			clock.restore();
 		});
 
-		it('reloads current page in case of auth error', function() {
-			var dataProvider = [
-				[200, false],
-				[400, false],
-				[0, false],
-				[401, true],
-				[302, true],
-				[303, true],
-				[307, true]
-			];
-
-			for (var i = 0; i < dataProvider.length; i++) {
-				var xhr = { status: dataProvider[i][0] };
-				var expectedCall = dataProvider[i][1];
-
-				reloadStub.reset();
-				OC._reloadCalled = false;
-
-				$(document).trigger(new $.Event('ajaxError'), xhr);
-
-				// trigger timers
-				clock.tick(waitTimeMs);
-
-				if (expectedCall) {
-					expect(reloadStub.calledOnce).toEqual(true);
-				} else {
-					expect(reloadStub.notCalled).toEqual(true);
-				}
-			}
-		});
-		it('reload only called once in case of auth error', function() {
-			var xhr = { status: 401 };
-
-			$(document).trigger(new $.Event('ajaxError'), xhr);
-			$(document).trigger(new $.Event('ajaxError'), xhr);
-
-			// trigger timers
-			clock.tick(waitTimeMs);
-
-			expect(reloadStub.calledOnce).toEqual(true);
-		});
 		it('does not reload the page if the user was navigating away', function() {
 			var xhr = { status: 0 };
 			OC._userIsNavigatingAway = true;
@@ -844,16 +702,7 @@ describe('Core base tests', function() {
 			clock.tick(waitTimeMs);
 			expect(reloadStub.notCalled).toEqual(true);
 		});
-		it('displays notification', function() {
-			var xhr = { status: 401 };
 
-			notificationUpdateStub = sinon.stub(OC.Notification, 'showUpdate');
-
-			$(document).trigger(new $.Event('ajaxError'), xhr);
-
-			clock.tick(waitTimeMs);
-			expect(notificationUpdateStub.notCalled).toEqual(false);
-		});
 		it('shows a temporary notification if the connection is lost', function() {
 			var xhr = { status: 0 };
 			spyOn(OC, '_ajaxConnectionLostHandler');
@@ -1293,67 +1142,6 @@ describe('Core base tests', function() {
 			expect(snapperStub.enable.called).toBe(false);
 			expect(snapperStub.disable.calledTwice).toBe(true);
 			expect(snapperStub.close.calledTwice).toBe(true);
-		});
-	});
-	describe('Requires password confirmation', function () {
-		var stubMomentNow;
-		var stubJsPageLoadTime;
-
-		afterEach(function () {
-			delete window.nc_pageLoad;
-			delete window.nc_lastLogin;
-			delete window.backendAllowsPasswordConfirmation;
-
-			stubMomentNow.restore();
-			stubJsPageLoadTime.restore();
-		});
-
-		it('should not show the password confirmation dialog when server time is earlier than local time', function () {
-			// add server variables
-			window.nc_pageLoad = parseInt(new Date(2018, 0, 3, 1, 15, 0).getTime() / 1000);
-			window.nc_lastLogin = parseInt(new Date(2018, 0, 3, 1, 0, 0).getTime() / 1000);
-			window.backendAllowsPasswordConfirmation = true;
-
-			stubJsPageLoadTime = sinon.stub(OC.PasswordConfirmation, 'pageLoadTime').value(new Date(2018, 0, 3, 12, 15, 0).getTime());
-			stubMomentNow = sinon.stub(moment, 'now').returns(new Date(2018, 0, 3, 12, 20, 0).getTime());
-
-			expect(OC.PasswordConfirmation.requiresPasswordConfirmation()).toBeFalsy();
-		});
-
-		it('should show the password confirmation dialog when server time is earlier than local time', function () {
-			// add server variables
-			window.nc_pageLoad = parseInt(new Date(2018, 0, 3, 1, 15, 0).getTime() / 1000);
-			window.nc_lastLogin = parseInt(new Date(2018, 0, 3, 1, 0, 0).getTime() / 1000);
-			window.backendAllowsPasswordConfirmation = true;
-
-			stubJsPageLoadTime = sinon.stub(OC.PasswordConfirmation, 'pageLoadTime').value(new Date(2018, 0, 3, 12, 15, 0).getTime());
-			stubMomentNow = sinon.stub(moment, 'now').returns(new Date(2018, 0, 3, 12, 31, 0).getTime());
-
-			expect(OC.PasswordConfirmation.requiresPasswordConfirmation()).toBeTruthy();
-		});
-
-		it('should not show the password confirmation dialog when server time is later than local time', function () {
-			// add server variables
-			window.nc_pageLoad = parseInt(new Date(2018, 0, 3, 23, 15, 0).getTime() / 1000);
-			window.nc_lastLogin = parseInt(new Date(2018, 0, 3, 23, 0, 0).getTime() / 1000);
-			window.backendAllowsPasswordConfirmation = true;
-
-			stubJsPageLoadTime = sinon.stub(OC.PasswordConfirmation, 'pageLoadTime').value(new Date(2018, 0, 3, 12, 15, 0).getTime());
-			stubMomentNow = sinon.stub(moment, 'now').returns(new Date(2018, 0, 3, 12, 20, 0).getTime());
-
-			expect(OC.PasswordConfirmation.requiresPasswordConfirmation()).toBeFalsy();
-		});
-
-		it('should show the password confirmation dialog when server time is later than local time', function () {
-			// add server variables
-			window.nc_pageLoad = parseInt(new Date(2018, 0, 3, 23, 15, 0).getTime() / 1000);
-			window.nc_lastLogin = parseInt(new Date(2018, 0, 3, 23, 0, 0).getTime() / 1000);
-			window.backendAllowsPasswordConfirmation = true;
-
-			stubJsPageLoadTime = sinon.stub(OC.PasswordConfirmation, 'pageLoadTime').value(new Date(2018, 0, 3, 12, 15, 0).getTime());
-			stubMomentNow = sinon.stub(moment, 'now').returns(new Date(2018, 0, 3, 12, 31, 0).getTime());
-
-			expect(OC.PasswordConfirmation.requiresPasswordConfirmation()).toBeTruthy();
 		});
 	});
 });

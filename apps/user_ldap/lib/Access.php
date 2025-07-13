@@ -1,48 +1,9 @@
 <?php
+
 /**
- * @copyright Copyright (c) 2016, ownCloud, Inc.
- *
- * @author Aaron Wood <aaronjwood@gmail.com>
- * @author Andreas Fischer <bantu@owncloud.com>
- * @author Arthur Schiwon <blizzz@arthur-schiwon.de>
- * @author Bart Visscher <bartv@thisnet.nl>
- * @author Benjamin Diele <benjamin@diele.be>
- * @author bline <scottbeck@gmail.com>
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Daniel Kesselberg <mail@danielkesselberg.de>
- * @author J0WI <J0WI@users.noreply.github.com>
- * @author Joas Schilling <coding@schilljs.com>
- * @author Jörn Friedrich Dreyer <jfd@butonic.de>
- * @author Juan Pablo Villafáñez <jvillafanez@solidgear.es>
- * @author Lorenzo M. Catucci <lorenzo@sancho.ccd.uniroma2.it>
- * @author Lukas Reschke <lukas@statuscode.ch>
- * @author Mario Kolling <mario.kolling@serpro.gov.br>
- * @author Max Kovalenko <mxss1998@yandex.ru>
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Nicolas Grekas <nicolas.grekas@gmail.com>
- * @author Peter Kubica <peter@kubica.ch>
- * @author Ralph Krimmel <rkrimme1@gwdg.de>
- * @author Robin McCorkell <robin@mccorkell.me.uk>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- * @author Roger Szabo <roger.szabo@web.de>
- * @author Roland Tapken <roland@bitarbeiter.net>
- * @author root <root@localhost.localdomain>
- * @author Victor Dubiniuk <dubiniuk@owncloud.com>
- *
- * @license AGPL-3.0
- *
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License, version 3,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License, version 3,
- * along with this program. If not, see <http://www.gnu.org/licenses/>
- *
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 namespace OCA\User_LDAP;
 
@@ -54,9 +15,15 @@ use OCA\User_LDAP\Exceptions\NoMoreResults;
 use OCA\User_LDAP\Mapping\AbstractMapping;
 use OCA\User_LDAP\User\Manager;
 use OCA\User_LDAP\User\OfflineUser;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\HintException;
+use OCP\IAppConfig;
 use OCP\IConfig;
+use OCP\IGroupManager;
 use OCP\IUserManager;
+use OCP\Server;
+use OCP\User\Events\UserIdAssignedEvent;
+use OCP\Util;
 use Psr\Log\LoggerInterface;
 use function strlen;
 use function substr;
@@ -69,10 +36,6 @@ use function substr;
 class Access extends LDAPUtility {
 	public const UUID_ATTRIBUTES = ['entryuuid', 'nsuniqueid', 'objectguid', 'guid', 'ipauniqueid'];
 
-	/** @var \OCA\User_LDAP\Connection */
-	public $connection;
-	/** @var Manager */
-	public $userManager;
 	/**
 	 * never ever check this var directly, always use getPagedSearchResultState
 	 * @var ?bool
@@ -85,35 +48,21 @@ class Access extends LDAPUtility {
 	/** @var ?AbstractMapping */
 	protected $groupMapper;
 
-	/**
-	 * @var \OCA\User_LDAP\Helper
-	 */
-	private $helper;
-	/** @var IConfig */
-	private $config;
-	/** @var IUserManager */
-	private $ncUserManager;
-	/** @var LoggerInterface */
-	private $logger;
 	private string $lastCookie = '';
 
 	public function __construct(
-		Connection $connection,
 		ILDAPWrapper $ldap,
-		Manager $userManager,
-		Helper $helper,
-		IConfig $config,
-		IUserManager $ncUserManager,
-		LoggerInterface $logger
+		public Connection $connection,
+		public Manager $userManager,
+		private Helper $helper,
+		private IConfig $config,
+		private IUserManager $ncUserManager,
+		private LoggerInterface $logger,
+		private IAppConfig $appConfig,
+		private IEventDispatcher $dispatcher,
 	) {
 		parent::__construct($ldap);
-		$this->connection = $connection;
-		$this->userManager = $userManager;
 		$this->userManager->setLdapAccess($this);
-		$this->helper = $helper;
-		$this->config = $config;
-		$this->ncUserManager = $ncUserManager;
-		$this->logger = $logger;
 	}
 
 	/**
@@ -169,14 +118,64 @@ class Access extends LDAPUtility {
 	}
 
 	/**
+	 * Reads several attributes for an LDAP record identified by a DN and a filter
+	 * No support for ranged attributes.
+	 *
+	 * @param string $dn the record in question
+	 * @param array $attrs the attributes that shall be retrieved
+	 *                     if empty, just check the record's existence
+	 * @param string $filter
+	 * @return array|false an array of values on success or an empty
+	 *                     array if $attr is empty, false otherwise
+	 * @throws ServerNotAvailableException
+	 */
+	public function readAttributes(string $dn, array $attrs, string $filter = 'objectClass=*'): array|false {
+		if (!$this->checkConnection()) {
+			$this->logger->warning(
+				'No LDAP Connector assigned, access impossible for readAttribute.',
+				['app' => 'user_ldap']
+			);
+			return false;
+		}
+		$cr = $this->connection->getConnectionResource();
+		$attrs = array_map(
+			fn (string $attr): string => mb_strtolower($attr, 'UTF-8'),
+			$attrs,
+		);
+
+		$values = [];
+		$record = $this->executeRead($dn, $attrs, $filter);
+		if (is_bool($record)) {
+			// when an exists request was run and it was successful, an empty
+			// array must be returned
+			return $record ? [] : false;
+		}
+
+		$result = [];
+		foreach ($attrs as $attr) {
+			$values = $this->extractAttributeValuesFromResult($record, $attr);
+			if (!empty($values)) {
+				$result[$attr] = $values;
+			}
+		}
+
+		if (!empty($result)) {
+			return $result;
+		}
+
+		$this->logger->debug('Requested attributes {attrs} not found for ' . $dn, ['app' => 'user_ldap', 'attrs' => $attrs]);
+		return false;
+	}
+
+	/**
 	 * reads a given attribute for an LDAP record identified by a DN
 	 *
 	 * @param string $dn the record in question
 	 * @param string $attr the attribute that shall be retrieved
-	 *        if empty, just check the record's existence
+	 *                     if empty, just check the record's existence
 	 * @param string $filter
 	 * @return array|false an array of values on success or an empty
-	 *          array if $attr is empty, false otherwise
+	 *                     array if $attr is empty, false otherwise
 	 * @throws ServerNotAvailableException
 	 */
 	public function readAttribute(string $dn, string $attr, string $filter = 'objectClass=*') {
@@ -188,11 +187,6 @@ class Access extends LDAPUtility {
 			return false;
 		}
 		$cr = $this->connection->getConnectionResource();
-		if (!$this->ldap->isResource($cr)) {
-			//LDAP not available
-			$this->logger->debug('LDAP resource not available.', ['app' => 'user_ldap']);
-			return false;
-		}
 		$attr = mb_strtolower($attr, 'UTF-8');
 		// the actual read attribute later may contain parameters on a ranged
 		// request, e.g. member;range=99-199. Depends on server reply.
@@ -248,9 +242,9 @@ class Access extends LDAPUtility {
 	 *                    returned data on a successful usual operation
 	 * @throws ServerNotAvailableException
 	 */
-	public function executeRead(string $dn, string $attribute, string $filter) {
+	public function executeRead(string $dn, string|array $attribute, string $filter) {
 		$dn = $this->helper->DNasBaseParameter($dn);
-		$rr = @$this->invokeLDAPMethod('read', $dn, $filter, [$attribute]);
+		$rr = @$this->invokeLDAPMethod('read', $dn, $filter, (is_string($attribute) ? [$attribute] : $attribute));
 		if (!$this->ldap->isResource($rr)) {
 			if ($attribute !== '') {
 				//do not throw this message on userExists check, irritates
@@ -269,7 +263,7 @@ class Access extends LDAPUtility {
 			return false;
 		}
 		//LDAP attributes are not case sensitive
-		$result = \OCP\Util::mb_array_change_key_case(
+		$result = Util::mb_array_change_key_case(
 			$this->invokeLDAPMethod('getAttributes', $er), MB_CASE_LOWER, 'UTF-8');
 
 		return $result;
@@ -278,6 +272,8 @@ class Access extends LDAPUtility {
 	/**
 	 * Normalizes a result grom getAttributes(), i.e. handles DNs and binary
 	 * data if present.
+	 *
+	 * DN values are escaped as per RFC 2253
 	 *
 	 * @param array $result from ILDAPWrapper::getAttributes()
 	 * @param string $attribute the attribute name that was read
@@ -310,20 +306,19 @@ class Access extends LDAPUtility {
 	 * @return array If a range was detected with keys 'values', 'attributeName',
 	 *               'attributeFull' and 'rangeHigh', otherwise empty.
 	 */
-	public function extractRangeData($result, $attribute) {
+	public function extractRangeData(array $result, string $attribute): array {
 		$keys = array_keys($result);
 		foreach ($keys as $key) {
 			if ($key !== $attribute && str_starts_with((string)$key, $attribute)) {
 				$queryData = explode(';', (string)$key);
-				if (str_starts_with($queryData[1], 'range=')) {
+				if (isset($queryData[1]) && str_starts_with($queryData[1], 'range=')) {
 					$high = substr($queryData[1], 1 + strpos($queryData[1], '-'));
-					$data = [
+					return [
 						'values' => $result[$key],
 						'attributeName' => $queryData[0],
 						'attributeFull' => $key,
 						'rangeHigh' => $high,
 					];
-					return $data;
 				}
 			}
 		}
@@ -344,17 +339,12 @@ class Access extends LDAPUtility {
 			throw new \Exception('LDAP password changes are disabled.');
 		}
 		$cr = $this->connection->getConnectionResource();
-		if (!$this->ldap->isResource($cr)) {
-			//LDAP not available
-			$this->logger->debug('LDAP resource not available.', ['app' => 'user_ldap']);
-			return false;
-		}
 		try {
 			// try PASSWD extended operation first
-			return @$this->invokeLDAPMethod('exopPasswd', $userDN, '', $password) ||
-				@$this->invokeLDAPMethod('modReplace', $userDN, $password);
+			return @$this->invokeLDAPMethod('exopPasswd', $userDN, '', $password)
+				|| @$this->invokeLDAPMethod('modReplace', $userDN, $password);
 		} catch (ConstraintViolationException $e) {
-			throw new HintException('Password change rejected.', \OC::$server->getL10N('user_ldap')->t('Password change rejected. Hint: ') . $e->getMessage(), (int)$e->getCode());
+			throw new HintException('Password change rejected.', Util::getL10N('user_ldap')->t('Password change rejected. Hint: %s', $e->getMessage()), (int)$e->getCode());
 		}
 	}
 
@@ -448,10 +438,11 @@ class Access extends LDAPUtility {
 	 *
 	 * @param string $fdn the dn of the group object
 	 * @param string $ldapName optional, the display name of the object
+	 * @param bool $autoMapping Should the group be mapped if not yet mapped
 	 * @return string|false with the name to use in Nextcloud, false on DN outside of search DN
 	 * @throws \Exception
 	 */
-	public function dn2groupname($fdn, $ldapName = null) {
+	public function dn2groupname($fdn, $ldapName = null, bool $autoMapping = true) {
 		//To avoid bypassing the base DN settings under certain circumstances
 		//with the group support, check whether the provided DN matches one of
 		//the given Bases
@@ -459,7 +450,7 @@ class Access extends LDAPUtility {
 			return false;
 		}
 
-		return $this->dn2ocname($fdn, $ldapName, false);
+		return $this->dn2ocname($fdn, $ldapName, false, autoMapping:$autoMapping);
 	}
 
 	/**
@@ -470,7 +461,7 @@ class Access extends LDAPUtility {
 	 * @return string|false with with the name to use in Nextcloud
 	 * @throws \Exception
 	 */
-	public function dn2username($fdn, $ldapName = null) {
+	public function dn2username($fdn) {
 		//To avoid bypassing the base DN settings under certain circumstances
 		//with the group support, check whether the provided DN matches one of
 		//the given Bases
@@ -478,7 +469,7 @@ class Access extends LDAPUtility {
 			return false;
 		}
 
-		return $this->dn2ocname($fdn, $ldapName, true);
+		return $this->dn2ocname($fdn, null, true);
 	}
 
 	/**
@@ -489,10 +480,11 @@ class Access extends LDAPUtility {
 	 * @param bool $isUser optional, whether it is a user object (otherwise group assumed)
 	 * @param bool|null $newlyMapped
 	 * @param array|null $record
+	 * @param bool $autoMapping Should the group be mapped if not yet mapped
 	 * @return false|string with with the name to use in Nextcloud
 	 * @throws \Exception
 	 */
-	public function dn2ocname($fdn, $ldapName = null, $isUser = true, &$newlyMapped = null, array $record = null) {
+	public function dn2ocname($fdn, $ldapName = null, $isUser = true, &$newlyMapped = null, ?array $record = null, bool $autoMapping = true) {
 		static $intermediates = [];
 		if (isset($intermediates[($isUser ? 'user-' : 'group-') . $fdn])) {
 			return false; // is a known intermediate
@@ -501,18 +493,49 @@ class Access extends LDAPUtility {
 		$newlyMapped = false;
 		if ($isUser) {
 			$mapper = $this->getUserMapper();
-			$nameAttribute = $this->connection->ldapUserDisplayName;
-			$filter = $this->connection->ldapUserFilter;
 		} else {
 			$mapper = $this->getGroupMapper();
-			$nameAttribute = $this->connection->ldapGroupDisplayName;
-			$filter = $this->connection->ldapGroupFilter;
 		}
 
 		//let's try to retrieve the Nextcloud name from the mappings table
 		$ncName = $mapper->getNameByDN($fdn);
 		if (is_string($ncName)) {
 			return $ncName;
+		}
+
+		if (!$autoMapping) {
+			/* If no auto mapping, stop there */
+			return false;
+		}
+
+		if ($isUser) {
+			$nameAttribute = strtolower($this->connection->ldapUserDisplayName);
+			$filter = $this->connection->ldapUserFilter;
+			$uuidAttr = 'ldapUuidUserAttribute';
+			$uuidOverride = $this->connection->ldapExpertUUIDUserAttr;
+			$usernameAttribute = strtolower($this->connection->ldapExpertUsernameAttr);
+			$attributesToRead = [$nameAttribute,$usernameAttribute];
+			// TODO fetch also display name attributes and cache them if the user is mapped
+		} else {
+			$nameAttribute = strtolower($this->connection->ldapGroupDisplayName);
+			$filter = $this->connection->ldapGroupFilter;
+			$uuidAttr = 'ldapUuidGroupAttribute';
+			$uuidOverride = $this->connection->ldapExpertUUIDGroupAttr;
+			$attributesToRead = [$nameAttribute];
+		}
+
+		if ($this->detectUuidAttribute($fdn, $isUser, false, $record)) {
+			$attributesToRead[] = $this->connection->$uuidAttr;
+		}
+
+		if ($record === null) {
+			/* No record was passed, fetch it */
+			$record = $this->readAttributes($fdn, $attributesToRead, $filter);
+			if ($record === false) {
+				$this->logger->debug('Cannot read attributes for ' . $fdn . '. Skipping.', ['filter' => $filter]);
+				$intermediates[($isUser ? 'user-' : 'group-') . $fdn] = true;
+				return false;
+			}
 		}
 
 		//second try: get the UUID and check if it is known. Then, update the DN and return the name.
@@ -529,20 +552,9 @@ class Access extends LDAPUtility {
 			return false;
 		}
 
-		if (is_null($ldapName)) {
-			$ldapName = $this->readAttribute($fdn, $nameAttribute, $filter);
-			if (!isset($ldapName[0]) || empty($ldapName[0])) {
-				$this->logger->debug('No or empty name for ' . $fdn . ' with filter ' . $filter . '.', ['app' => 'user_ldap']);
-				$intermediates[($isUser ? 'user-' : 'group-') . $fdn] = true;
-				return false;
-			}
-			$ldapName = $ldapName[0];
-		}
-
 		if ($isUser) {
-			$usernameAttribute = (string)$this->connection->ldapExpertUsernameAttr;
 			if ($usernameAttribute !== '') {
-				$username = $this->readAttribute($fdn, $usernameAttribute);
+				$username = $record[$usernameAttribute];
 				if (!isset($username[0]) || empty($username[0])) {
 					$this->logger->debug('No or empty username (' . $usernameAttribute . ') for ' . $fdn . '.', ['app' => 'user_ldap']);
 					return false;
@@ -564,6 +576,15 @@ class Access extends LDAPUtility {
 				return false;
 			}
 		} else {
+			if (is_null($ldapName)) {
+				$ldapName = $record[$nameAttribute];
+				if (!isset($ldapName[0]) || empty($ldapName[0])) {
+					$this->logger->debug('No or empty name for ' . $fdn . ' with filter ' . $filter . '.', ['app' => 'user_ldap']);
+					$intermediates['group-' . $fdn] = true;
+					return false;
+				}
+				$ldapName = $ldapName[0];
+			}
 			$intName = $this->sanitizeGroupIDCandidate($ldapName);
 		}
 
@@ -575,12 +596,13 @@ class Access extends LDAPUtility {
 		$this->connection->setConfiguration(['ldapCacheTTL' => 0]);
 		if ($intName !== ''
 			&& (($isUser && !$this->ncUserManager->userExists($intName))
-				|| (!$isUser && !\OC::$server->getGroupManager()->groupExists($intName))
+				|| (!$isUser && !Server::get(IGroupManager::class)->groupExists($intName))
 			)
 		) {
 			$this->connection->setConfiguration(['ldapCacheTTL' => $originalTTL]);
 			$newlyMapped = $this->mapAndAnnounceIfApplicable($mapper, $fdn, $intName, $uuid, $isUser);
 			if ($newlyMapped) {
+				$this->logger->debug('Mapped {fdn} as {name}', ['fdn' => $fdn,'name' => $intName]);
 				return $intName;
 			}
 		}
@@ -595,7 +617,6 @@ class Access extends LDAPUtility {
 						'fdn' => $fdn,
 						'altName' => $altName,
 						'intName' => $intName,
-						'app' => 'user_ldap',
 					]
 				);
 				$newlyMapped = true;
@@ -613,13 +634,16 @@ class Access extends LDAPUtility {
 		string $fdn,
 		string $name,
 		string $uuid,
-		bool $isUser
+		bool $isUser,
 	): bool {
 		if ($mapper->map($fdn, $name, $uuid)) {
-			if ($this->ncUserManager instanceof PublicEmitter && $isUser) {
+			if ($isUser) {
 				$this->cacheUserExists($name);
-				$this->ncUserManager->emit('\OC\User', 'assignedUserId', [$name]);
-			} elseif (!$isUser) {
+				$this->dispatcher->dispatchTyped(new UserIdAssignedEvent($name));
+				if ($this->ncUserManager instanceof PublicEmitter) {
+					$this->ncUserManager->emit('\OC\User', 'assignedUserId', [$name]);
+				}
+			} else {
 				$this->cacheGroupExists($name);
 			}
 			return true;
@@ -720,6 +744,7 @@ class Access extends LDAPUtility {
 	 */
 	public function cacheUserExists(string $ocName): void {
 		$this->connection->writeToCache('userExists' . $ocName, true);
+		$this->connection->writeToCache('userExistsOnLDAP' . $ocName, true);
 	}
 
 	/**
@@ -789,7 +814,7 @@ class Access extends LDAPUtility {
 	 * "Developers"
 	 */
 	private function _createAltInternalOwnCloudNameForGroups(string $name) {
-		$usedNames = $this->getGroupMapper()->getNamesBySearch($name, "", '_%');
+		$usedNames = $this->getGroupMapper()->getNamesBySearch($name, '', '_%');
 		if (count($usedNames) === 0) {
 			$lastNo = 1; //will become name_2
 		} else {
@@ -805,7 +830,7 @@ class Access extends LDAPUtility {
 			// Check to be really sure it is unique
 			// while loop is just a precaution. If a name is not generated within
 			// 20 attempts, something else is very wrong. Avoids infinite loop.
-			if (!\OC::$server->getGroupManager()->groupExists($altName)) {
+			if (!Server::get(IGroupManager::class)->groupExists($altName)) {
 				return $altName;
 			}
 			$altName = $name . '_' . ($lastNo + $attempts);
@@ -865,12 +890,11 @@ class Access extends LDAPUtility {
 	/**
 	 * @throws \Exception
 	 */
-	public function fetchListOfUsers(string $filter, array $attr, int $limit = null, int $offset = null, bool $forceApplyAttributes = false): array {
+	public function fetchListOfUsers(string $filter, array $attr, ?int $limit = null, ?int $offset = null, bool $forceApplyAttributes = false): array {
 		$ldapRecords = $this->searchUsers($filter, $attr, $limit, $offset);
 		$recordsToUpdate = $ldapRecords;
 		if (!$forceApplyAttributes) {
-			$isBackgroundJobModeAjax = $this->config
-					->getAppValue('core', 'backgroundjobs_mode', 'ajax') === 'ajax';
+			$isBackgroundJobModeAjax = $this->appConfig->getValueString('core', 'backgroundjobs_mode', 'ajax') === 'ajax';
 			$listOfDNs = array_reduce($ldapRecords, function ($listOfDNs, $entry) {
 				$listOfDNs[] = $entry['dn'][0];
 				return $listOfDNs;
@@ -926,7 +950,7 @@ class Access extends LDAPUtility {
 	/**
 	 * @return array[]
 	 */
-	public function fetchListOfGroups(string $filter, array $attr, int $limit = null, int $offset = null): array {
+	public function fetchListOfGroups(string $filter, array $attr, ?int $limit = null, ?int $offset = null): array {
 		$cacheKey = 'fetchListOfGroups_' . $filter . '_' . implode('-', $attr) . '_' . (string)$limit . '_' . (string)$offset;
 		$listOfGroups = $this->connection->getFromCache($cacheKey);
 		if (!is_null($listOfGroups)) {
@@ -934,22 +958,6 @@ class Access extends LDAPUtility {
 		}
 		$groupRecords = $this->searchGroups($filter, $attr, $limit, $offset);
 
-		$listOfDNs = array_reduce($groupRecords, function ($listOfDNs, $entry) {
-			$listOfDNs[] = $entry['dn'][0];
-			return $listOfDNs;
-		}, []);
-		$idsByDn = $this->getGroupMapper()->getListOfIdsByDn($listOfDNs);
-
-		array_walk($groupRecords, function (array $record) use ($idsByDn) {
-			$newlyMapped = false;
-			$gid = $idsByDn[$record['dn'][0]] ?? null;
-			if ($gid === null) {
-				$gid = $this->dn2ocname($record['dn'][0], null, false, $newlyMapped, $record);
-			}
-			if (!$newlyMapped && is_string($gid)) {
-				$this->cacheGroupExists($gid);
-			}
-		});
 		$listOfGroups = $this->fetchList($groupRecords, $this->manyAttributes($attr));
 		$this->connection->writeToCache($cacheKey, $listOfGroups);
 		return $listOfGroups;
@@ -971,7 +979,7 @@ class Access extends LDAPUtility {
 	/**
 	 * @throws ServerNotAvailableException
 	 */
-	public function searchUsers(string $filter, array $attr = null, int $limit = null, int $offset = null): array {
+	public function searchUsers(string $filter, ?array $attr = null, ?int $limit = null, ?int $offset = null): array {
 		$result = [];
 		foreach ($this->connection->ldapBaseUsers as $base) {
 			$result = array_merge($result, $this->search($filter, $base, $attr, $limit, $offset));
@@ -984,7 +992,7 @@ class Access extends LDAPUtility {
 	 * @return false|int
 	 * @throws ServerNotAvailableException
 	 */
-	public function countUsers(string $filter, array $attr = ['dn'], int $limit = null, int $offset = null) {
+	public function countUsers(string $filter, array $attr = ['dn'], ?int $limit = null, ?int $offset = null) {
 		$result = false;
 		foreach ($this->connection->ldapBaseUsers as $base) {
 			$count = $this->count($filter, [$base], $attr, $limit ?? 0, $offset ?? 0);
@@ -1001,7 +1009,7 @@ class Access extends LDAPUtility {
 	 * Executes an LDAP search
 	 * @throws ServerNotAvailableException
 	 */
-	public function searchGroups(string $filter, array $attr = null, int $limit = null, int $offset = null): array {
+	public function searchGroups(string $filter, ?array $attr = null, ?int $limit = null, ?int $offset = null): array {
 		$result = [];
 		foreach ($this->connection->ldapBaseGroups as $base) {
 			$result = array_merge($result, $this->search($filter, $base, $attr, $limit, $offset));
@@ -1015,7 +1023,7 @@ class Access extends LDAPUtility {
 	 * @return int|bool
 	 * @throws ServerNotAvailableException
 	 */
-	public function countGroups(string $filter, array $attr = ['dn'], int $limit = null, int $offset = null) {
+	public function countGroups(string $filter, array $attr = ['dn'], ?int $limit = null, ?int $offset = null) {
 		$result = false;
 		foreach ($this->connection->ldapBaseGroups as $base) {
 			$count = $this->count($filter, [$base], $attr, $limit ?? 0, $offset ?? 0);
@@ -1030,7 +1038,7 @@ class Access extends LDAPUtility {
 	 * @return int|bool
 	 * @throws ServerNotAvailableException
 	 */
-	public function countObjects(int $limit = null, int $offset = null) {
+	public function countObjects(?int $limit = null, ?int $offset = null) {
 		$result = false;
 		foreach ($this->connection->ldapBase as $base) {
 			$count = $this->count('objectclass=*', [$base], ['dn'], $limit ?? 0, $offset ?? 0);
@@ -1096,7 +1104,7 @@ class Access extends LDAPUtility {
 	 * @param int|null $limit optional, maximum results to be counted
 	 * @param int|null $offset optional, a starting point
 	 * @return array|false array with the search result as first value and pagedSearchOK as
-	 * second | false if not successful
+	 *                     second | false if not successful
 	 * @throws ServerNotAvailableException
 	 */
 	private function executeSearch(
@@ -1104,16 +1112,10 @@ class Access extends LDAPUtility {
 		string $base,
 		?array &$attr,
 		?int $pageSize,
-		?int $offset
+		?int $offset,
 	) {
 		// See if we have a resource, in case not cancel with message
 		$cr = $this->connection->getConnectionResource();
-		if (!$this->ldap->isResource($cr)) {
-			// Seems like we didn't find any resource.
-			// Return an empty array just like before.
-			$this->logger->debug('Could not search, because resource is missing.', ['app' => 'user_ldap']);
-			return false;
-		}
 
 		//check whether paged search should be attempted
 		try {
@@ -1136,12 +1138,12 @@ class Access extends LDAPUtility {
 	/**
 	 * processes an LDAP paged search operation
 	 *
-	 * @param resource|\LDAP\Result|resource[]|\LDAP\Result[] $sr the array containing the LDAP search resources
+	 * @param \LDAP\Result|\LDAP\Result[] $sr the array containing the LDAP search resources
 	 * @param int $foundItems number of results in the single search operation
 	 * @param int $limit maximum results to be counted
 	 * @param bool $pagedSearchOK whether a paged search has been executed
 	 * @param bool $skipHandling required for paged search when cookies to
-	 * prior results need to be gained
+	 *                           prior results need to be gained
 	 * @return bool cookie validity, true if we have more pages, false otherwise.
 	 * @throws ServerNotAvailableException
 	 */
@@ -1150,7 +1152,7 @@ class Access extends LDAPUtility {
 		int $foundItems,
 		int $limit,
 		bool $pagedSearchOK,
-		bool $skipHandling
+		bool $skipHandling,
 	): bool {
 		$cookie = '';
 		if ($pagedSearchOK) {
@@ -1164,7 +1166,7 @@ class Access extends LDAPUtility {
 				return false;
 			}
 			// if count is bigger, then the server does not support
-			// paged search. Instead, he did a normal search. We set a
+			// paged search. Instead, they did a normal search. We set a
 			// flag here, so the callee knows how to deal with it.
 			if ($foundItems <= $limit) {
 				$this->pagedSearchedSuccessful = true;
@@ -1191,21 +1193,21 @@ class Access extends LDAPUtility {
 	 * @param string $filter the LDAP filter for the search
 	 * @param array $bases an array containing the LDAP subtree(s) that shall be searched
 	 * @param ?string[] $attr optional, array, one or more attributes that shall be
-	 * retrieved. Results will according to the order in the array.
+	 *                        retrieved. Results will according to the order in the array.
 	 * @param int $limit maximum results to be counted, 0 means no limit
 	 * @param int $offset a starting point, defaults to 0
 	 * @param bool $skipHandling indicates whether the pages search operation is
-	 * completed
+	 *                           completed
 	 * @return int|false Integer or false if the search could not be initialized
 	 * @throws ServerNotAvailableException
 	 */
 	private function count(
 		string $filter,
 		array $bases,
-		array $attr = null,
+		?array $attr = null,
 		int $limit = 0,
 		int $offset = 0,
-		bool $skipHandling = false
+		bool $skipHandling = false,
 	) {
 		$this->logger->debug('Count filter: {filter}', [
 			'app' => 'user_ldap',
@@ -1249,7 +1251,7 @@ class Access extends LDAPUtility {
 	}
 
 	/**
-	 * @param resource|\LDAP\Result|resource[]|\LDAP\Result[] $sr
+	 * @param \LDAP\Result|\LDAP\Result[] $sr
 	 * @return int
 	 * @throws ServerNotAvailableException
 	 */
@@ -1260,6 +1262,8 @@ class Access extends LDAPUtility {
 	/**
 	 * Executes an LDAP search
 	 *
+	 * DN values in the result set are escaped as per RFC 2253
+	 *
 	 * @throws ServerNotAvailableException
 	 */
 	public function search(
@@ -1268,7 +1272,7 @@ class Access extends LDAPUtility {
 		?array $attr = null,
 		?int $limit = null,
 		?int $offset = null,
-		bool $skipHandling = false
+		bool $skipHandling = false,
 	): array {
 		$limitPerPage = (int)$this->connection->ldapPagingSize;
 		if (!is_null($limit) && $limit < $limitPerPage && $limit > 0) {
@@ -1319,7 +1323,7 @@ class Access extends LDAPUtility {
 				if (!is_array($item)) {
 					continue;
 				}
-				$item = \OCP\Util::mb_array_change_key_case($item, MB_CASE_LOWER, 'UTF-8');
+				$item = Util::mb_array_change_key_case($item, MB_CASE_LOWER, 'UTF-8');
 				foreach ($attr as $key) {
 					if (isset($item[$key])) {
 						if (is_array($item[$key]) && isset($item[$key]['count'])) {
@@ -1421,9 +1425,7 @@ class Access extends LDAPUtility {
 			$asterisk = '*';
 			$input = mb_substr($input, 1, null, 'UTF-8');
 		}
-		$search = ['*', '\\', '(', ')'];
-		$replace = ['\\*', '\\\\', '\\(', '\\)'];
-		return $asterisk . str_replace($search, $replace, $input);
+		return $asterisk . ldap_escape($input, '', LDAP_ESCAPE_FILTER);
 	}
 
 	/**
@@ -1441,7 +1443,7 @@ class Access extends LDAPUtility {
 	 *
 	 * @param string[] $filters the filters to connect
 	 * @return string the combined filter
-	 * Combines Filter arguments with OR
+	 *                Combines Filter arguments with OR
 	 */
 	public function combineFilterWithOr($filters) {
 		return $this->combineFilter($filters, '|');
@@ -1496,7 +1498,7 @@ class Access extends LDAPUtility {
 	 *
 	 * @param string $search the search term
 	 * @param string[]|null|'' $searchAttributes needs to have at least two attributes,
-	 * otherwise it does not make sense :)
+	 *                                           otherwise it does not make sense :)
 	 * @return string the final filter part to use in LDAP searches
 	 * @throws DomainException
 	 */
@@ -1524,7 +1526,7 @@ class Access extends LDAPUtility {
 	 * @param string $search the search term
 	 * @param string[]|null|'' $searchAttributes
 	 * @param string $fallbackAttribute a fallback attribute in case the user
-	 * did not define search attributes. Typically the display name attribute.
+	 *                                  did not define search attributes. Typically the display name attribute.
 	 * @return string the final filter part to use in LDAP searches
 	 */
 	private function getFilterPartForSearch(string $search, $searchAttributes, string $fallbackAttribute): string {
@@ -1545,12 +1547,16 @@ class Access extends LDAPUtility {
 				return '';
 			}
 			// wildcards don't work with some attributes
-			$filter[] = $fallbackAttribute . '=' . $originalSearch;
+			if ($originalSearch !== '') {
+				$filter[] = $fallbackAttribute . '=' . $originalSearch;
+			}
 			$filter[] = $fallbackAttribute . '=' . $search;
 		} else {
 			foreach ($searchAttributes as $attribute) {
 				// wildcards don't work with some attributes
-				$filter[] = $attribute . '=' . $originalSearch;
+				if ($originalSearch !== '') {
+					$filter[] = $attribute . '=' . $originalSearch;
+				}
 				$filter[] = $attribute . '=' . $search;
 			}
 		}
@@ -1566,7 +1572,7 @@ class Access extends LDAPUtility {
 	 * a *
 	 */
 	private function prepareSearchTerm(string $term): string {
-		$config = \OC::$server->getConfig();
+		$config = Server::get(IConfig::class);
 
 		$allowEnum = $config->getAppValue('core', 'shareapi_allow_share_dialog_user_enumeration', 'yes');
 
@@ -1591,17 +1597,15 @@ class Access extends LDAPUtility {
 		return $filter;
 	}
 
-	/**
-	 * @param string $name
-	 * @param string $password
-	 * @return bool
-	 */
-	public function areCredentialsValid($name, $password) {
+	public function areCredentialsValid(string $name, string $password): bool {
+		if ($name === '' || $password === '') {
+			return false;
+		}
 		$name = $this->helper->DNasBaseParameter($name);
 		$testConnection = clone $this->connection;
 		$credentials = [
 			'ldapAgentName' => $name,
-			'ldapAgentPassword' => $password
+			'ldapAgentPassword' => $password,
 		];
 		if (!$testConnection->setConfiguration($credentials)) {
 			return false;
@@ -1730,7 +1734,7 @@ class Access extends LDAPUtility {
 	 * @return false|string
 	 * @throws ServerNotAvailableException
 	 */
-	public function getUUID(string $dn, bool $isUser = true, array $ldapRecord = null) {
+	public function getUUID(string $dn, bool $isUser = true, ?array $ldapRecord = null) {
 		if ($isUser) {
 			$uuidAttr = 'ldapUuidUserAttribute';
 			$uuidOverride = $this->connection->ldapExpertUUIDUserAttr;
@@ -1742,7 +1746,7 @@ class Access extends LDAPUtility {
 		$uuid = false;
 		if ($this->detectUuidAttribute($dn, $isUser, false, $ldapRecord)) {
 			$attr = $this->connection->$uuidAttr;
-			$uuid = isset($ldapRecord[$attr]) ? $ldapRecord[$attr] : $this->readAttribute($dn, $attr);
+			$uuid = $ldapRecord[$attr] ?? $this->readAttribute($dn, $attr);
 			if (!is_array($uuid)
 				&& $uuidOverride !== ''
 				&& $this->detectUuidAttribute($dn, $isUser, true, $ldapRecord)) {
@@ -1807,8 +1811,8 @@ class Access extends LDAPUtility {
 			 * user. Instead we write a log message.
 			 */
 			$this->logger->info(
-				'Passed string does not resemble a valid GUID. Known UUID ' .
-				'({uuid}) probably does not match UUID configuration.',
+				'Passed string does not resemble a valid GUID. Known UUID '
+				. '({uuid}) probably does not match UUID configuration.',
 				['app' => 'user_ldap', 'uuid' => $guid]
 			);
 			return $guid;
@@ -1973,7 +1977,7 @@ class Access extends LDAPUtility {
 		string $base,
 		?array $attr,
 		int $pageSize,
-		int $offset
+		int $offset,
 	): array {
 		$pagedSearchOK = false;
 		if ($pageSize !== 0) {
@@ -1993,8 +1997,15 @@ class Access extends LDAPUtility {
 				// no cookie known from a potential previous search. We need
 				// to start from 0 to come to the desired page. cookie value
 				// of '0' is valid, because 389ds
-				$reOffset = ($offset - $pageSize) < 0 ? 0 : $offset - $pageSize;
-				$this->search($filter, $base, $attr, $pageSize, $reOffset, true);
+				$defaultPageSize = (int)$this->connection->ldapPagingSize;
+				if ($offset < $defaultPageSize) {
+					/* Make a search with offset as page size and dismiss the result, to init the cookie */
+					$this->search($filter, $base, $attr, $offset, 0, true);
+				} else {
+					/* Make a search for previous page and dismiss the result, to init the cookie */
+					$reOffset = $offset - $defaultPageSize;
+					$this->search($filter, $base, $attr, $defaultPageSize, $reOffset, true);
+				}
 				if (!$this->hasMoreResults()) {
 					// when the cookie is reset with != 0 offset, there are no further
 					// results, so stop.

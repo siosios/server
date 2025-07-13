@@ -35,7 +35,6 @@ OC.L10N.register(
     "Enabling this option encrypts all files stored on the main storage, otherwise only files on external storage will be encrypted" : "Ef þessi kostur er virkur verða allar skrár í aðalgeymslu dulritaðar, annars verða einungis skrár í ytri gagnageymslum dulritaðar",
     "Enable recovery key" : "Virkja endurheimtingarlykil",
     "Disable recovery key" : "Gera endurheimtingarlykil óvirkan",
-    "The recovery key is an extra encryption key that is used to encrypt files. It allows recovery of a user's files if the user forgets his or her password." : "Endurheimtingarlykill er auka-dulritunarlykill sem er notaður til að dulrita skrár. Hann gefur möguleika á að endurheimta skrár ef notandi gleymir lykilorðinu sínu.",
     "Recovery key password" : "Endurheimtulykilorð",
     "Repeat recovery key password" : "Endurtaktu endurheimtulykilorðið",
     "Change recovery key password:" : "Breyta endurheimtulykilorði:",
@@ -46,16 +45,12 @@ OC.L10N.register(
     "Basic encryption module" : "Grunn-dulritunareining",
     "Your private key password no longer matches your log-in password." : "Lykilorð einkalykilsins þíns samsvarar ekki lengur innskráningarlykilorðinu þínu.",
     "Set your old private key password to your current log-in password:" : "Settu eldra lykilorð einkalykilsins þíns á að vera það sama og núgildandi innskráningarlykilorðið þitt:",
-    " If you don't remember your old password you can ask your administrator to recover your files." : " Ef þú manst ekki gamla lykilorðið þitt geturðu beðið kerfisstjórann þinn um að endurheimta skrárnar þínar.",
     "Old log-in password" : "Gamla innskráningarlykilorðið",
     "Current log-in password" : "Núgildandi innskráningarlykilorð",
     "Update Private Key Password" : "Uppfæra lykilorð einkalykils:",
     "Enable password recovery:" : "Virkja endurheimtingu lykilorðs:",
     "Enabling this option will allow you to reobtain access to your encrypted files in case of password loss" : "Ef þessi kostur er virkur gerir það þér kleift að endurheimta aðgang að skránum þínum ef þú tapar lykilorðinu",
     "Enabled" : "Virkt",
-    "Disabled" : "Óvirkt",
-    "In order to use this encryption module you need to enable server-side\n\t\tencryption in the admin settings. Once enabled this module will encrypt\n\t\tall your files transparently. The encryption is based on AES 256 keys.\n\t\tThe module won't touch existing files, only new files will be encrypted\n\t\tafter server-side encryption was enabled. It is also not possible to\n\t\tdisable the encryption again and switch back to a unencrypted system.\n\t\tPlease read the documentation to know all implications before you decide\n\t\tto enable server-side encryption." : "Til að geta notað þessa dulritunareiningu þarftu að virkja dulritun á þjóni\n\t\tí kerfisstjórnunarstillingunum. Þegar hún er orðin virk mun einingin dulrita\n\t\tallar skrárnar þínar á gagnsæan máta. Dulritunin byggir á AES 256-lyklum.\n\t\tEiningin mun ekki eiga við fyrirliggjandi skrár, einungis nýjar skrár verða\n\t\tdulritaðar eftir að dulritun er orðin virk á þjóni. Ekki er heldur hægt að\n\t\tgera dulritun aftur óvirka og skipta aftur til baka í ódulritað kerfi.\n\t\tÞú skalt endilega lesa hjálparskjölin til að sjá allar afleiðingar þessa\n\t\táður en þú virkjar dulritun á þjóninum.",
-    "The share will expire on %s." : "Gildistími deilingar rennur út %s.",
-    "Cheers!" : "Til hamingju!"
+    "Disabled" : "Óvirkt"
 },
 "nplurals=2; plural=(n % 10 != 1 || n % 100 == 11);");

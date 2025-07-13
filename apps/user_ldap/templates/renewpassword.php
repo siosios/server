@@ -1,10 +1,16 @@
-<?php /** @var \OCP\IL10N $l */ ?>
 <?php
-script('user_ldap', 'renewPassword');
+
+/**
+ * SPDX-FileCopyrightText: 2017 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+/** @var \OCP\IL10N $l */
+
+\OCP\Util::addScript('user_ldap', 'renewPassword', 'core');
 style('user_ldap', 'renewPassword');
 ?>
 
-<form method="post" name="renewpassword" id="renewpassword" action="<?php p(\OC::$server->getURLGenerator()->linkToRoute('user_ldap.renewPassword.tryRenewPassword')); ?>">
+<form method="post" name="renewpassword" id="renewpassword" action="<?php p(\OCP\Server::get(\OCP\IURLGenerator::class)->linkToRoute('user_ldap.renewPassword.tryRenewPassword')); ?>">
 	<fieldset>
 		<div class="warning title">
 			<?php p($l->t('Please renew your password.')); ?><br>
@@ -30,7 +36,7 @@ style('user_ldap', 'renewPassword');
 		<p class="grouptop">
 			<input type="password" id="oldPassword" name="oldPassword"
 				placeholder="<?php echo $l->t('Current password');?>"
-				autofocus autocomplete="off" autocapitalize="off" autocorrect="off" required/>
+				autofocus autocomplete="off" autocapitalize="off" spellcheck="false" required/>
 			<label for="oldPassword" class="infield"><?php p($l->t('Current password')); ?></label>
 		</p>
 
@@ -39,7 +45,7 @@ style('user_ldap', 'renewPassword');
 			<label id="newPassword-label" for="newPassword" class="infield"><?php p($l->t('New password')); ?></label>
 			<input type="password" id="newPassword" name="newPassword"
 				placeholder="<?php echo $l->t('New password');?>"
-				data-typetoggle="#personal-show" autofocus autocomplete="off" autocapitalize="off" autocorrect="off" required/>
+				data-typetoggle="#personal-show" autofocus autocomplete="off" autocapitalize="off" spellcheck="false" required/>
 		</p>
 
 		<input type="submit" id="submit" class="login primary icon-confirm-white" value="<?php p($l->t('Renew password')); ?>"/>

@@ -1,131 +1,17 @@
-window.addEventListener('DOMContentLoaded', () => {
-	$('#linksExcludedGroups,#passwordsExcludedGroups').each(function(index, element) {
-		OC.Settings.setupGroupsSelect($(element))
-		$(element).change(function(ev) {
-			let groups = ev.val || []
-			groups = JSON.stringify(groups)
-			OCP.AppConfig.setValue('core', $(this).attr('name'), groups)
-		})
-	})
+/**
+ * SPDX-FileCopyrightText: 2022 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 
+import { generateUrl } from '@nextcloud/router'
+import $ from 'jquery'
+import axios from '@nextcloud/axios'
+
+window.addEventListener('DOMContentLoaded', () => {
 	$('#loglevel').change(function() {
-		$.post(OC.generateUrl('/settings/admin/log/level'), { level: $(this).val() }, () => {
+		$.post(generateUrl('/settings/admin/log/level'), { level: $(this).val() }, () => {
 			OC.Log.reload()
 		})
-	})
-
-	$('#shareAPIEnabled').change(function() {
-		$('#shareAPI p:not(#enable)').toggleClass('hidden', !this.checked)
-	})
-
-	$('#shareapiExpireAfterNDays').on('input', function() {
-		this.value = this.value.replace(/\D/g, '')
-	})
-
-	$('#shareAPI input:not(.noJSAutoUpdate)').change(function() {
-		let value = $(this).val()
-		if ($(this).attr('type') === 'checkbox') {
-			if (this.checked) {
-				value = 'yes'
-			} else {
-				value = 'no'
-			}
-		}
-		OCP.AppConfig.setValue('core', $(this).attr('name'), value)
-	})
-
-	$('#shareapiDefaultExpireDate').change(function() {
-		$('#setDefaultExpireDate').toggleClass('hidden', !this.checked)
-	})
-
-	$('#shareapiDefaultInternalExpireDate').change(function() {
-		$('#setDefaultInternalExpireDate').toggleClass('hidden', !this.checked)
-	})
-
-	$('#shareapiDefaultRemoteExpireDate').change(function() {
-		$('#setDefaultRemoteExpireDate').toggleClass('hidden', !this.checked)
-	})
-
-	$('#enableLinkPasswordByDefault').change(function() {
-		if (this.checked) {
-			$('#enforceLinkPassword').removeAttr('disabled')
-			$('#passwordsExcludedGroups').removeAttr('disabled')
-		} else {
-			$('#enforceLinkPassword').attr('disabled', '')
-			$('#passwordsExcludedGroups').attr('disabled', '')
-
-			// Uncheck "Enforce password protection" when "Always asks for a
-			// password" is unchecked; the change event needs to be explicitly
-			// triggered so it behaves like a change done by the user.
-			$('#enforceLinkPassword').removeAttr('checked').trigger('change')
-		}
-	})
-
-	$('#enforceLinkPassword').change(function() {
-		$('#selectPasswordsExcludedGroups').toggleClass('hidden', !this.checked)
-	})
-
-	$('#publicShareDisclaimer').change(function() {
-		$('#publicShareDisclaimerText').toggleClass('hidden', !this.checked)
-		if (!this.checked) {
-			savePublicShareDisclaimerText('')
-		}
-	})
-
-	$('#shareApiDefaultPermissionsSection input').change(function(ev) {
-		const $el = $('#shareApiDefaultPermissions')
-		const $target = $(ev.target)
-
-		let value = $el.val()
-		if ($target.is(':checked')) {
-			value = value | $target.val()
-		} else {
-			value = value & ~$target.val()
-		}
-
-		// always set read permission
-		value |= OC.PERMISSION_READ
-
-		// this will trigger the field's change event and will save it
-		$el.val(value).change()
-
-		ev.preventDefault()
-
-		return false
-	})
-
-	const savePublicShareDisclaimerText = _.debounce(function(value) {
-		const options = {
-			success: () => {
-				OC.msg.finishedSuccess('#publicShareDisclaimerStatus', t('settings', 'Saved'))
-			},
-			error: () => {
-				OC.msg.finishedError('#publicShareDisclaimerStatus', t('settings', 'Not saved'))
-			},
-		}
-
-		OC.msg.startSaving('#publicShareDisclaimerStatus')
-		if (_.isString(value) && value !== '') {
-			OCP.AppConfig.setValue('core', 'shareapi_public_link_disclaimertext', value, options)
-		} else {
-			$('#publicShareDisclaimerText').val('')
-			OCP.AppConfig.deleteKey('core', 'shareapi_public_link_disclaimertext', options)
-		}
-	}, 500)
-
-	$('#publicShareDisclaimerText').on('change, keyup', function() {
-		savePublicShareDisclaimerText(this.value)
-	})
-
-	$('#shareapi_allow_share_dialog_user_enumeration').on('change', function() {
-		$('#shareapi_restrict_user_enumeration_to_group_setting').toggleClass('hidden', !this.checked)
-		$('#shareapi_restrict_user_enumeration_to_phone_setting').toggleClass('hidden', !this.checked)
-		$('#shareapi_restrict_user_enumeration_combinewarning_setting').toggleClass('hidden', !this.checked)
-	})
-
-	$('#allowLinks').change(function() {
-		$('#publicLinkSettings').toggleClass('hidden', !this.checked)
-		$('#setDefaultExpireDate').toggleClass('hidden', !(this.checked && $('#shareapiDefaultExpireDate')[0].checked))
 	})
 
 	$('#mail_smtpauth').change(function() {
@@ -163,17 +49,12 @@ window.addEventListener('DOMContentLoaded', () => {
 		}
 
 		OC.msg.startSaving('#mail_settings_msg')
-		$.ajax({
-			url: OC.generateUrl('/settings/admin/mailsettings'),
-			type: 'POST',
-			data: $('#mail_general_settings_form').serialize(),
-			success: () => {
+		axios.post(generateUrl('/settings/admin/mailsettings'), $('#mail_general_settings_form').serialize())
+			.then(() => {
 				OC.msg.finishedSuccess('#mail_settings_msg', t('settings', 'Saved'))
-			},
-			error: (xhr) => {
-				OC.msg.finishedError('#mail_settings_msg', xhr.responseJSON)
-			},
-		})
+			}).catch((error) => {
+				OC.msg.finishedError('#mail_settings_msg', error)
+			})
 	}
 
 	const toggleEmailCredentials = function() {
@@ -183,17 +64,12 @@ window.addEventListener('DOMContentLoaded', () => {
 		}
 
 		OC.msg.startSaving('#mail_settings_msg')
-		$.ajax({
-			url: OC.generateUrl('/settings/admin/mailsettings/credentials'),
-			type: 'POST',
-			data: $('#mail_credentials_settings').serialize(),
-			success: () => {
+		axios.post(generateUrl('/settings/admin/mailsettings/credentials'), $('#mail_credentials_settings').serialize())
+			.then(() => {
 				OC.msg.finishedSuccess('#mail_settings_msg', t('settings', 'Saved'))
-			},
-			error: (xhr) => {
-				OC.msg.finishedError('#mail_settings_msg', xhr.responseJSON)
-			},
-		})
+			}).catch((error) => {
+				OC.msg.finishedError('#mail_settings_msg', error)
+			})
 	}
 
 	$('#mail_general_settings_form').change(changeEmailSettings)
@@ -209,46 +85,22 @@ window.addEventListener('DOMContentLoaded', () => {
 		event.preventDefault()
 		OC.msg.startAction('#sendtestmail_msg', t('settings', 'Sending…'))
 
-		$.ajax({
-			url: OC.generateUrl('/settings/admin/mailtest'),
-			type: 'POST',
-			success: () => {
+		axios.post(generateUrl('/settings/admin/mailtest'))
+			.then(() => {
 				OC.msg.finishedSuccess('#sendtestmail_msg', t('settings', 'Email sent'))
-			},
-			error: (xhr) => {
-				OC.msg.finishedError('#sendtestmail_msg', xhr.responseJSON)
-			},
-		})
-	})
-
-	$('#allowGroupSharing').change(function() {
-		$('#allowGroupSharing').toggleClass('hidden', !this.checked)
-	})
-
-	$('#shareapiExcludeGroups').change(function() {
-		$('#selectExcludedGroups').toggleClass('hidden', !this.checked)
+			}).catch((error) => {
+				OC.msg.finishedError('#sendtestmail_msg', error)
+			})
 	})
 
 	const setupChecks = () => {
 		// run setup checks then gather error messages
 		$.when(
-			OC.SetupChecks.checkWebDAV(),
-			OC.SetupChecks.checkWellKnownUrl('GET', '/.well-known/webfinger', OC.theme.docPlaceholderUrl, $('#postsetupchecks').data('check-wellknown') === true, [200, 404], true),
-			OC.SetupChecks.checkWellKnownUrl('GET', '/.well-known/nodeinfo', OC.theme.docPlaceholderUrl, $('#postsetupchecks').data('check-wellknown') === true, [200, 404], true),
-			OC.SetupChecks.checkWellKnownUrl('PROPFIND', '/.well-known/caldav', OC.theme.docPlaceholderUrl, $('#postsetupchecks').data('check-wellknown') === true),
-			OC.SetupChecks.checkWellKnownUrl('PROPFIND', '/.well-known/carddav', OC.theme.docPlaceholderUrl, $('#postsetupchecks').data('check-wellknown') === true),
-			OC.SetupChecks.checkProviderUrl(OC.getRootPath() + '/ocm-provider/', OC.theme.docPlaceholderUrl, $('#postsetupchecks').data('check-wellknown') === true),
-			OC.SetupChecks.checkProviderUrl(OC.getRootPath() + '/ocs-provider/', OC.theme.docPlaceholderUrl, $('#postsetupchecks').data('check-wellknown') === true),
 			OC.SetupChecks.checkSetup(),
-			OC.SetupChecks.checkGeneric(),
-			OC.SetupChecks.checkWOFF2Loading(OC.filePath('core', '', 'fonts/NotoSans-Regular-latin.woff2'), OC.theme.docPlaceholderUrl),
-			OC.SetupChecks.checkDataProtected()
-		).then((check1, check2, check3, check4, check5, check6, check7, check8, check9, check10, check11) => {
-			const messages = [].concat(check1, check2, check3, check4, check5, check6, check7, check8, check9, check10, check11)
+		).then((messages) => {
 			const $el = $('#postsetupchecks')
 			$('#security-warning-state-loading').addClass('hidden')
 
-			let hasMessages = false
 			const $errorsEl = $el.find('.errors')
 			const $warningsEl = $el.find('.warnings')
 			const $infoEl = $el.find('.info')
@@ -267,33 +119,30 @@ window.addEventListener('DOMContentLoaded', () => {
 				}
 			}
 
+			let hasErrors = false
+			let hasWarnings = false
+
 			if ($errorsEl.find('li').length > 0) {
 				$errorsEl.removeClass('hidden')
-				hasMessages = true
+				hasErrors = true
 			}
 			if ($warningsEl.find('li').length > 0) {
 				$warningsEl.removeClass('hidden')
-				hasMessages = true
+				hasWarnings = true
 			}
 			if ($infoEl.find('li').length > 0) {
 				$infoEl.removeClass('hidden')
-				hasMessages = true
 			}
 
-			if (hasMessages) {
+			if (hasErrors || hasWarnings) {
 				$('#postsetupchecks-hint').removeClass('hidden')
-				if ($errorsEl.find('li').length > 0) {
+				if (hasErrors) {
 					$('#security-warning-state-failure').removeClass('hidden')
 				} else {
 					$('#security-warning-state-warning').removeClass('hidden')
 				}
 			} else {
-				const securityWarning = $('#security-warning')
-				if (securityWarning.children('ul').children().length === 0) {
-					$('#security-warning-state-ok').removeClass('hidden')
-				} else {
-					$('#security-warning-state-failure').removeClass('hidden')
-				}
+				$('#security-warning-state-ok').removeClass('hidden')
 			}
 		})
 	}
@@ -301,6 +150,4 @@ window.addEventListener('DOMContentLoaded', () => {
 	if (document.getElementById('security-warning') !== null) {
 		setupChecks()
 	}
-
-	$('#shareAPI').removeClass('loading')
 })

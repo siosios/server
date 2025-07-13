@@ -1,29 +1,13 @@
 <!--
-  - @copyright 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
-  -
-  - @author 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
-  -
-  - @license GNU AGPL version 3 or any later version
-  -
-  - This program is free software: you can redistribute it and/or modify
-  - it under the terms of the GNU Affero General Public License as
-  - published by the Free Software Foundation, either version 3 of the
-  - License, or (at your option) any later version.
-  -
-  - This program is distributed in the hope that it will be useful,
-  - but WITHOUT ANY WARRANTY; without even the implied warranty of
-  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  - GNU Affero General Public License for more details.
-  -
-  - You should have received a copy of the GNU Affero General Public License
-  - along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  -->
+  - SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 
 <template>
 	<div class="guest-box login-box">
 		<template v-if="!hideLoginForm || directLogin">
 			<transition name="fade" mode="out-in">
-				<div v-if="!passwordlessLogin && !resetPassword && resetPasswordTarget === ''">
+				<div v-if="!passwordlessLogin && !resetPassword && resetPasswordTarget === ''" class="login-box__wrapper">
 					<LoginForm :username.sync="user"
 						:redirect-url="redirectUrl"
 						:direct-login="directLogin"
@@ -31,47 +15,37 @@
 						:errors="errors"
 						:throttle-delay="throttleDelay"
 						:auto-complete-allowed="autoCompleteAllowed"
+						:email-states="emailStates"
 						@submit="loading = true" />
-					<a v-if="canResetPassword && resetPasswordLink !== ''"
+					<NcButton v-if="hasPasswordless"
+						type="tertiary"
+						wide
+						@click.prevent="passwordlessLogin = true">
+						{{ t('core', 'Log in with a device') }}
+					</NcButton>
+					<NcButton v-if="canResetPassword && resetPasswordLink !== ''"
 						id="lost-password"
-						class="login-box__link"
-						:href="resetPasswordLink">
-						{{ t('core', 'Forgot password?') }}
-					</a>
-					<a v-else-if="canResetPassword && !resetPassword"
-						id="lost-password"
-						class="login-box__link"
 						:href="resetPasswordLink"
+						type="tertiary-no-background"
+						wide>
+						{{ t('core', 'Forgot password?') }}
+					</NcButton>
+					<NcButton v-else-if="canResetPassword && !resetPassword"
+						id="lost-password"
+						type="tertiary"
+						wide
 						@click.prevent="resetPassword = true">
 						{{ t('core', 'Forgot password?') }}
-					</a>
-					<template v-if="hasPasswordless">
-						<div v-if="countAlternativeLogins"
-							class="alternative-logins">
-							<a v-if="hasPasswordless"
-								class="button"
-								:class="{ 'single-alt-login-option': countAlternativeLogins }"
-								href="#"
-								@click.prevent="passwordlessLogin = true">
-								{{ t('core', 'Log in with a device') }}
-							</a>
-						</div>
-						<a v-else
-							href="#"
-							@click.prevent="passwordlessLogin = true">
-							{{ t('core', 'Log in with a device') }}
-						</a>
-					</template>
+					</NcButton>
 				</div>
 				<div v-else-if="!loading && passwordlessLogin"
-					key="reset"
-					class="login-additional login-passwordless">
+					key="reset-pw-less"
+					class="login-additional login-box__wrapper">
 					<PasswordLessLoginForm :username.sync="user"
 						:redirect-url="redirectUrl"
 						:auto-complete-allowed="autoCompleteAllowed"
 						:is-https="isHttps"
 						:is-localhost="isLocalhost"
-						:has-public-key-credential="hasPublicKeyCredential"
 						@submit="loading = true" />
 					<NcButton type="tertiary"
 						:aria-label="t('core', 'Back to login form')"
@@ -81,7 +55,7 @@
 					</NcButton>
 				</div>
 				<div v-else-if="!loading && canResetPassword"
-					key="reset"
+					key="reset-can-reset"
 					class="login-additional">
 					<div class="lost-password-container">
 						<ResetPassword v-if="resetPassword"
@@ -99,13 +73,13 @@
 		</template>
 		<template v-else>
 			<transition name="fade" mode="out-in">
-				<NcNoteCard type="warning" :title="t('core', 'Login form is disabled.')">
-					{{ t('core', 'Please contact your administrator.') }}
+				<NcNoteCard type="info" :title="t('core', 'Login form is disabled.')">
+					{{ t('core', 'The Nextcloud login form is disabled. Use another login option if available or contact your administration.') }}
 				</NcNoteCard>
 			</transition>
 		</template>
 
-		<div id="alternative-logins" class="alternative-logins">
+		<div id="alternative-logins" class="login-box__alternative-logins">
 			<NcButton v-for="(alternativeLogin, index) in alternativeLogins"
 				:key="index"
 				type="secondary"
@@ -121,24 +95,21 @@
 
 <script>
 import { loadState } from '@nextcloud/initial-state'
+import { generateUrl } from '@nextcloud/router'
+
 import queryString from 'query-string'
 
 import LoginForm from '../components/login/LoginForm.vue'
 import PasswordLessLoginForm from '../components/login/PasswordLessLoginForm.vue'
 import ResetPassword from '../components/login/ResetPassword.vue'
 import UpdatePassword from '../components/login/UpdatePassword.vue'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import { wipeBrowserStorages } from '../utils/xhr-request.js'
 
 const query = queryString.parse(location.search)
 if (query.clear === '1') {
-	try {
-		window.localStorage.clear()
-		window.sessionStorage.clear()
-		console.debug('Browser storage cleared')
-	} catch (e) {
-		console.error('Could not clear browser storage', e)
-	}
+	wipeBrowserStorages()
 }
 
 export default {
@@ -176,86 +147,43 @@ export default {
 			alternativeLogins: loadState('core', 'alternativeLogins', []),
 			isHttps: window.location.protocol === 'https:',
 			isLocalhost: window.location.hostname === 'localhost',
-			hasPublicKeyCredential: typeof (window.PublicKeyCredential) !== 'undefined',
 			hideLoginForm: loadState('core', 'hideLoginForm', false),
+			emailStates: loadState('core', 'emailStates', []),
 		}
 	},
 
 	methods: {
 		passwordResetFinished() {
-			this.resetPasswordTarget = ''
-			this.directLogin = true
+			window.location.href = generateUrl('login')
 		},
 	},
 }
 </script>
 
-<style lang="scss">
-body {
-	font-size: var(--default-font-size);
-}
-
+<style scoped lang="scss">
 .login-box {
 	// Same size as dashboard panels
 	width: 320px;
 	box-sizing: border-box;
 
-	&__link {
-		display: block;
-		padding: 1rem;
-		font-size: var(--default-font-size);
-		text-align: center;
-		font-weight: normal !important;
+	&__wrapper {
+		display: flex;
+		flex-direction: column;
+		gap: calc(2 * var(--default-grid-baseline));
 	}
-}
 
-// Same look like a dashboard panel
-.login-box.guest-box, footer {
-	color: var(--color-main-text);
-	background-color: var(--color-main-background-blur);
-	-webkit-backdrop-filter: var(--filter-background-blur);
-	backdrop-filter: var(--filter-background-blur);
-}
-
-footer {
-	// Usually the same size as the login box, but allow longer texts
-	min-width: 320px;
-	box-sizing: border-box;
-	// align with login box
-	box-shadow: 0 0 10px var(--color-box-shadow);
-	// set border to pill style and adjust padding for it
-	border-radius: var(--border-radius-pill);
-	padding: 6px 24px;
-	// always show above bottom
-	margin-bottom: 1rem;
-	min-height: unset;
-
-	// reset margin to reduce height of pill
-	p.info {
-		margin: auto 0px;
+	&__alternative-logins {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
 	}
 }
 
 .fade-enter-active, .fade-leave-active {
 	transition: opacity .3s;
 }
+
 .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
 	opacity: 0;
-}
-
-.alternative-logins {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-
-	.button-vue {
-		box-sizing: border-box;
-	}
-}
-
-.login-passwordless {
-	.button-vue {
-		margin-top: 0.5rem;
-	}
 }
 </style>

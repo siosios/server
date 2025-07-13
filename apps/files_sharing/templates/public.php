@@ -1,8 +1,14 @@
 <?php
+
+/**
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2012-2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 /** @var \OCP\IL10N $l */
 /** @var array $_ */
 ?>
-<div id="app-content" tabindex="0">
+<div id="app-content">
 <?php if ($_['previewSupported']): /* This enables preview images for links (e.g. on Facebook, Google+, ...)*/?>
 	<link rel="image_src" href="<?php p($_['previewImage']); ?>" />
 <?php endif; ?>
@@ -18,12 +24,13 @@
 <input type="hidden" name="filename" value="<?php p($_['filename']) ?>" id="filename">
 <input type="hidden" name="mimetype" value="<?php p($_['mimetype']) ?>" id="mimetype">
 <input type="hidden" name="previewSupported" value="<?php p($_['previewSupported'] ? 'true' : 'false'); ?>" id="previewSupported">
-<input type="hidden" name="mimetypeIcon" value="<?php p(\OC::$server->getMimeTypeDetector()->mimeTypeIcon($_['mimetype'])); ?>" id="mimetypeIcon">
+<input type="hidden" name="mimetypeIcon" value="<?php p(\OCP\Server::get(\OCP\Files\IMimeTypeDetector::class)->mimeTypeIcon($_['mimetype'])); ?>" id="mimetypeIcon">
 <input type="hidden" name="hideDownload" value="<?php p($_['hideDownload'] ? 'true' : 'false'); ?>" id="hideDownload">
 <input type="hidden" id="disclaimerText" value="<?php p($_['disclaimer']) ?>">
+
 <?php
-$upload_max_filesize = OC::$server->get(\bantu\IniGetWrapper\IniGetWrapper::class)->getBytes('upload_max_filesize');
-$post_max_size = OC::$server->get(\bantu\IniGetWrapper\IniGetWrapper::class)->getBytes('post_max_size');
+$upload_max_filesize = \OCP\Server::get(\bantu\IniGetWrapper\IniGetWrapper::class)->getBytes('upload_max_filesize');
+$post_max_size = \OCP\Server::get(\bantu\IniGetWrapper\IniGetWrapper::class)->getBytes('post_max_size');
 $maxUploadFilesize = min($upload_max_filesize, $post_max_size);
 ?>
 <input type="hidden" name="maxFilesizeUpload" value="<?php p($maxUploadFilesize); ?>" id="maxFilesizeUpload">
@@ -96,11 +103,11 @@ $maxUploadFilesize = min($upload_max_filesize, $post_max_size);
 				class="emptycontent <?php if (!empty($_['note'])) { ?>has-note<?php } ?>">
 			<?php if ($_['shareOwner']) { ?>
 				<div id="displayavatar"><div class="avatardiv"></div></div>
-				<h2><?php p($l->t('Upload files to %s', [$_['shareOwner']])) ?></h2>
-				<p><span class="icon-folder"></span> <?php p($_['filename']) ?></p>
+				<h2><?php p($l->t('Upload files to %s', [$_['label'] ?: $_['filename']])) ?></h2>
+				<p><?php p($l->t('%s shared a folder with you.', [$_['shareOwner']])) ?></p>
 			<?php } else { ?>
 				<div id="displayavatar"><span class="icon-folder"></span></div>
-				<h2><?php p($l->t('Upload files to %s', [$_['filename']])) ?></h2>
+				<h2><?php p($l->t('Upload files to %s', [$_['label'] ?: $_['filename']])) ?></h2>
 			<?php } ?>
 
 			<?php if (empty($_['note']) === false) { ?>
@@ -120,7 +127,7 @@ $maxUploadFilesize = min($upload_max_filesize, $post_max_size);
 						echo $l->t('By uploading files, you agree to the %1$sterms of service%2$s.', [
 							'<span id="show-terms-dialog">', '</span>'
 						]);
-					?>
+				?>
 				</div>
 			<?php } ?>
 		</div>
@@ -130,7 +137,7 @@ $maxUploadFilesize = min($upload_max_filesize, $post_max_size);
 <?php if (!isset($_['hideFileList']) || (isset($_['hideFileList']) && $_['hideFileList'] !== true)): ?>
 	<div class="hiddenuploadfield">
 		<input type="file" id="file_upload_start" class="hiddenuploadfield" name="files[]"
-			   data-url="<?php p(\OC::$server->getURLGenerator()->linkTo('files', 'ajax/upload.php')); ?>" />
+			   data-url="<?php p(\OCP\Server::get(\OCP\IURLGenerator::class)->linkTo('files', 'ajax/upload.php')); ?>" />
 	</div>
 <?php endif; ?>
 </div>

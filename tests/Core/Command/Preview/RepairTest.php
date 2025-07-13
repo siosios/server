@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * SPDX-FileCopyrightText: 2020 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 namespace Tests\Core\Command\Preview;
 
 use bantu\IniGetWrapper\IniGetWrapper;
@@ -10,11 +14,12 @@ use OCP\Files\Node;
 use OCP\IConfig;
 use OCP\Lock\ILockingProvider;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Test\TestCase;
-use Psr\Log\LoggerInterface;
 
 class RepairTest extends TestCase {
 	/** @var IConfig|MockObject */
@@ -51,8 +56,7 @@ class RepairTest extends TestCase {
 			$this->iniGetWrapper,
 			$this->createMock(ILockingProvider::class)
 		);
-		$this->input = $this->getMockBuilder(InputInterface::class)
-			->getMock();
+		$this->input = $this->createMock(InputInterface::class);
 		$this->input->expects($this->any())
 			->method('getOption')
 			->willReturnCallback(function ($parameter) {
@@ -61,13 +65,10 @@ class RepairTest extends TestCase {
 				}
 				return null;
 			});
-		$this->output = $this->getMockBuilder(OutputInterface::class)
-			->setMethods(['section', 'writeln', 'write', 'setVerbosity', 'getVerbosity', 'isQuiet', 'isVerbose', 'isVeryVerbose', 'isDebug', 'setDecorated', 'isDecorated', 'setFormatter', 'getFormatter'])
+		$this->output = $this->getMockBuilder(ConsoleOutput::class)
+			->onlyMethods(['section', 'writeln', 'getFormatter'])
 			->getMock();
 		$self = $this;
-		$this->output->expects($this->any())
-			->method('section')
-			->willReturn($this->output);
 
 		/* We need format method to return a string */
 		$outputFormatter = $this->createMock(OutputFormatterInterface::class);
@@ -79,12 +80,12 @@ class RepairTest extends TestCase {
 			->willReturn($outputFormatter);
 		$this->output->expects($this->any())
 			->method('writeln')
-			->willReturnCallback(function ($line) use ($self) {
+			->willReturnCallback(function ($line) use ($self): void {
 				$self->outputLines .= $line . "\n";
 			});
 	}
 
-	public function emptyTestDataProvider() {
+	public static function dataEmptyTest(): array {
 		/** directoryNames, expectedOutput */
 		return [
 			[
@@ -110,10 +111,8 @@ class RepairTest extends TestCase {
 		];
 	}
 
-	/**
-	 * @dataProvider emptyTestDataProvider
-	 */
-	public function testEmptyExecute($directoryNames, $expectedOutput) {
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataEmptyTest')]
+	public function testEmptyExecute($directoryNames, $expectedOutput): void {
 		$previewFolder = $this->getMockBuilder(Folder::class)
 			->getMock();
 		$directories = array_map(function ($element) {
@@ -142,9 +141,9 @@ class RepairTest extends TestCase {
 		$previewFolder->expects($this->once())
 			->method('getDirectoryListing')
 			->willReturn($directories);
-		$this->rootFolder->expects($this->at(0))
+		$this->rootFolder->expects($this->once())
 			->method('get')
-			->with("appdata_/preview")
+			->with('appdata_/preview')
 			->willReturn($previewFolder);
 
 		$this->repair->run($this->input, $this->output);

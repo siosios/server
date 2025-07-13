@@ -1,46 +1,44 @@
 <!--
-  - @copyright Copyright (c) 2019 John Molakvoæ <skjnldsv@protonmail.com>
-  -
-  - @author John Molakvoæ <skjnldsv@protonmail.com>
-  -
-  - @license GNU AGPL version 3 or any later version
-  -
-  - This program is free software: you can redistribute it and/or modify
-  - it under the terms of the GNU Affero General Public License as
-  - published by the Free Software Foundation, either version 3 of the
-  - License, or (at your option) any later version.
-  -
-  - This program is distributed in the hope that it will be useful,
-  - but WITHOUT ANY WARRANTY; without even the implied warranty of
-  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  - GNU Affero General Public License for more details.
-  -
-  - You should have received a copy of the GNU Affero General Public License
-  - along with this program. If not, see <http://www.gnu.org/licenses/>.
-  -
-  -->
+  - SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 
 <template>
 	<NcAppSidebar v-if="file"
 		ref="sidebar"
+		data-cy-sidebar
 		v-bind="appSidebar"
 		:force-menu="true"
-		tabindex="0"
 		@close="close"
 		@update:active="setActiveTab"
-		@update:starred="toggleStarred"
 		@[defaultActionListener].stop.prevent="onDefaultAction"
 		@opening="handleOpening"
 		@opened="handleOpened"
 		@closing="handleClosing"
 		@closed="handleClosed">
+		<template v-if="fileInfo" #subname>
+			<div class="sidebar__subname">
+				<NcIconSvgWrapper v-if="fileInfo.isFavourited"
+					:path="mdiStar"
+					:name="t('files', 'Favorite')"
+					inline />
+				<span>{{ size }}</span>
+				<span class="sidebar__subname-separator">•</span>
+				<NcDateTime :timestamp="fileInfo.mtime" />
+				<span class="sidebar__subname-separator">•</span>
+				<span>{{ t('files', 'Owner') }}</span>
+				<NcUserBubble :user="ownerId"
+					:display-name="nodeOwnerLabel" />
+			</div>
+		</template>
+
 		<!-- TODO: create a standard to allow multiple elements here? -->
 		<template v-if="fileInfo" #description>
 			<div class="sidebar__description">
-				<SystemTags v-if="isSystemTagsEnabled"
+				<SystemTags v-if="isSystemTagsEnabled && showTagsDefault"
 					v-show="showTags"
-					:file-id="fileInfo.id"
-					@has-tags="value => showTags = value" />
+					:disabled="!fileInfo?.canEdit()"
+					:file-id="fileInfo.id" />
 				<LegacyView v-for="view in views"
 					:key="view.cid"
 					:component="view"
@@ -50,6 +48,13 @@
 
 		<!-- Actions menu -->
 		<template v-if="fileInfo" #secondary-actions>
+			<NcActionButton :close-after-click="true"
+				@click="toggleStarred(!fileInfo.isFavourited)">
+				<template #icon>
+					<NcIconSvgWrapper :path="fileInfo.isFavourited ? mdiStarOutline : mdiStar" />
+				</template>
+				{{ fileInfo.isFavourited ? t('files', 'Remove from favorites') : t('files', 'Add to favorites') }}
+			</NcActionButton>
 			<!-- TODO: create proper api for apps to register actions
 			And inject themselves here. -->
 			<NcActionButton v-if="isSystemTagsEnabled"
@@ -87,33 +92,59 @@
 		</template>
 	</NcAppSidebar>
 </template>
-<script>
+<script lang="ts">
+import { davRemoteURL, davRootPath, File, Folder, formatFileSize } from '@nextcloud/files'
+import { defineComponent } from 'vue'
+import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { encodePath } from '@nextcloud/paths'
+import { fetchNode } from '../services/WebdavClient.ts'
+import { generateUrl } from '@nextcloud/router'
+import { getCapabilities } from '@nextcloud/capabilities'
+import { getCurrentUser } from '@nextcloud/auth'
+import { mdiStar, mdiStarOutline } from '@mdi/js'
+import { ShareType } from '@nextcloud/sharing'
+import { showError } from '@nextcloud/dialogs'
 import $ from 'jquery'
 import axios from '@nextcloud/axios'
-import { emit } from '@nextcloud/event-bus'
-import moment from '@nextcloud/moment'
-import { Type as ShareTypes } from '@nextcloud/sharing'
 
-import NcAppSidebar from '@nextcloud/vue/dist/Components/NcAppSidebar.js'
-import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
-import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
+import NcAppSidebar from '@nextcloud/vue/components/NcAppSidebar'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcDateTime from '@nextcloud/vue/components/NcDateTime'
+import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
+import NcUserBubble from '@nextcloud/vue/components/NcUserBubble'
 
 import FileInfo from '../services/FileInfo.js'
-import SidebarTab from '../components/SidebarTab.vue'
 import LegacyView from '../components/LegacyView.vue'
+import SidebarTab from '../components/SidebarTab.vue'
 import SystemTags from '../../../systemtags/src/components/SystemTags.vue'
+import logger from '../logger.ts'
 
-export default {
+export default defineComponent({
 	name: 'Sidebar',
 
 	components: {
 		LegacyView,
 		NcActionButton,
 		NcAppSidebar,
+		NcDateTime,
 		NcEmptyContent,
+		NcIconSvgWrapper,
 		SidebarTab,
 		SystemTags,
+		NcUserBubble,
+	},
+
+	setup() {
+		const currentUser = getCurrentUser()
+
+		// Non reactive properties
+		return {
+			currentUser,
+
+			mdiStar,
+			mdiStarOutline,
+		}
 	},
 
 	data() {
@@ -121,10 +152,11 @@ export default {
 			// reactive state
 			Sidebar: OCA.Files.Sidebar.state,
 			showTags: false,
+			showTagsDefault: true,
 			error: null,
 			loading: true,
 			fileInfo: null,
-			starLoading: false,
+			node: null,
 			isFullScreen: false,
 			hasLowHeight: false,
 		}
@@ -166,45 +198,16 @@ export default {
 		 * @return {string}
 		 */
 		davPath() {
-			const user = OC.getCurrentUser().uid
-			return OC.linkToRemote(`dav/files/${user}${encodePath(this.file)}`)
+			return `${davRemoteURL}${davRootPath}${encodePath(this.file)}`
 		},
 
 		/**
 		 * Current active tab handler
 		 *
-		 * @param {string} id the tab id to set as active
 		 * @return {string} the current active tab
 		 */
 		activeTab() {
 			return this.Sidebar.activeTab
-		},
-
-		/**
-		 * Sidebar subtitle
-		 *
-		 * @return {string}
-		 */
-		subtitle() {
-			return `${this.size}, ${this.time}`
-		},
-
-		/**
-		 * File last modified formatted string
-		 *
-		 * @return {string}
-		 */
-		time() {
-			return OC.Util.relativeModifiedDate(this.fileInfo.mtime)
-		},
-
-		/**
-		 * File last modified full string
-		 *
-		 * @return {string}
-		 */
-		fullTime() {
-			return moment(this.fileInfo.mtime).format('LLL')
 		},
 
 		/**
@@ -213,7 +216,7 @@ export default {
 		 * @return {string}
 		 */
 		size() {
-			return OC.Util.humanFileSize(this.fileInfo.size)
+			return formatFileSize(this.fileInfo?.size)
 		},
 
 		/**
@@ -234,7 +237,6 @@ export default {
 			if (this.fileInfo) {
 				return {
 					'data-mimetype': this.fileInfo.mimetype,
-					'star-loading': this.starLoading,
 					active: this.activeTab,
 					background: this.background,
 					class: {
@@ -243,24 +245,27 @@ export default {
 					},
 					compact: this.hasLowHeight || !this.fileInfo.hasPreview || this.isFullScreen,
 					loading: this.loading,
-					starred: this.fileInfo.isFavourited,
-					subtitle: this.subtitle,
-					subtitleTooltip: this.fullTime,
-					title: this.fileInfo.name,
-					titleTooltip: this.fileInfo.name,
+					name: this.node?.displayname ?? this.fileInfo.name,
+					title: this.node?.displayname ?? this.fileInfo.name,
 				}
 			} else if (this.error) {
 				return {
 					key: 'error', // force key to re-render
-					subtitle: '',
-					title: '',
+					subname: '',
+					name: '',
+					class: {
+						'app-sidebar--full': this.isFullScreen,
+					},
 				}
 			}
 			// no fileInfo yet, showing empty data
 			return {
 				loading: this.loading,
-				subtitle: '',
-				title: '',
+				subname: '',
+				name: '',
+				class: {
+					'app-sidebar--full': this.isFullScreen,
+				},
 			}
 		},
 
@@ -291,14 +296,36 @@ export default {
 		},
 
 		isSystemTagsEnabled() {
-			return OCA && 'SystemTags' in OCA
+			return getCapabilities()?.systemtags?.enabled === true
+		},
+		ownerId() {
+			return this.node?.attributes?.['owner-id'] ?? this.currentUser.uid
+		},
+		currentUserIsOwner() {
+			return this.ownerId === this.currentUser.uid
+		},
+		nodeOwnerLabel() {
+			let ownerDisplayName = this.node?.attributes?.['owner-display-name']
+			if (this.currentUserIsOwner) {
+				ownerDisplayName = `${ownerDisplayName} (${t('files', 'You')})`
+			}
+			return ownerDisplayName
+		},
+		sharedMultipleTimes() {
+			if (Array.isArray(node.attributes?.['share-types']) && node.attributes?.['share-types'].length > 1) {
+				return t('files', 'Shared multiple times with different people')
+			}
+			return null
 		},
 	},
 	created() {
+		subscribe('files:node:deleted', this.onNodeDeleted)
+
 		window.addEventListener('resize', this.handleWindowResize)
 		this.handleWindowResize()
 	},
 	beforeDestroy() {
+		unsubscribe('file:node:deleted', this.onNodeDeleted)
 		window.removeEventListener('resize', this.handleWindowResize)
 	},
 
@@ -323,8 +350,9 @@ export default {
 		},
 
 		getPreviewIfAny(fileInfo) {
-			if (fileInfo.hasPreview && !this.isFullScreen) {
-				return OC.generateUrl(`/core/preview?fileId=${fileInfo.id}&x=${screen.width}&y=${screen.height}&a=true`)
+			if (fileInfo?.hasPreview && !this.isFullScreen) {
+				const etag = fileInfo?.etag || ''
+				return generateUrl(`/core/preview?fileId=${fileInfo.id}&x=${screen.width}&y=${screen.height}&a=true&v=${etag.slice(0, 6)}`)
 			}
 			return this.getIconUrl(fileInfo)
 		},
@@ -337,7 +365,7 @@ export default {
 		 * @return {string} Url to the icon for mimeType
 		 */
 		getIconUrl(fileInfo) {
-			const mimeType = fileInfo.mimetype || 'application/octet-stream'
+			const mimeType = fileInfo?.mimetype || 'application/octet-stream'
 			if (mimeType === 'httpd/unix-directory') {
 				// use default folder icon
 				if (fileInfo.mountType === 'shared' || fileInfo.mountType === 'shared-root') {
@@ -347,8 +375,8 @@ export default {
 				} else if (fileInfo.mountType !== undefined && fileInfo.mountType !== '') {
 					return OC.MimeType.getIconUrl('dir-' + fileInfo.mountType)
 				} else if (fileInfo.shareTypes && (
-					fileInfo.shareTypes.indexOf(ShareTypes.SHARE_TYPE_LINK) > -1
-					|| fileInfo.shareTypes.indexOf(ShareTypes.SHARE_TYPE_EMAIL) > -1)
+					fileInfo.shareTypes.indexOf(ShareType.Link) > -1
+					|| fileInfo.shareTypes.indexOf(ShareType.Email) > -1)
 				) {
 					return OC.MimeType.getIconUrl('dir-public')
 				} else if (fileInfo.shareTypes && fileInfo.shareTypes.length > 0) {
@@ -366,17 +394,23 @@ export default {
 		 */
 		setActiveTab(id) {
 			OCA.Files.Sidebar.setActiveTab(id)
+			this.tabs.forEach(tab => {
+				try {
+					tab.setIsActive(id === tab.id)
+				} catch (error) {
+					logger.error('Error while setting tab active state', { error, id: tab.id, tab })
+				}
+			})
 		},
 
 		/**
-		 * Toggle favourite state
+		 * Toggle favorite state
 		 * TODO: better implementation
 		 *
-		 * @param {boolean} state favourited or not
+		 * @param {boolean} state is favorite or not
 		 */
 		async toggleStarred(state) {
 			try {
-				this.starLoading = true
 				await axios({
 					method: 'PROPPATCH',
 					url: this.davPath,
@@ -390,17 +424,28 @@ export default {
 						</d:propertyupdate>`,
 				})
 
-				// TODO: Obliterate as soon as possible and use events with new files app
-				// Terrible fallback for legacy files: toggle filelist as well
-				if (OCA.Files && OCA.Files.App && OCA.Files.App.fileList && OCA.Files.App.fileList.fileActions) {
-					OCA.Files.App.fileList.fileActions.triggerAction('Favorite', OCA.Files.App.fileList.getModelForFile(this.fileInfo.name), OCA.Files.App.fileList)
-				}
+				/**
+				 * TODO: adjust this when the Sidebar is finally using File/Folder classes
+				 * @see https://github.com/nextcloud/server/blob/8a75cb6e72acd42712ab9fea22296aa1af863ef5/apps/files/src/views/favorites.ts#L83-L115
+				 */
+				const isDir = this.fileInfo.type === 'dir'
+				const Node = isDir ? Folder : File
+				const node = new Node({
+					fileid: this.fileInfo.id,
+					source: `${davRemoteURL}${davRootPath}${this.file}`,
+					root: davRootPath,
+					mime: isDir ? undefined : this.fileInfo.mimetype,
+					attributes: {
+						favorite: 1,
+					},
+				})
+				emit(state ? 'files:favorites:added' : 'files:favorites:removed', node)
 
+				this.fileInfo.isFavourited = state
 			} catch (error) {
-				OC.Notification.showTemporary(t('files', 'Unable to change the favourite state of the file'))
-				console.error('Unable to change favourite state', error)
+				showError(t('files', 'Unable to change the favorite state of the file'))
+				logger.error('Unable to change favorite state', { error })
 			}
-			this.starLoading = false
 		},
 
 		onDefaultAction() {
@@ -419,7 +464,10 @@ export default {
 		 * Toggle the tags selector
 		 */
 		toggleTags() {
+			// toggle
 			this.showTags = !this.showTags
+			// save the new state
+			this.setShowTagsDefault(this.showTags)
 		},
 
 		/**
@@ -430,38 +478,50 @@ export default {
 		 * @throws {Error} loading failure
 		 */
 		async open(path) {
+			if (!path || path.trim() === '') {
+				throw new Error(`Invalid path '${path}'`)
+			}
+
+			// Only focus the tab when the selected file/tab is changed in already opened sidebar
+			// Focusing the sidebar on first file open is handled by NcAppSidebar
+			const focusTabAfterLoad = !!this.Sidebar.file
+
 			// update current opened file
 			this.Sidebar.file = path
 
-			if (path && path.trim() !== '') {
-				// reset data, keep old fileInfo to not reload all tabs and just hide them
-				this.error = null
-				this.loading = true
+			// reset data, keep old fileInfo to not reload all tabs and just hide them
+			this.error = null
+			this.loading = true
 
-				try {
-					this.fileInfo = await FileInfo(this.davPath)
-					// adding this as fallback because other apps expect it
-					this.fileInfo.dir = this.file.split('/').slice(0, -1).join('/')
+			try {
+				this.node = await fetchNode(this.file)
+				this.fileInfo = FileInfo(this.node)
+				// adding this as fallback because other apps expect it
+				this.fileInfo.dir = this.file.split('/').slice(0, -1).join('/')
 
-					// DEPRECATED legacy views
-					// TODO: remove
-					this.views.forEach(view => {
-						view.setFileInfo(this.fileInfo)
-					})
+				// DEPRECATED legacy views
+				// TODO: remove
+				this.views.forEach(view => {
+					view.setFileInfo(this.fileInfo)
+				})
 
-					this.$nextTick(() => {
-						if (this.$refs.tabs) {
-							this.$refs.tabs.updateTabs()
-						}
-					})
-				} catch (error) {
-					this.error = t('files', 'Error while loading the file data')
-					console.error('Error while loading the file data', error)
+				await this.$nextTick()
 
-					throw new Error(error)
-				} finally {
-					this.loading = false
+				this.setActiveTab(this.Sidebar.activeTab || this.tabs[0].id)
+
+				this.loading = false
+
+				await this.$nextTick()
+
+				if (focusTabAfterLoad && this.$refs.sidebar) {
+					this.$refs.sidebar.focusActiveTabContent()
 				}
+			} catch (error) {
+				this.loading = false
+				this.error = t('files', 'Error while loading the file data')
+				console.error('Error while loading the file data', error)
+
+				throw new Error(error)
 			}
 		},
 
@@ -472,6 +532,16 @@ export default {
 			this.Sidebar.file = ''
 			this.showTags = false
 			this.resetData()
+		},
+
+		/**
+		 * Handle if the current node was deleted
+		 * @param {import('@nextcloud/files').Node} node The deleted node
+		 */
+		onNodeDeleted(node) {
+			if (this.fileInfo && node && this.fileInfo.id === node.fileid) {
+				this.close()
+			}
 		},
 
 		/**
@@ -488,6 +558,15 @@ export default {
 				document.querySelector('#content')?.classList.remove('with-sidebar--full')
 					|| document.querySelector('#content-vue')?.classList.remove('with-sidebar--full')
 			}
+		},
+
+		/**
+		 * Allow to set whether tags should be shown by default from OCA.Files.Sidebar
+		 *
+		 * @param {boolean} showTagsDefault - Whether or not to show the tags by default.
+		 */
+		setShowTagsDefault(showTagsDefault) {
+			this.showTagsDefault = showTagsDefault
 		},
 
 		/**
@@ -509,7 +588,7 @@ export default {
 			this.hasLowHeight = document.documentElement.clientHeight < 1024
 		},
 	},
-}
+})
 </script>
 <style lang="scss" scoped>
 .app-sidebar {
@@ -540,7 +619,7 @@ export default {
 	}
 
 	.svg-icon {
-		::v-deep svg {
+		:deep(svg) {
 			width: 20px;
 			height: 20px;
 			fill: currentColor;
@@ -548,10 +627,25 @@ export default {
 	}
 }
 
-.sidebar__description {
-	display: flex;
-	flex-direction: column;
-	width: 100%;
-	gap: 8px 0;
+.sidebar__subname {
+  display: flex;
+  align-items: center;
+  gap: 0 8px;
+
+  &-separator {
+    display: inline-block;
+    font-weight: bold !important;
+  }
+
+  .user-bubble__wrapper {
+	display: inline-flex;
+  }
 }
+
+.sidebar__description {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		gap: 8px 0;
+	}
 </style>

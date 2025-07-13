@@ -3,31 +3,11 @@
 declare(strict_types=1);
 
 /**
- * @copyright 2018, Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @author Morris Jobke <hey@morrisjobke.de>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2018 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-namespace OCA\DAV\Tests\Unit\Direct;
+namespace OCA\DAV\Tests\unit\Direct;
 
-use OC\Security\Bruteforce\Throttler;
 use OCA\DAV\Db\Direct;
 use OCA\DAV\Db\DirectMapper;
 use OCA\DAV\Direct\DirectFile;
@@ -37,33 +17,21 @@ use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
+use OCP\Security\Bruteforce\IThrottler;
+use PHPUnit\Framework\MockObject\MockObject;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\Exception\MethodNotAllowed;
 use Sabre\DAV\Exception\NotFound;
 use Test\TestCase;
 
 class DirectHomeTest extends TestCase {
-
-	/** @var DirectMapper|\PHPUnit\Framework\MockObject\MockObject */
-	private $directMapper;
-
-	/** @var IRootFolder|\PHPUnit\Framework\MockObject\MockObject */
-	private $rootFolder;
-
-	/** @var ITimeFactory|\PHPUnit\Framework\MockObject\MockObject */
-	private $timeFactory;
-
-	/** @var Throttler|\PHPUnit\Framework\MockObject\MockObject */
-	private $throttler;
-
-	/** @var IRequest */
-	private $request;
-
-	/** @var DirectHome */
-	private $directHome;
-
-	/** @var IEventDispatcher */
-	private $eventDispatcher;
+	private DirectMapper&MockObject $directMapper;
+	private IRootFolder&MockObject $rootFolder;
+	private ITimeFactory&MockObject $timeFactory;
+	private IThrottler&MockObject $throttler;
+	private IRequest&MockObject $request;
+	private IEventDispatcher&MockObject $eventDispatcher;
+	private DirectHome $directHome;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -71,7 +39,7 @@ class DirectHomeTest extends TestCase {
 		$this->directMapper = $this->createMock(DirectMapper::class);
 		$this->rootFolder = $this->createMock(IRootFolder::class);
 		$this->timeFactory = $this->createMock(ITimeFactory::class);
-		$this->throttler = $this->createMock(Throttler::class);
+		$this->throttler = $this->createMock(IThrottler::class);
 		$this->request = $this->createMock(IRequest::class);
 		$this->eventDispatcher = $this->createMock(IEventDispatcher::class);
 
@@ -179,7 +147,7 @@ class DirectHomeTest extends TestCase {
 				'1.2.3.4'
 			);
 		$this->throttler->expects($this->once())
-			->method('sleepDelay')
+			->method('sleepDelayOrThrowOnMax')
 			->with(
 				'1.2.3.4',
 				'directlink'

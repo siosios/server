@@ -3,55 +3,40 @@
 declare(strict_types=1);
 
 /**
- * @copyright 2018, Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @author Christoph Wurst <christoph@winzerhof-wurst.at>
- * @author Robin Appelman <robin@icewind.nl>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2018 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 namespace OCA\Files_Trashbin\Sabre;
 
+use OC\Files\FileInfo;
+use OC\Files\View;
+use OCA\DAV\Connector\Sabre\FilesPlugin;
+use OCA\Files_Trashbin\Trash\ITrashItem;
 use OCP\IPreview;
+use Psr\Log\LoggerInterface;
 use Sabre\DAV\INode;
-use Sabre\DAV\Server;
 use Sabre\DAV\PropFind;
+use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\ResponseInterface;
-use OCA\DAV\Connector\Sabre\FilesPlugin;
 
 class TrashbinPlugin extends ServerPlugin {
 	public const TRASHBIN_FILENAME = '{http://nextcloud.org/ns}trashbin-filename';
 	public const TRASHBIN_ORIGINAL_LOCATION = '{http://nextcloud.org/ns}trashbin-original-location';
 	public const TRASHBIN_DELETION_TIME = '{http://nextcloud.org/ns}trashbin-deletion-time';
 	public const TRASHBIN_TITLE = '{http://nextcloud.org/ns}trashbin-title';
+	public const TRASHBIN_DELETED_BY_ID = '{http://nextcloud.org/ns}trashbin-deleted-by-id';
+	public const TRASHBIN_DELETED_BY_DISPLAY_NAME = '{http://nextcloud.org/ns}trashbin-deleted-by-display-name';
+	public const TRASHBIN_BACKEND = '{http://nextcloud.org/ns}trashbin-backend';
 
 	/** @var Server */
 	private $server;
 
-	/** @var IPreview */
-	private $previewManager;
-
 	public function __construct(
-		IPreview $previewManager
+		private IPreview $previewManager,
+		private View $view,
 	) {
-		$this->previewManager = $previewManager;
 	}
 
 	public function initialize(Server $server) {
@@ -59,6 +44,7 @@ class TrashbinPlugin extends ServerPlugin {
 
 		$this->server->on('propFind', [$this, 'propFind']);
 		$this->server->on('afterMethod:GET', [$this,'httpGet']);
+		$this->server->on('beforeMove', [$this, 'beforeMove']);
 	}
 
 
@@ -81,6 +67,19 @@ class TrashbinPlugin extends ServerPlugin {
 
 		$propFind->handle(self::TRASHBIN_DELETION_TIME, function () use ($node) {
 			return $node->getDeletionTime();
+		});
+
+		$propFind->handle(self::TRASHBIN_DELETED_BY_ID, function () use ($node) {
+			return $node->getDeletedBy()?->getUID();
+		});
+
+		$propFind->handle(self::TRASHBIN_DELETED_BY_DISPLAY_NAME, function () use ($node) {
+			return $node->getDeletedBy()?->getDisplayName();
+		});
+
+		// Pass the real filename as the DAV display name
+		$propFind->handle(FilesPlugin::DISPLAYNAME_PROPERTYNAME, function () use ($node) {
+			return $node->getFilename();
 		});
 
 		$propFind->handle(FilesPlugin::SIZE_PROPERTYNAME, function () use ($node) {
@@ -112,6 +111,14 @@ class TrashbinPlugin extends ServerPlugin {
 		$propFind->handle(FilesPlugin::MOUNT_TYPE_PROPERTYNAME, function () {
 			return '';
 		});
+
+		$propFind->handle(self::TRASHBIN_BACKEND, function () use ($node) {
+			$fileInfo = $node->getFileInfo();
+			if (!($fileInfo instanceof ITrashItem)) {
+				return '';
+			}
+			return $fileInfo->getTrashBackend()::class;
+		});
 	}
 
 	/**
@@ -126,5 +133,48 @@ class TrashbinPlugin extends ServerPlugin {
 		if ($node instanceof ITrash) {
 			$response->addHeader('Content-Disposition', 'attachment; filename="' . $node->getFilename() . '"');
 		}
+	}
+
+	/**
+	 * Check if a user has available space before attempting to
+	 * restore from trashbin unless they have unlimited quota.
+	 *
+	 * @param string $sourcePath
+	 * @param string $destinationPath
+	 * @return bool
+	 */
+	public function beforeMove(string $sourcePath, string $destinationPath): bool {
+		try {
+			$node = $this->server->tree->getNodeForPath($sourcePath);
+			$destinationNodeParent = $this->server->tree->getNodeForPath(dirname($destinationPath));
+		} catch (\Sabre\DAV\Exception $e) {
+			\OCP\Server::get(LoggerInterface::class)
+				->error($e->getMessage(), ['app' => 'files_trashbin', 'exception' => $e]);
+			return true;
+		}
+
+		// Check if a file is being restored before proceeding
+		if (!$node instanceof ITrash || !$destinationNodeParent instanceof RestoreFolder) {
+			return true;
+		}
+
+		$fileInfo = $node->getFileInfo();
+		if (!$fileInfo instanceof ITrashItem) {
+			return true;
+		}
+		$restoreFolder = dirname($fileInfo->getOriginalLocation());
+		$freeSpace = $this->view->free_space($restoreFolder);
+		if ($freeSpace === FileInfo::SPACE_NOT_COMPUTED
+			|| $freeSpace === FileInfo::SPACE_UNKNOWN
+			|| $freeSpace === FileInfo::SPACE_UNLIMITED) {
+			return true;
+		}
+		$filesize = $fileInfo->getSize();
+		if ($freeSpace < $filesize) {
+			$this->server->httpResponse->setStatus(507);
+			return false;
+		}
+
+		return true;
 	}
 }
